@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Outil de veille RSS">
+  <title>Outil de veille RSS</title>
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6BA4FF"/>
+      <stop offset="1" stop-color="#2F6FE4"/>
+    </linearGradient>
+  </defs>
+  <!-- Tuile arrondie facon macOS, accordee a la couleur d accent #4c8dff. -->
+  <rect width="64" height="64" rx="14" fill="url(#tile)"/>
+  <!-- Ondes de diffusion RSS : lisibles des 16 px, contrairement a un
+       glyphe combinant flux et tendance. -->
+  <g fill="none" stroke="#ffffff" stroke-width="5.5" stroke-linecap="round">
+    <path d="M20 31A13 13 0 0 1 33 44"/>
+    <path d="M20 20A24 24 0 0 1 44 44"/>
+  </g>
+  <circle cx="24.5" cy="39.5" r="4.5" fill="#ffffff"/>
+</svg>
