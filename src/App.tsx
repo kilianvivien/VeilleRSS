@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { RssFeeds } from '@/views/RssFeeds'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useRssRefreshScheduler } from '@/lib/hooks/useRssRefreshScheduler'
@@ -23,6 +24,7 @@ export default function App() {
   return (
     <div className="h-full min-h-0 bg-[var(--bg-primary)]">
       <RssFeeds />
+      <Analytics />
     </div>
   )
 }

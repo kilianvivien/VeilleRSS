@@ -2,13 +2,19 @@ import { validateRssFeedUrl } from './rssUrlValidation'
 
 const REQUEST_TIMEOUT_MS = 15000
 
+/** Middleware Vite, disponible uniquement pendant `npm run dev`. */
+const DEV_PROXY_PATH = '/__rss-proxy'
+/** Vercel Function (voir api/rss-proxy.ts), disponible sur le deploiement. */
+const PROD_PROXY_PATH = '/api/rss-proxy'
+
 /**
  * Récupération du XML d'un flux — version web autonome.
  *
- * En dev, le serveur Vite expose `/__rss-proxy` (voir vite.config.ts) : les
- * flux refusent presque tous les requêtes CORS directes du navigateur.
- * Hors dev (build statique), on tente la récupération directe et on explique
- * l'échec CORS si le flux bloque.
+ * Les flux refusent presque tous les requêtes CORS directes du navigateur :
+ * on passe donc toujours par un proxy côté serveur. En dev c'est le
+ * middleware Vite, en production la fonction déployée sur Vercel.
+ * Le fetch direct ne subsiste qu'en dernier recours, pour les rares flux
+ * qui renvoient `Access-Control-Allow-Origin`.
  */
 export async function fetchRssFeedXml(url: string): Promise<string> {
   const validation = validateRssFeedUrl(url, { allowHttp: true })
@@ -16,39 +22,27 @@ export async function fetchRssFeedXml(url: string): Promise<string> {
     throw new Error(validation.error)
   }
 
-  if (isLocalDevBrowser()) {
-    return fetchViaLocalDevProxy(validation.url)
-  }
-
-  const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+  const proxyPath = isLocalDevBrowser() ? DEV_PROXY_PATH : PROD_PROXY_PATH
 
   try {
-    const response = await fetch(validation.url, {
-      method: 'GET',
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`Le flux a repondu avec le statut ${response.status}.`)
+    return await fetchViaProxy(proxyPath, validation.url)
+  } catch (proxyError) {
+    try {
+      return await fetchDirect(validation.url)
+    } catch {
+      // L'échec du proxy est la cause utile : le fetch direct échoue par
+      // conception sur la plupart des flux.
+      throw new Error(describeProxyFailure(proxyError))
     }
-
-    return await response.text()
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('Le flux RSS n’a pas repondu dans le navigateur. Il peut bloquer les requetes CORS de la version web.')
-    }
-    throw new Error(
-      error instanceof Error
-        ? `${error.message} Si ce flux fonctionne dans un navigateur, il bloque probablement les requetes CORS de la version web. Lancez l’outil avec « npm run dev » pour passer par le proxy local.`
-        : 'Impossible de charger ce flux. Il bloque probablement les requetes CORS de la version web.'
-    )
-  } finally {
-    window.clearTimeout(timeout)
   }
+}
+
+function describeProxyFailure(error: unknown): string {
+  const detail = error instanceof Error ? error.message : ''
+  if (!detail) {
+    return 'Impossible de charger ce flux.'
+  }
+  return detail
 }
 
 function isLocalDevBrowser(): boolean {
@@ -59,30 +53,49 @@ function isLocalDevBrowser(): boolean {
   )
 }
 
-async function fetchViaLocalDevProxy(url: string): Promise<string> {
+async function fetchViaProxy(proxyPath: string, url: string): Promise<string> {
   const controller = new AbortController()
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
 
   try {
-    const response = await fetch(`/__rss-proxy?url=${encodeURIComponent(url)}`, {
+    const response = await fetch(`${proxyPath}?url=${encodeURIComponent(url)}`, {
       method: 'GET',
       signal: controller.signal,
-      headers: {
-        Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
-      },
+      headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8' },
     })
 
     if (!response.ok) {
       const message = await response.text().catch(() => '')
-      throw new Error(message || `Le proxy RSS local a repondu avec le statut ${response.status}.`)
+      throw new Error(message.trim() || `Le proxy RSS a repondu avec le statut ${response.status}.`)
     }
 
     return await response.text()
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
-      throw new Error('Le flux RSS n’a pas repondu via le proxy local de developpement.')
+      throw new Error('Le flux RSS n’a pas repondu dans le delai imparti.')
     }
     throw error
+  } finally {
+    window.clearTimeout(timeout)
+  }
+}
+
+async function fetchDirect(url: string): Promise<string> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8' },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Le flux a repondu avec le statut ${response.status}.`)
+    }
+
+    return await response.text()
   } finally {
     window.clearTimeout(timeout)
   }
