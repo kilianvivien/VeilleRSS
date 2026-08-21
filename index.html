@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="Outil de veille RSS — lecteur de flux, tendances et briefing" />
+    <title>Outil de veille RSS</title>
+    <style>
+      /* Peint le fond thémé dès la première frame pour éviter tout flash blanc. */
+      :root {
+        color-scheme: light dark;
+      }
+      html {
+        background-color: #ffffff;
+      }
+      html.dark {
+        background-color: #0f0f0f;
+      }
+    </style>
+    <script>
+      // Amorçage du thème sans flash : applique la classe `dark` de façon
+      // synchrone, avant le chargement du bundle. L'app reflète le réglage
+      // persistant dans cette clé localStorage à chaque changement.
+      (function () {
+        try {
+          var storedTheme = window.localStorage.getItem('veille-web-theme')
+          var isDark =
+            storedTheme === 'dark' ||
+            (storedTheme !== 'light' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
+          if (isDark) {
+            document.documentElement.classList.add('dark')
+          } else {
+            document.documentElement.classList.remove('dark')
+          }
+        } catch (e) {
+          /* matchMedia indisponible — on reste en clair. */
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

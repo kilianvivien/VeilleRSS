@@ -1,0 +1,292 @@
+@import 'tailwindcss';
+
+/* The application theme is controlled by the settings store via the `.dark` class.
+   Keep Tailwind's dark variants in sync instead of following the OS while the
+   user has explicitly selected light mode. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --radius-macos: 10px;
+  --radius-card: 14px;
+  --radius-overlay: 28px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  /* Light Mode - Backgrounds */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-tertiary: #f3f4f6;
+
+  /* Light Mode - Text */
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-muted: #9ca3af;
+
+  /* Light Mode - Borders */
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Light Mode - UI Elements */
+  --surface: #f5f5f5;
+  --surface-elevated: #ffffff;
+  --hover: #f9fafb;
+  --hover-strong: #f3f4f6;
+
+  /* Light Mode - Semantic Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  /* Light Mode - Tooltip */
+  --tooltip-bg: #374151;
+  --tooltip-text: #ffffff;
+
+  /* Missing token aliases (referenced in code but previously undefined) */
+  --accent: #4c8dff;
+  --accent-foreground: #ffffff;
+  --accent-muted: color-mix(in srgb, var(--accent) 18%, transparent);
+  --focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
+  --background: var(--bg-primary);
+  --background-alt: var(--bg-secondary);
+  --surface-alt: color-mix(in srgb, var(--surface) 84%, var(--bg-secondary));
+  --border-light: color-mix(in srgb, var(--border) 65%, transparent);
+  --border-hover: color-mix(in srgb, var(--border) 82%, #ffffff);
+  --secondary-hover: color-mix(in srgb, var(--hover) 70%, #ffffff);
+
+  /* Glass tokens (light mode) */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-highlight: rgba(255, 255, 255, 0.95);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --glass-blur: 18px;
+
+  /* Motion tokens */
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Transitions */
+  --transition-theme: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+.dark {
+  /* Dark Mode - Backgrounds */
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
+  --bg-tertiary: #262626;
+
+  /* Dark Mode - Text */
+  --text-primary: #f5f5f5;
+  --text-secondary: #a3a3a3;
+  --text-muted: #737373;
+
+  /* Dark Mode - Borders */
+  --border: #404040;
+  --border-strong: #525252;
+
+  /* Dark Mode - UI Elements */
+  --surface: #1a1a1a;
+  --surface-elevated: #262626;
+  --hover: #262626;
+  --hover-strong: #333333;
+
+  /* Dark Mode - Semantic Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #60a5fa;
+
+  /* Dark Mode - Tooltip */
+  --tooltip-bg: #1f2937;
+  --tooltip-text: #f3f4f6;
+
+  /* Dark Mode - Glass tokens */
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-highlight: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Glass surface utilities */
+.glass-surface {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-surface-strong {
+  background: var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .glass-surface,
+  .glass-surface-strong {
+    will-change: backdrop-filter;
+  }
+
+  .glass-surface {
+    backdrop-filter: saturate(160%) blur(var(--glass-blur));
+    -webkit-backdrop-filter: saturate(160%) blur(var(--glass-blur));
+  }
+
+  .glass-surface-strong {
+    backdrop-filter: saturate(180%) blur(calc(var(--glass-blur) * 1.2));
+    -webkit-backdrop-filter: saturate(180%) blur(calc(var(--glass-blur) * 1.2));
+  }
+}
+
+.modal-glass-shell {
+  isolation: isolate;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
+}
+
+/* Dark mode: give modals the same frosted density as the filter panel */
+.dark .modal-glass-shell.glass-surface-strong {
+  background: color-mix(in srgb, var(--surface-elevated) 78%, transparent);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .dark .modal-glass-shell.glass-surface-strong {
+    background: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
+    backdrop-filter: saturate(180%) blur(32px);
+    -webkit-backdrop-filter: saturate(180%) blur(32px);
+  }
+}
+
+.modal-overlay {
+  background: rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: opacity 140ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.modal-overlay[data-state='open'] {
+  opacity: 1;
+}
+
+.modal-content-shell {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0) scale(1);
+  box-shadow:
+    0 38px 96px rgba(0, 0, 0, 0.42),
+    0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  backface-visibility: hidden;
+}
+
+.modal-content-root[data-state='open'] .modal-content-shell {
+  animation: modal-content-in 340ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.modal-content-root[data-state='closed'] .modal-content-shell {
+  animation: modal-content-out 170ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Keep Dialog.Content mounted long enough for exit animation to complete. */
+.modal-content-root[data-state='open'] {
+  animation: modal-presence-in 340ms linear both;
+}
+
+.modal-content-root[data-state='closed'] {
+  animation: modal-presence-out 170ms linear both;
+}
+
+@keyframes modal-content-in {
+  0% {
+    opacity: 0;
+    transform: translateY(34px) scale(0.86);
+    filter: blur(5px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+  }
+  72% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.01);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    box-shadow:
+      0 38px 96px rgba(0, 0, 0, 0.42),
+      0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  }
+}
+
+@keyframes modal-content-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+@keyframes modal-presence-in {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-presence-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: var(--transition-theme);
+}
+
+h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Compact metadata headings inside the RSS workspace. The generic heading
+   scale above intentionally serves document views, but is too prominent for
+   source groups and analytical sub-sections. */
+.rss-section-label {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
