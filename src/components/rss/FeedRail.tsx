@@ -238,7 +238,12 @@ function FeedRow({
         active ? 'bg-[var(--accent-muted)]' : 'hover:bg-[var(--hover)]'
       )}
     >
-      <div className={cn('flex items-center gap-1.5 px-2', isDrawer ? 'py-2.5' : 'py-1.5')}>
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-2',
+          isDrawer ? 'flex-wrap py-2' : 'py-1.5'
+        )}
+      >
         <span
           className={cn('h-1.5 w-1.5 shrink-0 rounded-full', healthStyle.className)}
           title={healthStyle.label}
@@ -299,28 +304,34 @@ function FeedRow({
         <div
           className={cn(
             'shrink-0 items-center',
-            isDrawer ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'
+            isDrawer
+              ? 'flex basis-full justify-end gap-1 pl-4 pt-1'
+              : 'hidden group-focus-within:flex group-hover:flex'
           )}
         >
           <RailAction
             icon={<RefreshCw className="h-3.5 w-3.5" />}
             label={`Rafraîchir ${feed.title}`}
             onClick={onRefresh}
+            touch={isDrawer}
           />
           <RailAction
             icon={<EyeOff className="h-3.5 w-3.5" />}
             label={feed.enabled ? `Désactiver ${feed.title}` : `Activer ${feed.title}`}
             onClick={onToggle}
+            touch={isDrawer}
           />
           <RailAction
             icon={<Edit3 className="h-3.5 w-3.5" />}
             label={`Modifier ${feed.title}`}
             onClick={onEdit}
+            touch={isDrawer}
           />
           <RailAction
             icon={<Trash2 className="h-3.5 w-3.5" />}
             label={`Supprimer ${feed.title}`}
             onClick={onDelete}
+            touch={isDrawer}
           />
         </div>
       </div>
@@ -332,16 +343,18 @@ function RailAction({
   icon,
   label,
   onClick,
+  touch = false,
 }: {
   icon: React.ReactNode
   label: string
   onClick: () => void
+  touch?: boolean
 }) {
   return (
     <Button
       size="sm"
       variant="ghost"
-      className="h-6 w-6 p-0"
+      className={cn('p-0', touch ? 'h-10 w-10' : 'h-6 w-6')}
       onClick={onClick}
       title={label}
       aria-label={label}

@@ -142,7 +142,7 @@ function RegionChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'rounded-full border px-2.5 py-1 text-xs transition-colors',
+        'min-h-10 rounded-full border px-2.5 py-1 text-xs transition-colors sm:min-h-0',
         active
           ? 'border-[var(--glass-border)] bg-[var(--accent-muted)] text-[var(--text-primary)]'
           : 'border-[var(--border)] text-[var(--text-secondary)] hover:bg-[var(--hover)]'
@@ -184,45 +184,49 @@ function PackSection({
   return (
     <section className="rounded-card border border-[var(--border)] bg-[var(--surface)] p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
             <Layers className="h-4 w-4 text-[var(--accent)]" aria-hidden="true" />
             {pack.title}
           </h3>
           <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{pack.description}</p>
         </div>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => void handleProbePack()}
-          disabled={probing}
-          title="Lire chaque flux du bouquet et compter ses articles"
-        >
-          {probing ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <Stethoscope className="h-4 w-4" aria-hidden="true" />
-          )}
-          Vérifier
-        </Button>
-        <Button
-          size="sm"
-          variant={missing.length > 0 ? 'primary' : 'ghost'}
-          disabled={missing.length === 0}
-          onClick={() => onAddFeeds(missing, pack.region)}
-        >
-          {missing.length === 0 ? (
-            <>
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Bouquet ajouté
-            </>
-          ) : (
-            <>
-              <Plus className="h-4 w-4" aria-hidden="true" />
-              {missing.length === 1 ? 'Ajouter la source' : `Ajouter les ${missing.length}`}
-            </>
-          )}
-        </Button>
+        <div className="ml-auto flex flex-wrap justify-end gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-10 sm:min-h-0"
+            onClick={() => void handleProbePack()}
+            disabled={probing}
+            title="Lire chaque flux du bouquet et compter ses articles"
+          >
+            {probing ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Stethoscope className="h-4 w-4" aria-hidden="true" />
+            )}
+            Vérifier
+          </Button>
+          <Button
+            size="sm"
+            variant={missing.length > 0 ? 'primary' : 'ghost'}
+            className="min-h-10 sm:min-h-0"
+            disabled={missing.length === 0}
+            onClick={() => onAddFeeds(missing, pack.region)}
+          >
+            {missing.length === 0 ? (
+              <>
+                <Check className="h-4 w-4" aria-hidden="true" />
+                Bouquet ajouté
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {missing.length === 1 ? 'Ajouter la source' : `Ajouter les ${missing.length}`}
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">

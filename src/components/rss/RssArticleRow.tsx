@@ -54,7 +54,7 @@ export function RssArticleRow({
           checked={selected}
           onChange={(event) => onSelectedChange(event.target.checked)}
           onClick={(event) => event.stopPropagation()}
-          className="mt-1 h-4 w-4 shrink-0 rounded border-[var(--border)]"
+          className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--border)] lg:h-4 lg:w-4"
           aria-label={`Sélectionner ${item.title}`}
         />
 
@@ -106,11 +106,10 @@ export function RssArticleRow({
           aria-label={item.savedAt ? `Retirer ${item.title} des sauvegardés` : `Sauvegarder ${item.title}`}
           title={item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder'}
           className={cn(
-            'h-6 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--hover-strong,var(--hover))] hover:text-[var(--text-primary)]',
+            '-mr-2 h-10 w-10 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--hover-strong,var(--hover))] hover:text-[var(--text-primary)] lg:mr-0 lg:h-6 lg:w-auto',
             item.savedAt
               ? 'text-[var(--accent)]'
-              : // Sur tactile il n'y a pas de survol : le marque-page reste visible.
-                'opacity-0 focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100'
+              : 'opacity-100 lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100'
           )}
         >
           {item.savedAt ? (

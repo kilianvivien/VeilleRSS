@@ -26,6 +26,7 @@ import {
 import type { RssFeed, RssItem } from '@/types/rss'
 import type { SmartView } from './FeedRail'
 import { Sparkline } from './Sparkline'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
 const WINDOW_LABELS: Record<number, string> = {
   6: '6 h',
@@ -34,16 +35,7 @@ const WINDOW_LABELS: Record<number, string> = {
   168: '7 j',
 }
 
-const TOPIC_POSITIONS = [
-  { x: 50, y: 18 },
-  { x: 74, y: 31 },
-  { x: 82, y: 54 },
-  { x: 70, y: 77 },
-  { x: 50, y: 86 },
-  { x: 28, y: 77 },
-  { x: 18, y: 54 },
-  { x: 28, y: 31 },
-] as const
+const MAX_TOPICS = 8
 
 const SOURCE_COLORS = ['#4c8dff', '#22c55e', '#ef4444', '#f59e0b', '#14b8a6', '#8b5cf6']
 const RELATIVE_TIME_FORMATTER = new Intl.RelativeTimeFormat('fr', { numeric: 'auto' })
@@ -95,13 +87,18 @@ function titleCase(value: string): string {
   return value.charAt(0).toLocaleUpperCase('fr') + value.slice(1).toLocaleLowerCase('fr')
 }
 
-function topicStyle(index: number): React.CSSProperties {
-  const position = TOPIC_POSITIONS[index] ?? TOPIC_POSITIONS[0]
+function topicPosition(index: number, total: number) {
+  const angle = -Math.PI / 2 + (index * Math.PI * 2) / Math.max(1, total)
+  return { x: 50 + Math.cos(angle) * 32, y: 52 + Math.sin(angle) * 34 }
+}
+
+function topicStyle(index: number, total: number): React.CSSProperties {
+  const position = topicPosition(index, total)
   return { left: `${position.x}%`, top: `${position.y}%` }
 }
 
-function sourceStyle(index: number): React.CSSProperties {
-  const position = TOPIC_POSITIONS[index] ?? TOPIC_POSITIONS[0]
+function sourceStyle(index: number, total: number): React.CSSProperties {
+  const position = topicPosition(index, total)
   const x = 50 + (position.x - 50) * 1.38
   const y = 52 + (position.y - 52) * 1.22
   return { left: `${Math.max(12, Math.min(88, x))}%`, top: `${Math.max(9, Math.min(91, y))}%` }
@@ -125,7 +122,9 @@ export function TrendMapView({
   onExportOpml,
   onClose,
 }: TrendMapViewProps) {
-  const topLevelTerms = useMemo(() => report.terms.slice(0, TOPIC_POSITIONS.length), [report.terms])
+  const isExtraNarrow = useMediaQuery('(max-width: 359px)')
+  const topicLimit = isExtraNarrow ? 6 : MAX_TOPICS
+  const topLevelTerms = useMemo(() => report.terms.slice(0, topicLimit), [report.terms, topicLimit])
   const [focusKey, setFocusKey] = useState<string | null>(null)
   const focusTerm = useMemo(
     () => topLevelTerms.find((term) => term.key === focusKey) ?? null,
@@ -138,11 +137,11 @@ export function TrendMapView({
             items,
             parentTerm: focusTerm,
             windowHours,
-            termLimit: TOPIC_POSITIONS.length,
+            termLimit: topicLimit,
             now: report.generatedAt,
           })
         : topLevelTerms,
-    [focusTerm, items, report.generatedAt, topLevelTerms, windowHours]
+    [focusTerm, items, report.generatedAt, topLevelTerms, topicLimit, windowHours]
   )
   const selectableTerms = useMemo(
     () => (focusTerm ? [focusTerm, ...terms] : terms),
@@ -263,7 +262,7 @@ export function TrendMapView({
       context.restore()
 
       terms.forEach((term, index) => {
-        const position = TOPIC_POSITIONS[index]
+        const position = topicPosition(index, terms.length)
         const topic = { x: (width * position.x) / 100, y: (height * position.y) / 100 }
         const selected = term.key === selectedTerm?.key
         context.save()
@@ -278,8 +277,8 @@ export function TrendMapView({
         context.quadraticCurveTo(controlX, controlY, topic.x, topic.y)
         context.stroke()
 
-        if (index !== 2 && index !== 6) {
-          const outer = sourceStyle(index)
+        if (!isExtraNarrow && index !== 2 && index !== 6) {
+          const outer = sourceStyle(index, terms.length)
           const outerX = (width * Number.parseFloat(String(outer.left))) / 100
           const outerY = (height * Number.parseFloat(String(outer.top))) / 100
           context.strokeStyle = border
@@ -302,7 +301,7 @@ export function TrendMapView({
       observer?.disconnect()
       window.removeEventListener('resize', draw)
     }
-  }, [selectedTerm?.key, terms])
+  }, [isExtraNarrow, selectedTerm?.key, terms])
 
   return (
     <div
@@ -429,12 +428,13 @@ export function TrendMapView({
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
-        <header className="glass-surface-strong rounded-card relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-3">
+      <main className="flex min-w-0 flex-1 flex-col px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:p-4">
+        <header className="glass-surface-strong rounded-card relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-x-4 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <Network className="h-5 w-5 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
             <h2 className="truncate text-base font-semibold text-[var(--text-primary)]">
-              Cartographie des tendances
+              <span className="sm:hidden">Carte</span>
+              <span className="hidden sm:inline">Cartographie des tendances</span>
             </h2>
           </div>
           <div className="flex items-center justify-self-end gap-1">
@@ -472,7 +472,7 @@ export function TrendMapView({
             <Button
               size="sm"
               variant="ghost"
-              className="h-9 w-9 p-0"
+              className="h-10 w-10 p-0 sm:h-9 sm:w-9"
               onClick={onClose}
               aria-label="Fermer la cartographie"
             >
@@ -481,7 +481,7 @@ export function TrendMapView({
           </div>
           <SegmentedControl<string>
             size="sm"
-            className="w-full max-w-[410px]"
+            className="col-span-2 w-full max-w-none sm:col-span-1 sm:max-w-[410px]"
             value={String(windowHours)}
             onChange={(value) => onWindowChange(Number(value))}
             options={TREND_WINDOW_OPTIONS.map((hours) => ({
@@ -489,13 +489,13 @@ export function TrendMapView({
               label: WINDOW_LABELS[hours],
             }))}
           />
-          <p className="flex items-center justify-end gap-1 text-[11px] text-[var(--text-muted)]">
+          <p className="col-span-2 flex items-center justify-start gap-1 text-[11px] text-[var(--text-muted)] sm:col-span-1 sm:justify-end">
             Données du {formatGeneratedAt(report.generatedAt)}
             <Info className="h-3.5 w-3.5" aria-hidden="true" />
           </p>
         </header>
 
-        <div className="relative mt-3 flex min-h-0 flex-1 gap-3">
+        <div className="relative mt-3 flex min-h-0 flex-1 flex-col gap-3 lg:flex-row">
           <section
             ref={graphRef}
             className="relative min-w-0 flex-1 overflow-hidden"
@@ -525,11 +525,11 @@ export function TrendMapView({
               </div>
             ) : (
               <>
-                <div className="absolute top-[52%] left-1/2 flex h-[132px] w-[132px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-2 border-[var(--accent)] bg-[var(--surface-elevated)] text-center shadow-lg">
+                <div className="absolute top-[52%] left-1/2 flex h-[108px] w-[108px] -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center rounded-full border-2 border-[var(--accent)] bg-[var(--surface-elevated)] text-center shadow-lg min-[360px]:h-[132px] min-[360px]:w-[132px]">
                   <span className="text-[11px] text-[var(--text-muted)]">
                     {focusTerm ? 'Sujet exploré' : `Tendances · ${WINDOW_LABELS[windowHours]}`}
                   </span>
-                  <strong className="mt-1 max-w-[108px] truncate text-lg font-semibold text-[var(--text-primary)]">
+                  <strong className="mt-1 max-w-[88px] truncate text-base font-semibold text-[var(--text-primary)] min-[360px]:max-w-[108px] min-[360px]:text-lg">
                     {rootLabel}
                   </strong>
                   <span className="mt-1 text-[10px] text-[var(--text-muted)]">
@@ -544,7 +544,7 @@ export function TrendMapView({
                     <div key={term.key}>
                       <button
                         type="button"
-                        style={topicStyle(index)}
+                        style={topicStyle(index, terms.length)}
                         onClick={() => {
                           if (!focusTerm) setFocusKey(term.key)
                           setSelectedKey(term.key)
@@ -552,7 +552,7 @@ export function TrendMapView({
                         }}
                         aria-pressed={selected}
                         className={cn(
-                          'absolute z-10 max-w-[126px] min-w-[92px] -translate-x-1/2 -translate-y-1/2 rounded-full border bg-[var(--surface-elevated)] px-3 py-2 text-center shadow-sm transition-[border-color,box-shadow,transform] hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:outline-none',
+                          'absolute z-10 max-w-[104px] min-w-[76px] -translate-x-1/2 -translate-y-1/2 rounded-full border bg-[var(--surface-elevated)] px-2 py-1.5 text-center shadow-sm transition-[border-color,box-shadow,transform] hover:scale-[1.03] focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:outline-none min-[360px]:max-w-[126px] min-[360px]:min-w-[92px] min-[360px]:px-3 min-[360px]:py-2',
                           selected
                             ? 'border-2 border-[var(--accent)] shadow-md'
                             : 'border-[color-mix(in_srgb,var(--accent)_55%,var(--border))]'
@@ -565,9 +565,9 @@ export function TrendMapView({
                           {term.count}
                         </span>
                       </button>
-                      {source && index !== 2 && index !== 6 ? (
+                      {!isExtraNarrow && source && index !== 2 && index !== 6 ? (
                         <div
-                          style={sourceStyle(index)}
+                          style={sourceStyle(index, terms.length)}
                           className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[10px] text-[var(--text-secondary)] shadow-sm"
                         >
                           <span
@@ -587,7 +587,7 @@ export function TrendMapView({
               </>
             )}
 
-            <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--glass-bg-strong)] px-3 py-2 text-[10px] text-[var(--text-muted)] shadow-sm backdrop-blur-md">
+            <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--glass-bg-strong)] px-2 py-1.5 text-[10px] text-[var(--text-muted)] shadow-sm backdrop-blur-md min-[360px]:gap-4 min-[360px]:px-3 min-[360px]:py-2">
               <span className="flex items-center gap-1.5">
                 <span className="h-3 w-3 rounded-full border-2 border-[var(--accent)]" />
                 Sujet central
@@ -605,7 +605,7 @@ export function TrendMapView({
 
           {selectedTerm ? (
             <aside
-              className="glass-surface-strong rounded-card flex w-[250px] flex-shrink-0 flex-col overflow-hidden max-lg:absolute max-lg:inset-x-3 max-lg:bottom-0 max-lg:z-20 max-lg:h-[min(58%,400px)] max-lg:w-auto max-lg:border max-lg:shadow-lg"
+              className="glass-surface-strong rounded-card flex h-[min(42%,320px)] w-full flex-shrink-0 flex-col overflow-hidden border shadow-lg lg:h-auto lg:w-[250px] lg:border-0 lg:shadow-none"
               aria-label={`Détails de la tendance ${selectedTerm.label}`}
             >
               <div className="min-h-0 flex-1 overflow-auto p-4">

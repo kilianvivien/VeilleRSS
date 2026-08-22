@@ -63,7 +63,7 @@ export function Modal({
             }
           }}
           className={cn(
-            'fixed inset-0 z-50 grid pointer-events-none modal-content-root',
+            'fixed inset-0 z-50 grid justify-items-center pointer-events-none modal-content-root',
             'items-end sm:items-center',
             'p-0 sm:p-6'
           )}
@@ -119,7 +119,7 @@ export function Modal({
             {!hideCloseButton && (
               <Dialog.Close
                 className={cn(
-                  'absolute right-4 top-4 z-20 w-7 h-7 rounded-full flex items-center justify-center',
+                  'absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full sm:right-4 sm:top-4 sm:h-7 sm:w-7',
                   'bg-[var(--surface-alt)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
                   'hover:bg-[var(--hover)] transition-all duration-150',
                   'focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]'

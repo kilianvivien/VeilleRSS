@@ -87,7 +87,7 @@ export function TrendBriefingPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-shrink-0 items-center gap-2 border-b border-[var(--border)] px-3 py-2">
-        <span className="text-xs text-[var(--text-muted)]">Période</span>
+        <span className="hidden text-xs text-[var(--text-muted)] sm:inline">Période</span>
         <SegmentedControl<string>
           size="sm"
           className="flex-1"
@@ -101,6 +101,7 @@ export function TrendBriefingPanel({
         <Button
           size="sm"
           variant="secondary"
+          className="h-10 w-10 shrink-0 p-0 sm:h-9 sm:w-auto sm:px-2.5"
           onClick={onGenerate}
           disabled={!available || loading}
           title={
@@ -114,7 +115,7 @@ export function TrendBriefingPanel({
           ) : (
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
           )}
-          {briefing ? 'Régénérer' : 'Générer'}
+          <span className="hidden sm:inline">{briefing ? 'Régénérer' : 'Générer'}</span>
         </Button>
       </div>
 

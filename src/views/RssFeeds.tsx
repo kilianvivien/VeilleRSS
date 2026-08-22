@@ -5,6 +5,7 @@ import {
   Download,
   FileDown,
   Inbox,
+  Info,
   Library,
   Menu,
   Network,
@@ -149,6 +150,7 @@ export function RssFeeds() {
   const [editCategory, setEditCategory] = useState('')
   const [editRefreshInterval, setEditRefreshInterval] = useState<number | null>(null)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [showCreditsModal, setShowCreditsModal] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   /**
    * Cartographie des tendances : montée/démontée différée pour animer
@@ -797,8 +799,10 @@ export function RssFeeds() {
         ? 'Sauvegardés'
         : 'Tous les articles'
 
-    /** Ferme la lecture : bouton retour du volet mobile. */
-  const closeReader = useCallback(() => setOpenItemId(null), [])  /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
+  /** Ferme la lecture : bouton retour du volet mobile. */
+  const closeReader = useCallback(() => setOpenItemId(null), [])
+
+  /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
   const handleMobileTab = useCallback(
     (value: RightPane | 'map') => {
       if (value === 'map') {
@@ -867,7 +871,7 @@ export function RssFeeds() {
       <Button
         size="sm"
         variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
         onClick={() => {
           setAddFeedError(null)
           setShowAddFeedModal(true)
@@ -881,7 +885,7 @@ export function RssFeeds() {
       <Button
         size="sm"
         variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
         onClick={() => void handleImportOpml()}
         title="Importer un OPML"
         aria-label="Importer un OPML"
@@ -891,7 +895,7 @@ export function RssFeeds() {
       <Button
         size="sm"
         variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
         onClick={() => void handleExportOpml()}
         disabled={feeds.length === 0}
         title="Exporter en OPML"
@@ -910,7 +914,7 @@ export function RssFeeds() {
   )
 
   const articleListSection = (
-    <section className="flex min-h-0 flex-col" aria-label="Articles">
+    <section className="flex h-full min-h-0 flex-col" aria-label="Articles">
         <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2">
             <h2
@@ -942,7 +946,7 @@ export function RssFeeds() {
             <Button
               size="sm"
               variant="ghost"
-              className="h-9 w-9 shrink-0 p-0"
+              className="h-10 w-10 shrink-0 p-0 lg:h-9 lg:w-9"
               onClick={() =>
                 updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })
               }
@@ -1010,40 +1014,49 @@ export function RssFeeds() {
           )}
         </div>
 
-          {/* Barre de sélection : n’apparaît qu’une fois des articles cochés.
-              flex-wrap : les libellés passent à la ligne sur les petits écrans. */}
-          <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleSelectVisible}
-            disabled={visibleItems.length === 0}
-          >
-            <Check className="h-4 w-4" aria-hidden="true" />
-            Sélection visible
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => void handleMarkAllRead()}
-            disabled={totals.unread === 0}
-            title="Marquer tout comme lu"
-          >
-            <CheckCheck className="h-4 w-4" aria-hidden="true" />
-            Tout lu
-          </Button>
-          <Button
-            size="sm"
-            variant={selectedCount > 0 ? 'primary' : 'ghost'}
-            className="ml-auto"
-            onClick={() => void handleExportSelection()}
-            disabled={selectedCount === 0}
-          >
-            <FileDown className="h-4 w-4" aria-hidden="true" />
-            Exporter la sélection{selectedCount > 0 ? ` (${selectedCount})` : ''}
-          </Button>
-        </div>
-    </section>
+        {/* Sur mobile, masquer les actions inactives quand la liste est vide
+            évite une barre à deux lignes qui concurrence l'état vide. */}
+        {isDesktop || visibleItems.length > 0 ? (
+          <div className="flex flex-shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSelectVisible}
+              disabled={visibleItems.length === 0}
+              aria-label="Sélectionner les articles visibles"
+            >
+              <Check className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sélection visible</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handleMarkAllRead()}
+              disabled={totals.unread === 0}
+              title="Marquer tout comme lu"
+              aria-label="Marquer tout comme lu"
+            >
+              <CheckCheck className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Tout lu</span>
+            </Button>
+            <Button
+              size="sm"
+              variant={selectedCount > 0 ? 'primary' : 'ghost'}
+              className="ml-auto"
+              onClick={() => void handleExportSelection()}
+              disabled={selectedCount === 0}
+            >
+              <FileDown className="h-4 w-4" aria-hidden="true" />
+              <span className="sm:hidden">
+                Exporter{selectedCount > 0 ? ` (${selectedCount})` : ''}
+              </span>
+              <span className="hidden sm:inline">
+                Exporter la sélection{selectedCount > 0 ? ` (${selectedCount})` : ''}
+              </span>
+            </Button>
+          </div>
+        ) : null}
+      </section>
   )
 
   const trendsPanelElement = (
@@ -1208,6 +1221,16 @@ export function RssFeeds() {
               size="sm"
               variant="ghost"
               className="h-9 w-9 p-0"
+              title="À propos"
+              aria-label="À propos de l’application"
+              onClick={() => setShowCreditsModal(true)}
+            >
+              <Info className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 p-0"
               title="Paramètres"
               aria-label="Paramètres"
               onClick={() => setShowSettingsModal(true)}
@@ -1222,7 +1245,7 @@ export function RssFeeds() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-11 w-11 shrink-0 p-0"
+            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
             title="Sources et vues"
             aria-label="Ouvrir les sources et vues"
             onClick={() => setIsSourcesOpen(true)}
@@ -1230,7 +1253,9 @@ export function RssFeeds() {
             <Menu className="h-5 w-5" aria-hidden="true" />
           </Button>
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-lg font-bold text-[var(--text-primary)]">Veille RSS</h1>
+            <h1 className="truncate text-lg font-bold text-[var(--text-primary)] max-[359px]:text-base">
+              Veille RSS
+            </h1>
             <p className="truncate text-[11px] text-[var(--text-secondary)]">
               {feeds.length === 0
                 ? 'Aucune source suivie'
@@ -1240,7 +1265,7 @@ export function RssFeeds() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-11 w-11 shrink-0 p-0"
+            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
             onClick={() => void refreshAllFeeds()}
             isLoading={isRefreshing}
             disabled={feeds.length === 0}
@@ -1252,7 +1277,7 @@ export function RssFeeds() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-11 w-11 shrink-0 p-0"
+            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
             title="Catalogue de sources"
             aria-label="Catalogue de sources"
             onClick={() => setShowCatalog(true)}
@@ -1262,7 +1287,17 @@ export function RssFeeds() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-11 w-11 shrink-0 p-0"
+            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
+            title="À propos"
+            aria-label="À propos de l’application"
+            onClick={() => setShowCreditsModal(true)}
+          >
+            <Info className="h-5 w-5" aria-hidden="true" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
             title="Paramètres"
             aria-label="Paramètres"
             onClick={() => setShowSettingsModal(true)}
@@ -1337,7 +1372,7 @@ export function RssFeeds() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-9 w-9 shrink-0 p-0"
+                    className="h-11 w-11 shrink-0 p-0"
                     title="Fermer"
                     aria-label="Fermer le tiroir des sources"
                     onClick={() => setIsSourcesOpen(false)}
@@ -1448,6 +1483,26 @@ export function RssFeeds() {
       </Modal>
 
       <SettingsModal open={showSettingsModal} onOpenChange={setShowSettingsModal} />
+
+      <Modal
+        open={showCreditsModal}
+        onOpenChange={setShowCreditsModal}
+        title="À propos"
+        description="Outil de veille RSS"
+        size="sm"
+        footer={<Button onClick={() => setShowCreditsModal(false)}>Fermer</Button>}
+      >
+        <div className="space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
+          <p>
+            Ce logiciel est distribué sous licence MIT et fourni « en l’état », sans garantie
+            d’aucune sorte.
+          </p>
+          <p>
+            Conception et développement :{' '}
+            <strong className="font-semibold text-[var(--text-primary)]">Kilian Vivien</strong>.
+          </p>
+        </div>
+      </Modal>
 
       {/* Cartographie : recouvre la vue principale avec une transition douce. */}
       {isTrendMapMounted ? (

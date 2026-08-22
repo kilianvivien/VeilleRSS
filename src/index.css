@@ -316,19 +316,23 @@ body {
   transition: var(--transition-theme);
 }
 
-h1 {
-  font-size: 1.875rem;
-  font-weight: 700;
-}
+/* Default document heading scale. Keeping it in Tailwind's base layer lets
+   component utilities such as `text-sm` and `text-lg` win as intended. */
+@layer base {
+  h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+  }
 
-h2 {
-  font-size: 1.5rem;
-  font-weight: 700;
-}
+  h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
 
-h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
+  h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
 }
 
 /* Compact metadata headings inside the RSS workspace. The generic heading

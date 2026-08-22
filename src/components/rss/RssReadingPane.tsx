@@ -98,7 +98,7 @@ export function RssReadingPane({
             type="button"
             onClick={onBack}
             aria-label="Retour à la liste d’articles"
-            className="-ml-1.5 mb-1 inline-flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--hover)]"
+            className="-ml-1.5 mb-1 inline-flex min-h-10 items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--hover)]"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             Retour à la liste
