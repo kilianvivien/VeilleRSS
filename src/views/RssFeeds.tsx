@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Check,
   CheckCheck,
@@ -75,6 +75,8 @@ const SORT_OPTIONS = [
 ]
 
 const UNCATEGORIZED = 'Sources'
+const ARTICLE_BATCH_SIZE = 80
+const EMPTY_RSS_ITEMS: RssItem[] = []
 
 /** Volets du panneau de droite ; « map » ouvre la cartographie en plein écran. */
 type RightPane = 'article' | 'trends' | 'briefing'
@@ -172,6 +174,9 @@ export function RssFeeds() {
   const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false)
   const [briefingError, setBriefingError] = useState<string | null>(null)
   const briefingAbortRef = useRef<AbortController | null>(null)
+  const [renderedItemCount, setRenderedItemCount] = useState(ARTICLE_BATCH_SIZE)
+  const articleListRef = useRef<HTMLDivElement>(null)
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
 
   /**
    * Composition mobile (< 1024 px) : un seul volet à l'écran, navigation par
@@ -194,7 +199,9 @@ export function RssFeeds() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [isSourcesOpen])
 
-  const normalizedQuery = query.trim()
+  const deferredQuery = useDeferredValue(query)
+  const deferredTrendItems = useDeferredValue(items, EMPTY_RSS_ITEMS)
+  const normalizedQuery = deferredQuery.trim()
   const density: RssDensity = settings.density ?? 'comfortable'
   const trendWindowHours = settings.trendWindowHours ?? 24
   const watchedKeywords = useMemo(
@@ -205,6 +212,7 @@ export function RssFeeds() {
   const selectedIds = useMemo(() => new Set(selectedItemIds), [selectedItemIds])
   const refreshingSet = useMemo(() => new Set(refreshingFeedIds), [refreshingFeedIds])
   const feedById = useMemo(() => new Map(feeds.map((feed) => [feed.id, feed])), [feeds])
+  const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
   const feedStats = useMemo(() => computeFeedStats(items), [items])
 
   const latestItemByFeed = useMemo(() => {
@@ -289,12 +297,12 @@ export function RssFeeds() {
   const trendReport = useMemo(
     () =>
       computeTrends({
-        items,
+        items: deferredTrendItems,
         windowHours: trendWindowHours,
         watchedKeywords,
         feedIds: activeFeedId ? [activeFeedId] : undefined,
       }),
-    [activeFeedId, items, trendWindowHours, watchedKeywords]
+    [activeFeedId, deferredTrendItems, trendWindowHours, watchedKeywords]
   )
 
   // Le tri IA est rejoué sur chaque rapport recalculé : il survit donc à
@@ -401,12 +409,19 @@ export function RssFeeds() {
       briefingWindowHours === trendWindowHours
         ? trendReport
         : computeTrends({
-            items,
+            items: deferredTrendItems,
             windowHours: briefingWindowHours,
             watchedKeywords,
             feedIds: activeFeedId ? [activeFeedId] : undefined,
           }),
-    [activeFeedId, briefingWindowHours, items, trendReport, trendWindowHours, watchedKeywords]
+    [
+      activeFeedId,
+      briefingWindowHours,
+      deferredTrendItems,
+      trendReport,
+      trendWindowHours,
+      watchedKeywords,
+    ]
   )
 
   const displayedBriefingReport = useMemo(
@@ -473,16 +488,16 @@ export function RssFeeds() {
   ])
 
   const activeFeed = activeFeedId ? feedById.get(activeFeedId) : null
-  const openItem = openItemId ? (items.find((item) => item.id === openItemId) ?? null) : null
+  const openItem = openItemId ? (itemById.get(openItemId) ?? null) : null
   const selectedCount = selectedItemIds.length
 
   // Un article retiré du cache ou d’un flux supprimé ne doit pas laisser le volet
   // de lecture sur un identifiant fantôme.
   useEffect(() => {
-    if (openItemId && !items.some((item) => item.id === openItemId)) {
+    if (openItemId && !itemById.has(openItemId)) {
       setOpenItemId(null)
     }
-  }, [items, openItemId])
+  }, [itemById, openItemId])
 
   const handleOpenItem = useCallback(
     (item: RssItem) => {
@@ -570,14 +585,50 @@ export function RssFeeds() {
 
   const handleSelectVisible = () => {
     const visibleIds = visibleItems.map((item) => item.id)
+    const visibleIdSet = new Set(visibleIds)
     const allVisibleSelected =
       visibleIds.length > 0 && visibleIds.every((id) => selectedIds.has(id))
     setSelectedItems(
       allVisibleSelected
-        ? selectedItemIds.filter((id) => !visibleIds.includes(id))
+        ? selectedItemIds.filter((id) => !visibleIdSet.has(id))
         : Array.from(new Set([...selectedItemIds, ...visibleIds]))
     )
   }
+
+  const renderedItems = useMemo(
+    () => visibleItems.slice(0, renderedItemCount),
+    [renderedItemCount, visibleItems]
+  )
+  const hasMoreItems = renderedItems.length < visibleItems.length
+
+  const loadMoreItems = useCallback(() => {
+    setRenderedItemCount((count) =>
+      Math.min(count + ARTICLE_BATCH_SIZE, visibleItems.length)
+    )
+  }, [visibleItems.length])
+
+  // Chaque nouveau périmètre repart d'une première peinture bornée. Les
+  // compteurs et les actions de masse continuent d'utiliser `visibleItems`.
+  useEffect(() => {
+    setRenderedItemCount(ARTICLE_BATCH_SIZE)
+  }, [activeFeedId, activeTerm?.key, query, smartView, sortMode])
+
+  useEffect(() => {
+    const root = articleListRef.current
+    const sentinel = loadMoreSentinelRef.current
+    if (!root || !sentinel || !hasMoreItems || typeof IntersectionObserver === 'undefined') {
+      return
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMoreItems()
+      },
+      { root, rootMargin: '400px 0px', threshold: 0 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMoreItems, loadMoreItems])
 
   const handleExportSelection = async () => {
     const markdown = getSelectedItemsAsMagicReviewText()
@@ -923,7 +974,10 @@ export function RssFeeds() {
             >
               {listTitle}
             </h2>
-            <span className="shrink-0 rounded-full bg-[var(--hover)] px-2 py-0.5 text-xs text-[var(--text-muted)] tabular-nums">
+            <span
+              className="shrink-0 rounded-full bg-[var(--hover)] px-2 py-0.5 text-xs text-[var(--text-muted)] tabular-nums"
+              data-testid="filtered-article-count"
+            >
               {visibleItems.length}
             </span>
           </div>
@@ -979,38 +1033,53 @@ export function RssFeeds() {
           </div>
         ) : null}
 
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div ref={articleListRef} className="min-h-0 flex-1 overflow-auto">
           {visibleItems.length === 0 ? (
             <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
           ) : (
-            <ul>
-              {visibleItems.map((item) => {
-                const cached =
-                  item.translation && item.translation.targetLanguage === targetLanguage
-                    ? item.translation
-                    : null
-                const showTranslated = Boolean(cached) && !showOriginalIds.has(item.id)
-                return (
-                  <RssArticleRow
-                    key={item.id}
-                    item={item}
-                    feed={feedById.get(item.feedId)}
-                    selected={selectedIds.has(item.id)}
-                    active={openItemId === item.id}
-                    density={density}
-                    displayTitle={showTranslated && cached ? cached.title : item.title}
-                    displaySummary={
-                      showTranslated && cached
-                        ? cached.summary || item.contentSnippet || item.summary
-                        : item.contentSnippet || item.summary
-                    }
-                    onOpen={() => handleOpenItem(item)}
-                    onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
-                    onToggleSaved={() => toggleSaved(item.id)}
-                  />
-                )
-              })}
-            </ul>
+            <>
+              <ul>
+                {renderedItems.map((item) => {
+                  const cached =
+                    item.translation && item.translation.targetLanguage === targetLanguage
+                      ? item.translation
+                      : null
+                  const showTranslated = Boolean(cached) && !showOriginalIds.has(item.id)
+                  return (
+                    <RssArticleRow
+                      key={item.id}
+                      item={item}
+                      feed={feedById.get(item.feedId)}
+                      selected={selectedIds.has(item.id)}
+                      active={openItemId === item.id}
+                      density={density}
+                      displayTitle={showTranslated && cached ? cached.title : item.title}
+                      displaySummary={
+                        showTranslated && cached
+                          ? cached.summary || item.contentSnippet || item.summary
+                          : item.contentSnippet || item.summary
+                      }
+                      onOpen={() => handleOpenItem(item)}
+                      onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
+                      onToggleSaved={() => toggleSaved(item.id)}
+                    />
+                  )
+                })}
+              </ul>
+              {hasMoreItems ? (
+                <div className="flex flex-col items-center gap-2 px-3 py-4">
+                  <div ref={loadMoreSentinelRef} className="h-px w-full" aria-hidden="true" />
+                  <Button variant="ghost" size="sm" onClick={loadMoreItems}>
+                    Afficher{' '}
+                    {Math.min(ARTICLE_BATCH_SIZE, visibleItems.length - renderedItems.length)}{' '}
+                    articles supplémentaires
+                  </Button>
+                  <span className="text-xs text-[var(--text-muted)] tabular-nums" aria-live="polite">
+                    {renderedItems.length} sur {visibleItems.length} affichés
+                  </span>
+                </div>
+              ) : null}
+            </>
           )}
         </div>
 

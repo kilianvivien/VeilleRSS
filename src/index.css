@@ -296,10 +296,22 @@
 }
 
 html,
-body,
-#root {
+body {
   width: 100%;
   height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* iOS peut conserver pour les hauteurs en pourcentage la taille du layout
+   viewport d'un ancien appareil/session PWA. La capture reste alors plus
+   haute que #root et laisse une bande vide sous la navigation. Ancrer la
+   racine au viewport dynamique garde la barre basse contre le bord réel ;
+   son propre padding continue de gérer la safe area du geste système. */
+#root {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
   padding: 0;
 }
