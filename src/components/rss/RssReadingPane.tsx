@@ -89,6 +89,8 @@ export function RssReadingPane({
   const savedLabel = item.savedAt ? 'Sauvé' : 'Sauver'
   const readLabel = item.readAt ? 'Non lu' : 'Lu'
   const readActionLabel = item.readAt ? 'Marquer non lu' : 'Marquer lu'
+  const mobileActionClass =
+    'h-10 shrink-0 px-1.5 text-[11px] min-[390px]:px-2 sm:h-9 sm:px-2.5 sm:text-xs'
 
   return (
     <article className="flex h-full min-h-0 flex-col">
@@ -122,50 +124,60 @@ export function RssReadingPane({
           Publié le {formatAbsoluteDate(item.publishedAt)}
         </p>
 
-        <div className="mt-3 flex flex-wrap items-center gap-1">
-          <Button size="sm" variant="primary" onClick={onOpenOriginal} disabled={!item.link}>
-            <ExternalLink className="h-4 w-4" aria-hidden="true" />
-            Ouvrir l’original
+        <div className="mt-3 flex flex-nowrap items-center gap-0.5 sm:flex-wrap sm:gap-1">
+          <Button
+            size="sm"
+            variant="primary"
+            className={mobileActionClass}
+            onClick={onOpenOriginal}
+            disabled={!item.link}
+          >
+            <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+            <span className="min-[360px]:hidden">Original</span>
+            <span className="hidden min-[360px]:inline">Ouvrir l’original</span>
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className={mobileActionClass}
             onClick={onTranslate}
             disabled={isTranslating}
             title={translateLabel}
             aria-label={translateLabel}
           >
             {isTranslating ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              <Loader2 className="h-3.5 w-3.5 animate-spin sm:h-4 sm:w-4" aria-hidden="true" />
             ) : (
-              <Languages className="h-4 w-4" aria-hidden="true" />
+              <Languages className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
             )}
             {translateActionLabel}
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className={mobileActionClass}
             onClick={onToggleSaved}
             title={item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'}
           >
             {item.savedAt ? (
-              <BookmarkCheck className="h-4 w-4" aria-hidden="true" />
+              <BookmarkCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
             ) : (
-              <Bookmark className="h-4 w-4" aria-hidden="true" />
+              <Bookmark className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
             )}
             {savedLabel}
           </Button>
           <Button
             size="sm"
             variant="ghost"
+            className={mobileActionClass}
             onClick={onToggleRead}
             title={readActionLabel}
             aria-label={readActionLabel}
           >
             {item.readAt ? (
-              <EyeOff className="h-4 w-4" aria-hidden="true" />
+              <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
             ) : (
-              <Eye className="h-4 w-4" aria-hidden="true" />
+              <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
             )}
             {readLabel}
           </Button>

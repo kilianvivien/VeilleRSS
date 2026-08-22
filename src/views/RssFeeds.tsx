@@ -1026,7 +1026,7 @@ export function RssFeeds() {
               type="button"
               onClick={() => setActiveTerm(null)}
               aria-label="Retirer le filtre de tendance"
-              className="rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              className="-my-1.5 -mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -1681,7 +1681,7 @@ function MobileTabBar({
             onClick={() => onChange(tab.value)}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 font-medium transition-colors',
+              'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 font-medium transition-colors',
               active
                 ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
