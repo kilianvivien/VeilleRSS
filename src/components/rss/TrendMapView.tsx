@@ -102,6 +102,7 @@ export function TrendMapView({
   onClose,
 }: TrendMapViewProps) {
   const isExtraNarrow = useMediaQuery('(max-width: 359px)')
+  const isMobile = useMediaQuery('(max-width: 639px)')
   const topicLimit = isExtraNarrow ? 6 : MAX_TOPICS
   const topLevelTerms = useMemo(() => report.terms.slice(0, topicLimit), [report.terms, topicLimit])
   const [focusKey, setFocusKey] = useState<string | null>(null)
@@ -256,7 +257,7 @@ export function TrendMapView({
         context.quadraticCurveTo(controlX, controlY, topic.x, topic.y)
         context.stroke()
 
-        if (!isExtraNarrow && index !== 2 && index !== 6) {
+        if (!isMobile && index !== 2 && index !== 6) {
           const outer = sourceStyle(index, terms.length)
           const outerX = (width * Number.parseFloat(String(outer.left))) / 100
           const outerY = (height * Number.parseFloat(String(outer.top))) / 100
@@ -280,7 +281,7 @@ export function TrendMapView({
       observer?.disconnect()
       window.removeEventListener('resize', draw)
     }
-  }, [isExtraNarrow, selectedTerm?.key, terms])
+  }, [isMobile, selectedTerm?.key, terms])
 
   return (
     <div
@@ -424,7 +425,7 @@ export function TrendMapView({
                           {term.count}
                         </span>
                       </button>
-                      {!isExtraNarrow && source && index !== 2 && index !== 6 ? (
+                      {!isMobile && source && index !== 2 && index !== 6 ? (
                         <div
                           style={sourceStyle(index, terms.length)}
                           className="absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] px-2.5 py-1 text-[10px] text-[var(--text-secondary)] shadow-sm"
@@ -446,7 +447,7 @@ export function TrendMapView({
               </>
             )}
 
-            <div className="absolute bottom-2 left-2 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--glass-bg-strong)] px-2 py-1.5 text-[10px] text-[var(--text-muted)] shadow-sm backdrop-blur-md min-[360px]:gap-4 min-[360px]:px-3 min-[360px]:py-2">
+            <div className="absolute bottom-2 left-2 hidden flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--glass-bg-strong)] px-2 py-1.5 text-[10px] text-[var(--text-muted)] shadow-sm backdrop-blur-md sm:flex sm:gap-4 sm:px-3 sm:py-2">
               <span className="flex items-center gap-1.5">
                 <span className="h-3 w-3 rounded-full border-2 border-[var(--accent)]" />
                 Sujet central
@@ -464,10 +465,10 @@ export function TrendMapView({
 
           {selectedTerm ? (
             <aside
-              className="glass-surface-strong rounded-card flex h-[min(42%,320px)] w-full flex-shrink-0 flex-col overflow-hidden border shadow-lg lg:h-auto lg:w-[250px] lg:border-0 lg:shadow-none"
+              className="glass-surface-strong rounded-card flex max-h-[44%] w-full flex-shrink-0 flex-col overflow-hidden border shadow-lg lg:h-auto lg:max-h-none lg:w-[250px] lg:border-0 lg:shadow-none"
               aria-label={`Détails de la tendance ${selectedTerm.label}`}
             >
-              <div className="min-h-0 flex-1 overflow-auto p-4">
+              <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
                 <div className="flex items-start gap-2">
                   <h3 className="min-w-0 flex-1 text-base font-semibold break-words text-[var(--text-primary)]">
                     {selectedTerm.label}
@@ -489,23 +490,23 @@ export function TrendMapView({
                   </p>
                 ) : null}
 
-                <dl className="mt-5 space-y-3 text-xs">
-                  <div className="flex items-center justify-between gap-3">
+                <dl className="mt-3 grid grid-cols-3 gap-2 text-xs sm:mt-5 sm:block sm:space-y-3">
+                  <div className="flex min-w-0 flex-col gap-1 rounded-lg bg-[var(--hover)] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:bg-transparent sm:p-0">
                     <dt className="text-[var(--text-muted)]">Articles</dt>
                     <dd className="font-semibold text-[var(--text-primary)] tabular-nums">
                       {selectedTerm.count}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <dt className="text-[var(--text-muted)]">Diversité des sources</dt>
+                  <div className="flex min-w-0 flex-col gap-1 rounded-lg bg-[var(--hover)] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:bg-transparent sm:p-0">
+                    <dt className="truncate text-[var(--text-muted)] sm:whitespace-normal">Sources</dt>
                     <dd className="font-semibold text-[var(--text-primary)] tabular-nums">
                       {selectedTerm.sourceCount} /{' '}
                       {Math.max(report.sourceCount, selectedTerm.sourceCount)}
                     </dd>
                   </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <dt className="text-[var(--text-muted)]">
-                      Évolution ({WINDOW_LABELS[windowHours]})
+                  <div className="flex min-w-0 flex-col gap-1 rounded-lg bg-[var(--hover)] p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:bg-transparent sm:p-0">
+                    <dt className="truncate text-[var(--text-muted)] sm:whitespace-normal">
+                      Évolution <span className="hidden sm:inline">({WINDOW_LABELS[windowHours]})</span>
                     </dt>
                     <dd
                       className={cn(
@@ -520,7 +521,22 @@ export function TrendMapView({
                   </div>
                 </dl>
 
-                <div className="mt-5 border-b border-[var(--border)] pb-4">
+                <details className="mt-3 rounded-lg border border-[var(--border)] sm:hidden">
+                  <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-[var(--text-secondary)]">
+                    Voir le détail de la tendance
+                  </summary>
+                  <div className="border-t border-[var(--border)] px-3 pb-3">
+                    <TrendDetails
+                      term={selectedTerm}
+                      sourceBreakdown={sourceBreakdown}
+                      selectedArticles={selectedArticles}
+                      feedById={feedById}
+                      onOpenItem={onOpenItem}
+                    />
+                  </div>
+                </details>
+
+                <div className="mt-5 hidden border-b border-[var(--border)] pb-4 sm:block">
                   <p className="mb-2 text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
                     Tendance
                   </p>
@@ -532,7 +548,7 @@ export function TrendMapView({
                   />
                 </div>
 
-                <section className="border-b border-[var(--border)] py-4">
+                <section className="hidden border-b border-[var(--border)] py-4 sm:block">
                   <h4 className="text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
                     Principales sources
                   </h4>
@@ -552,7 +568,7 @@ export function TrendMapView({
                   </ul>
                 </section>
 
-                <section className="pt-4">
+                <section className="hidden pt-4 sm:block">
                   <h4 className="text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
                     Articles récents
                   </h4>
@@ -606,6 +622,90 @@ export function TrendMapView({
         </div>
       </main>
     </div>
+  )
+}
+
+function TrendDetails({
+  term,
+  sourceBreakdown,
+  selectedArticles,
+  feedById,
+  onOpenItem,
+}: {
+  term: TrendTerm
+  sourceBreakdown: { feed: RssFeed; count: number }[]
+  selectedArticles: RssItem[]
+  feedById: Map<string, RssFeed>
+  onOpenItem: (item: RssItem) => void
+}) {
+  return (
+    <>
+      <div className="border-b border-[var(--border)] py-3">
+        <p className="mb-2 text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
+          Tendance
+        </p>
+        <Sparkline
+          values={term.buckets}
+          width={190}
+          height={38}
+          label={`Évolution de ${term.label}`}
+        />
+      </div>
+
+      <section className="border-b border-[var(--border)] py-3">
+        <h4 className="text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
+          Principales sources
+        </h4>
+        <ul className="mt-2 space-y-2">
+          {sourceBreakdown.slice(0, 4).map(({ feed, count }, index) => (
+            <li key={feed.id} className="flex items-center gap-2 text-xs">
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ backgroundColor: SOURCE_COLORS[index % SOURCE_COLORS.length] }}
+              />
+              <span className="min-w-0 flex-1 truncate text-[var(--text-secondary)]">
+                {feed.title}
+              </span>
+              <span className="text-[var(--text-muted)] tabular-nums">{count}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="pt-3">
+        <h4 className="text-[11px] font-semibold tracking-wide text-[var(--text-muted)] uppercase">
+          Articles récents
+        </h4>
+        <ul className="mt-1 space-y-1">
+          {selectedArticles.slice(0, 3).map((item) => (
+            <li key={item.id}>
+              <button
+                type="button"
+                onClick={() => onOpenItem(item)}
+                className="group w-full rounded-lg px-1 py-2 text-left hover:bg-[var(--hover)]"
+              >
+                <span className="line-clamp-2 text-xs leading-4 font-medium text-[var(--text-primary)]">
+                  {item.title}
+                </span>
+                <span className="mt-1 flex items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
+                  <span className="truncate text-[var(--accent)]">
+                    {feedById.get(item.feedId)?.title ?? 'Source'}
+                  </span>
+                  <span>·</span>
+                  <span>
+                    {RELATIVE_TIME_FORMATTER.format(
+                      Math.round((itemTime(item) - Date.now()) / 3_600_000),
+                      'hour'
+                    )}
+                  </span>
+                  <ExternalLink className="ml-auto h-3 w-3" aria-hidden="true" />
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
   )
 }
 
