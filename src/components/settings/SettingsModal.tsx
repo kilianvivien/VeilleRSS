@@ -8,8 +8,9 @@ import { PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
 import { TREND_WINDOW_OPTIONS } from '@/lib/rss/trendAnalysis'
-import { SUPPORTED_LANGUAGES } from '@/lib/ai/translationService'
+import { SUPPORTED_LANGUAGES } from '@/lib/ai/languages'
 import { cn } from '@/lib/utils/cn'
+import { InstallAppSection } from '@/components/pwa/InstallAppSection'
 
 /**
  * Paramètres de l'outil de veille — un seul panneau pour les flux RSS et
@@ -109,6 +110,43 @@ export function SettingsModal({
 
   const [showKeys, setShowKeys] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
+  const [notificationNotice, setNotificationNotice] = useState<string | null>(null)
+
+  const hasWatchedKeywords = (rssSettings.watchedKeywords?.length ?? 0) > 0
+
+  /**
+   * Active les alertes de mots-clés.
+   *
+   * `Notification.requestPermission()` doit être atteint depuis le geste
+   * utilisateur : Safari rejette silencieusement tout appel différé. D'où
+   * l'absence de tout `await` avant la demande.
+   */
+  const handleToggleKeywordNotifications = async (enabled: boolean) => {
+    setNotificationNotice(null)
+
+    if (!enabled) {
+      updateRssSettings({ keywordNotificationsEnabled: false })
+      return
+    }
+
+    if (typeof Notification === 'undefined') {
+      // Cas iPhone le plus courant : l'API n'existe qu'en PWA installée (16.4+).
+      setNotificationNotice(
+        'Ce navigateur ne gère pas les notifications. Sur iPhone, ajoutez d’abord l’application à votre écran d’accueil.'
+      )
+      return
+    }
+
+    const permission = await Notification.requestPermission()
+    if (permission !== 'granted') {
+      setNotificationNotice(
+        'Autorisation refusée. Réactivez les notifications pour ce site dans les réglages du navigateur.'
+      )
+      return
+    }
+
+    updateRssSettings({ keywordNotificationsEnabled: true })
+  }
 
   const toggleSection = (id: string) => {
     setOpenSections((current) => {
@@ -129,7 +167,7 @@ export function SettingsModal({
       title="Paramètres"
       description="Réglages des flux RSS et des fournisseurs IA. Les données restent dans ce navigateur."
       size="lg"
-      bodyClassName="max-h-[calc(100vh-12rem)] overflow-y-auto"
+      bodyClassName="sm:max-h-[calc(100dvh-12rem)] sm:overflow-y-auto sm:overscroll-contain"
       footer={<Button onClick={() => onOpenChange(false)}>Fermer</Button>}
     >
       <div className="space-y-6">
@@ -225,8 +263,32 @@ export function SettingsModal({
                 hint="Affiche le tableau de bord des tendances à l’arrivée sur la veille presse."
               />
             </div>
+
+            <div className="sm:col-span-2">
+              <SettingCheckbox
+                checked={rssSettings.keywordNotificationsEnabled === true}
+                disabled={!hasWatchedKeywords}
+                onChange={(checked) => void handleToggleKeywordNotifications(checked)}
+                label="Alerter sur les mots-clés suivis"
+                hint={
+                  hasWatchedKeywords
+                    ? 'Uniquement quand l’application tourne en arrière-plan : sans serveur de notification, rien ne la réveille une fois fermée.'
+                    : 'Ajoutez d’abord un mot-clé suivi depuis le panneau Tendances.'
+                }
+              />
+              {notificationNotice ? (
+                <p className="mt-1 pl-6 text-[11px] leading-4 text-[var(--warning)]">
+                  {notificationNotice}
+                </p>
+              ) : null}
+            </div>
           </div>
         </section>
+
+        {/* ── Application (PWA) ─────────────────────────────────────── */}
+        <div className="border-t border-[var(--border)] pt-5">
+          <InstallAppSection />
+        </div>
 
         {/* ── Intelligence artificielle ────────────────────────────── */}
         <section className="space-y-3 border-t border-[var(--border)] pt-5">
@@ -417,17 +479,25 @@ function SettingCheckbox({
   onChange,
   label,
   hint,
+  disabled = false,
 }: {
   checked: boolean
   onChange: (checked: boolean) => void
   label: string
   hint: string
+  disabled?: boolean
 }) {
   return (
-    <label className="flex items-start gap-2.5 text-sm text-[var(--text-primary)]">
+    <label
+      className={cn(
+        'flex items-start gap-2.5 text-sm text-[var(--text-primary)]',
+        disabled && 'opacity-60'
+      )}
+    >
       <input
         type="checkbox"
         checked={checked}
+        disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
         className="mt-0.5 h-4 w-4 rounded border-[var(--border)]"
       />

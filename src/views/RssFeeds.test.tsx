@@ -1,19 +1,20 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RssFeed, RssItem } from '@/types/rss'
 import { defaultRssSettings, useRssStore } from '@/stores/rssStore'
 import { RssFeeds } from './RssFeeds'
 
+let isDesktopViewport = true
 vi.mock('@/lib/hooks/useMediaQuery', () => ({
-  useMediaQuery: () => true,
+  // `useMediaQuery` sert aussi à `prefers-reduced-motion` : on ne répond
+  // `true` que pour la requête de largeur.
+  useMediaQuery: (query: string) =>
+    query.includes('min-width') ? isDesktopViewport : false,
 }))
 
 vi.mock('@/components/rss', () => ({
-  FeedCatalogModal: () => null,
   FeedRail: () => <div />,
   RssReadingPane: () => <div />,
-  TrendBriefingPanel: () => <div />,
-  TrendMapView: () => <div />,
   TrendPanel: () => <div />,
   formatRefreshInterval: () => '',
   RssArticleRow: ({ item }: { item: RssItem }) => (
@@ -71,6 +72,7 @@ describe('RssFeeds progressive article rendering', () => {
 
   afterEach(() => {
     cleanup()
+    isDesktopViewport = true
     useRssStore.setState({ feeds: [], items: [], selectedItemIds: [] })
   })
 
@@ -85,5 +87,68 @@ describe('RssFeeds progressive article rendering', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sélectionner les articles visibles' }))
     expect(useRssStore.getState().selectedItemIds).toHaveLength(200)
+  })
+})
+
+/**
+ * La composition mobile est un arbre React entièrement distinct, choisi par
+ * `isDesktop`. Sans ces cas, tout le travail tactile (barre d'onglets,
+ * tiroir, gestes) partirait sans aucune couverture.
+ */
+describe('RssFeeds mobile composition', () => {
+  beforeEach(() => {
+    isDesktopViewport = false
+    useRssStore.setState({
+      feeds: [feed],
+      items: makeItems(10),
+      selectedItemIds: [],
+      isRefreshing: false,
+      refreshingFeedIds: [],
+      // Sans cela le volet Tendances s'ouvre par défaut et masque la liste.
+      settings: { ...defaultRssSettings, showTrendsByDefault: false },
+      aiTrendSelection: null,
+      trendBriefing: null,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    isDesktopViewport = true
+    useRssStore.setState({ feeds: [], items: [], selectedItemIds: [] })
+  })
+
+  it('renders the bottom tab bar and the article list in a single pane', () => {
+    render(<RssFeeds />)
+
+    const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
+    expect(nav).toBeInTheDocument()
+    for (const label of ['Articles', 'Tendances', 'Briefing', 'Carte']) {
+      expect(within(nav).getByText(label)).toBeInTheDocument()
+    }
+
+    expect(screen.getAllByTestId('article-row')).toHaveLength(10)
+  })
+
+  it('opens the sources drawer from the header and closes it again', () => {
+    render(<RssFeeds />)
+
+    expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les sources et vues' }))
+    const drawer = screen.getByRole('dialog', { name: 'Sources et vues' })
+    expect(drawer).toBeInTheDocument()
+
+    fireEvent.click(within(drawer).getByRole('button', { name: 'Fermer le tiroir des sources' }))
+    expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
+  })
+
+  it('switches panes from the bottom tab bar', () => {
+    render(<RssFeeds />)
+
+    const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
+    fireEvent.click(within(nav).getByText('Tendances'))
+
+    // Le volet unique a changé : la liste n'est plus montée.
+    expect(screen.queryAllByTestId('article-row')).toHaveLength(0)
   })
 })

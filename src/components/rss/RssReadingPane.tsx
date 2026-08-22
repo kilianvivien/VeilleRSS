@@ -9,9 +9,13 @@ import {
   Loader2,
   Newspaper,
 } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { Alert, Button } from '@/components/ui'
+import { usePointerSwipe } from '@/lib/hooks/usePointerSwipe'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
+import { cn } from '@/lib/utils/cn'
 import type { RssFeed, RssItem } from '@/types/rss'
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/lib/ai/translationService'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/lib/ai/languages'
 import { formatAbsoluteDate, formatRelativeDate } from './rssFormatting'
 
 interface RssReadingPaneProps {
@@ -47,6 +51,20 @@ export function RssReadingPane({
   onToggleSaved,
   onOpenOriginal,
 }: RssReadingPaneProps) {
+  const rootRef = useRef<HTMLElement>(null)
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const [swipeOffset, setSwipeOffset] = useState(0)
+
+  // `onBack` n'est fourni qu'en composition mobile : le geste ne s'arme donc
+  // jamais au bureau, où il entrerait en conflit avec la sélection de texte.
+  usePointerSwipe(rootRef, {
+    enabled: Boolean(onBack),
+    onSwipeRight: onBack,
+    // Sous « animations réduites », le geste se valide toujours : on retire
+    // le mouvement, pas la capacité.
+    onMove: prefersReducedMotion ? undefined : (state) => setSwipeOffset(Math.max(0, state.dx)),
+  })
+
   if (!item) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8 text-center">
@@ -93,7 +111,20 @@ export function RssReadingPane({
     'h-10 shrink-0 px-1.5 text-[11px] min-[390px]:px-2 sm:h-9 sm:px-2.5 sm:text-xs'
 
   return (
-    <article className="flex h-full min-h-0 flex-col">
+    <article
+      ref={rootRef}
+      // `pan-y` laisse le défilement vertical au compositeur et nous réserve
+      // l'horizontale : c'est ce qui rend le balayage fluide.
+      className={cn(
+        'flex h-full min-h-0 flex-col',
+        Boolean(onBack) && 'touch-pan-y'
+      )}
+      style={
+        swipeOffset > 0
+          ? { transform: `translate3d(${swipeOffset * 0.5}px, 0, 0)` }
+          : undefined
+      }
+    >
       <header className="flex-shrink-0 border-b border-[var(--border)] px-3 py-2.5">
         {onBack ? (
           <button

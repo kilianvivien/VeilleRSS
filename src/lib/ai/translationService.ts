@@ -1,25 +1,29 @@
-import { generateGeminiSummary } from './geminiService'
-import { generateGeminiJSON } from './geminiService'
-import { generateVertexSummary } from './vertexService'
-import { generateVertexJSON } from './vertexService'
-import { generateMistralSummary } from './mistralService'
-import { generateMistralJSON } from './mistralService'
-import { generateOpenRouterSummary } from './openrouterService'
-import { generateOpenRouterJSON } from './openrouterService'
-import { generateCliProxyJSON, generateCliProxySummary } from './cliProxyService'
-import { generateNvidiaSummary } from './nvidiaService'
-import { generateNvidiaJSON } from './nvidiaService'
-import { generateAlbertSummary } from './albertService'
-import { generateAlbertJSON } from './albertService'
-import { generateLocalSummary } from './localAiService'
 import { getLocalAiTimeoutMs } from './localAiTimeout'
-import { discoverLocalModels } from './localModelDiscovery'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { getEffectiveModel, PROVIDER_REGISTRY, type ModelOption } from './providerRegistry'
 import { createRequestControlContext, isAbortError, isRequestTimeoutError } from './requestControl'
 import { createLogger } from '@/lib/utils/logger'
 import { assertNever } from '@/lib/utils/assertNever'
 import type { AiProvider, Settings } from '@/types/settings'
+import { discoverLocalModels } from './localModelDiscovery'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from './languages'
+
+/**
+ * Chargeurs paresseux des services fournisseurs.
+ *
+ * Ces modules embarquent des SDK volumineux (`@google/genai` en tête) : les
+ * importer statiquement mettait toute la pile IA dans le chunk d'entrée, alors
+ * qu'une session ne sollicite jamais qu'un seul fournisseur — souvent aucun.
+ * Le registre de modules ES mémoïse déjà l'import, inutile de cacher nous-mêmes.
+ */
+const loadGemini = () => import('./geminiService')
+const loadVertex = () => import('./vertexService')
+const loadMistral = () => import('./mistralService')
+const loadOpenRouter = () => import('./openrouterService')
+const loadCliProxy = () => import('./cliProxyService')
+const loadNvidia = () => import('./nvidiaService')
+const loadAlbert = () => import('./albertService')
+const loadLocalAi = () => import('./localAiService')
 
 export type { AiProvider }
 export type GeminiModel = Exclude<Settings['geminiModel'], undefined>
@@ -37,21 +41,11 @@ export const SIMPLE_TRANSLATION_TEXT_WARNING_INPUT_CHARS = 6400
 export const SIMPLE_TRANSLATION_VARIANTS_MAX_INPUT_CHARS = 4000
 export const SIMPLE_TRANSLATION_VARIANTS_WARNING_INPUT_CHARS = 3200
 
-export const SUPPORTED_LANGUAGES = [
-  { code: 'fr', label: 'Français' },
-  { code: 'en', label: 'Anglais' },
-  { code: 'tr', label: 'Turc' },
-  { code: 'ru', label: 'Russe' },
-  { code: 'ar', label: 'Arabe' },
-  { code: 'es', label: 'Espagnol' },
-  { code: 'de', label: 'Allemand' },
-  { code: 'zh', label: 'Chinois' },
-  { code: 'ja', label: 'Japonais' },
-  { code: 'pt', label: 'Portugais' },
-  { code: 'hi', label: 'Hindi' },
-] as const
-
-export type LanguageCode = (typeof SUPPORTED_LANGUAGES)[number]['code']
+// Les langues vivent dans un module feuille pour que les composants qui ne
+// veulent que la liste n'entraînent pas toute la pile IA. Ré-exportées ici
+// pour compatibilité — les nouveaux imports doivent viser `./languages`.
+export { SUPPORTED_LANGUAGES }
+export type { LanguageCode }
 
 export interface TranslateTextInput {
   sourceText: string
@@ -246,7 +240,7 @@ async function generateTextWithProvider(
   switch (provider) {
     case 'gemini':
       if (!settings.geminiApiKey) throw new Error('Clé API Gemini manquante.')
-      return generateGeminiSummary(
+      return (await loadGemini()).generateGeminiSummary(
         payload,
         settings.geminiApiKey,
         systemPrompt,
@@ -256,7 +250,7 @@ async function generateTextWithProvider(
       )
     case 'vertex':
       if (!settings.vertexApiKey) throw new Error('Clé API Vertex AI manquante.')
-      return generateVertexSummary(
+      return (await loadVertex()).generateVertexSummary(
         payload,
         settings.vertexApiKey,
         systemPrompt,
@@ -266,7 +260,7 @@ async function generateTextWithProvider(
       )
     case 'mistral':
       if (!settings.mistralApiKey) throw new Error('Clé API Mistral manquante.')
-      return generateMistralSummary(
+      return (await loadMistral()).generateMistralSummary(
         payload,
         settings.mistralApiKey,
         systemPrompt,
@@ -276,7 +270,7 @@ async function generateTextWithProvider(
       )
     case 'openrouter':
       if (!settings.openrouterApiKey) throw new Error('Clé API OpenRouter manquante.')
-      return generateOpenRouterSummary(
+      return (await loadOpenRouter()).generateOpenRouterSummary(
         payload,
         settings.openrouterApiKey,
         systemPrompt,
@@ -287,7 +281,7 @@ async function generateTextWithProvider(
     case 'cliproxy':
       if (!settings.cliProxyApiKey) throw new Error("Clé d'accès CLIProxyAPI manquante.")
       if (!settings.cliProxyBaseUrl) throw new Error('Adresse CLIProxyAPI manquante.')
-      return generateCliProxySummary(
+      return (await loadCliProxy()).generateCliProxySummary(
         payload,
         settings.cliProxyApiKey,
         settings.cliProxyBaseUrl,
@@ -298,7 +292,7 @@ async function generateTextWithProvider(
       )
     case 'nvidia':
       if (!settings.nvidiaApiKey) throw new Error('Clé API NVIDIA manquante.')
-      return generateNvidiaSummary(
+      return (await loadNvidia()).generateNvidiaSummary(
         payload,
         settings.nvidiaApiKey,
         systemPrompt,
@@ -308,7 +302,7 @@ async function generateTextWithProvider(
       )
     case 'albert':
       if (!settings.albertApiKey) throw new Error('Clé API Albert manquante.')
-      return generateAlbertSummary(
+      return (await loadAlbert()).generateAlbertSummary(
         payload,
         settings.albertApiKey,
         systemPrompt,
@@ -318,7 +312,7 @@ async function generateTextWithProvider(
       )
     case 'local':
       if (!settings.localAiEndpoint) throw new Error('Endpoint IA locale manquant.')
-      return generateLocalSummary(
+      return (await loadLocalAi()).generateLocalSummary(
         payload,
         settings.localAiEndpoint,
         systemPrompt,
@@ -347,7 +341,7 @@ async function generateJsonWithProvider(
   switch (provider) {
     case 'gemini':
       if (!settings.geminiApiKey) throw new Error('Clé API Gemini manquante.')
-      return generateGeminiJSON(
+      return (await loadGemini()).generateGeminiJSON(
         payload,
         settings.geminiApiKey,
         systemPrompt,
@@ -357,7 +351,7 @@ async function generateJsonWithProvider(
       )
     case 'vertex':
       if (!settings.vertexApiKey) throw new Error('Clé API Vertex AI manquante.')
-      return generateVertexJSON(
+      return (await loadVertex()).generateVertexJSON(
         payload,
         settings.vertexApiKey,
         systemPrompt,
@@ -367,7 +361,7 @@ async function generateJsonWithProvider(
       )
     case 'mistral':
       if (!settings.mistralApiKey) throw new Error('Clé API Mistral manquante.')
-      return generateMistralJSON(
+      return (await loadMistral()).generateMistralJSON(
         payload,
         settings.mistralApiKey,
         systemPrompt,
@@ -377,7 +371,7 @@ async function generateJsonWithProvider(
       )
     case 'openrouter':
       if (!settings.openrouterApiKey) throw new Error('Clé API OpenRouter manquante.')
-      return generateOpenRouterJSON(
+      return (await loadOpenRouter()).generateOpenRouterJSON(
         payload,
         settings.openrouterApiKey,
         systemPrompt,
@@ -388,7 +382,7 @@ async function generateJsonWithProvider(
     case 'cliproxy':
       if (!settings.cliProxyApiKey) throw new Error("Clé d'accès CLIProxyAPI manquante.")
       if (!settings.cliProxyBaseUrl) throw new Error('Adresse CLIProxyAPI manquante.')
-      return generateCliProxyJSON(
+      return (await loadCliProxy()).generateCliProxyJSON(
         payload,
         settings.cliProxyApiKey,
         settings.cliProxyBaseUrl,
@@ -399,7 +393,7 @@ async function generateJsonWithProvider(
       )
     case 'nvidia':
       if (!settings.nvidiaApiKey) throw new Error('Clé API NVIDIA manquante.')
-      return generateNvidiaJSON(
+      return (await loadNvidia()).generateNvidiaJSON(
         payload,
         settings.nvidiaApiKey,
         systemPrompt,
@@ -409,7 +403,7 @@ async function generateJsonWithProvider(
       )
     case 'albert':
       if (!settings.albertApiKey) throw new Error('Clé API Albert manquante.')
-      return generateAlbertJSON(
+      return (await loadAlbert()).generateAlbertJSON(
         payload,
         settings.albertApiKey,
         systemPrompt,
@@ -419,7 +413,7 @@ async function generateJsonWithProvider(
       )
     case 'local':
       if (!settings.localAiEndpoint) throw new Error('Endpoint IA locale manquant.')
-      return generateLocalSummary(
+      return (await loadLocalAi()).generateLocalSummary(
         payload,
         settings.localAiEndpoint,
         systemPrompt,

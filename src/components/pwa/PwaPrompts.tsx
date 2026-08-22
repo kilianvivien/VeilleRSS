@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { Check, Download, RefreshCw, Share, SquarePlus, X } from 'lucide-react'
+import { Check, Download, RefreshCw, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { usePwaInstall, usePwaUpdate } from '@/lib/pwa/pwaService'
+import { IosInstallSteps } from './IosInstallSteps'
 
 /**
  * Bannières PWA flottantes : mise à jour disponible et invitation à
@@ -30,7 +31,7 @@ export function PwaPrompts() {
   }
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+var(--mobile-tabbar-height)+0.75rem)] lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
       <section
         role={updateReady ? 'status' : 'dialog'}
         aria-label={updateReady ? 'Mise à jour disponible' : 'Installer l’application'}
@@ -38,8 +39,11 @@ export function PwaPrompts() {
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
         <img
-          src="/pwa-192.png"
+          src="/favicon-64.png"
           alt=""
+          width={48}
+          height={48}
+          decoding="async"
           className="h-12 w-12 shrink-0 rounded-[13px] shadow-[0_7px_18px_rgba(47,111,228,0.3)]"
         />
         <div className="min-w-0 flex-1">
@@ -61,18 +65,7 @@ export function PwaPrompts() {
                 : 'Dans Safari, suivez ces deux étapes rapides :'}
           </p>
 
-          {!updateReady && context === 'ios-manual' ? (
-            <ol className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-medium text-[var(--text-secondary)]">
-              <li className="flex items-center gap-1 rounded-full bg-[var(--hover)] px-2 py-1">
-                <span className="text-[var(--accent)]">1</span>
-                <Share className="h-3 w-3" aria-hidden="true" /> Partager
-              </li>
-              <li className="flex items-center gap-1 rounded-full bg-[var(--hover)] px-2 py-1">
-                <span className="text-[var(--accent)]">2</span>
-                <SquarePlus className="h-3 w-3" aria-hidden="true" /> Sur l’écran d’accueil
-              </li>
-            </ol>
-          ) : null}
+          {!updateReady && context === 'ios-manual' ? <IosInstallSteps className="mt-2" /> : null}
 
           <div className="mt-3 flex items-center gap-2">
             {updateReady ? (

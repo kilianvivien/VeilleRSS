@@ -1,17 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowLeft,
-  Bookmark,
   Check,
-  Download,
   ExternalLink,
-  Inbox,
   Info,
   Network,
   PanelRightClose,
-  Plus,
-  Rss,
-  Upload,
   X,
 } from 'lucide-react'
 import { Button } from '@/components/ui'
@@ -24,7 +18,6 @@ import {
   type TrendTerm,
 } from '@/lib/rss/trendAnalysis'
 import type { RssFeed, RssItem } from '@/types/rss'
-import type { SmartView } from './FeedRail'
 import { Sparkline } from './Sparkline'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
@@ -45,17 +38,10 @@ interface TrendMapViewProps {
   feeds: RssFeed[]
   items: RssItem[]
   activeFeedId: string | null
-  smartView: SmartView
-  totals: { all: number; unread: number; saved: number }
   windowHours: number
   onWindowChange: (hours: number) => void
-  onSelectFeed: (feedId: string | null) => void
-  onSelectSmartView: (view: SmartView) => void
   onOpenTerm: (term: TrendTerm) => void
   onOpenItem: (item: RssItem) => void
-  onOpenCatalog: () => void
-  onImportOpml: () => void
-  onExportOpml: () => void
   onClose: () => void
 }
 
@@ -109,17 +95,10 @@ export function TrendMapView({
   feeds,
   items,
   activeFeedId,
-  smartView,
-  totals,
   windowHours,
   onWindowChange,
-  onSelectFeed,
-  onSelectSmartView,
   onOpenTerm,
   onOpenItem,
-  onOpenCatalog,
-  onImportOpml,
-  onExportOpml,
   onClose,
 }: TrendMapViewProps) {
   const isExtraNarrow = useMediaQuery('(max-width: 359px)')
@@ -308,126 +287,6 @@ export function TrendMapView({
       className="flex h-full min-h-0 overflow-hidden bg-[var(--bg-primary)]"
       aria-label="Cartographie des tendances"
     >
-      <aside className="hidden">
-        <div className="px-4 pt-6 pb-4">
-          <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            Flux RSS
-          </h1>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            {feeds.length} source{feeds.length > 1 ? 's' : ''} · {totals.unread} non lu
-            {totals.unread > 1 ? 's' : ''}
-          </p>
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-auto px-2 py-2">
-          <ul className="space-y-0.5">
-            <MapRailRow
-              icon={<Rss className="h-4 w-4" aria-hidden="true" />}
-              label="Tous les articles"
-              count={totals.all}
-              active={!activeFeedId && smartView === 'all'}
-              onClick={() => {
-                onSelectFeed(null)
-                onSelectSmartView('all')
-              }}
-            />
-            <MapRailRow
-              icon={<Inbox className="h-4 w-4" aria-hidden="true" />}
-              label="Non lus"
-              count={totals.unread}
-              active={!activeFeedId && smartView === 'unread'}
-              emphasize
-              onClick={() => {
-                onSelectFeed(null)
-                onSelectSmartView('unread')
-              }}
-            />
-            <MapRailRow
-              icon={<Bookmark className="h-4 w-4" aria-hidden="true" />}
-              label="Sauvegardés"
-              count={totals.saved}
-              active={!activeFeedId && smartView === 'saved'}
-              onClick={() => {
-                onSelectFeed(null)
-                onSelectSmartView('saved')
-              }}
-            />
-          </ul>
-
-          <div className="mt-5 space-y-4">
-            {groupedFeeds.map(([category, categoryFeeds]) => (
-              <section key={category}>
-                <h2 className="rss-section-label px-2 pb-1 text-[var(--text-muted)] uppercase">
-                  {category}
-                </h2>
-                <ul className="space-y-0.5">
-                  {categoryFeeds.map((feed, index) => {
-                    const unread = unreadByFeed.get(feed.id) ?? 0
-                    return (
-                      <li key={feed.id}>
-                        <button
-                          type="button"
-                          onClick={() => onSelectFeed(activeFeedId === feed.id ? null : feed.id)}
-                          aria-pressed={activeFeedId === feed.id}
-                          className={cn(
-                            'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-                            activeFeedId === feed.id
-                              ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]'
-                              : 'text-[var(--text-secondary)] hover:bg-[var(--hover)]'
-                          )}
-                        >
-                          <span
-                            className="h-1.5 w-1.5 shrink-0 rounded-full"
-                            style={{ backgroundColor: SOURCE_COLORS[index % SOURCE_COLORS.length] }}
-                            aria-hidden="true"
-                          />
-                          <span className="min-w-0 flex-1 truncate font-medium">{feed.title}</span>
-                          {unread > 0 ? (
-                            <span className="text-[11px] text-[var(--text-muted)] tabular-nums">
-                              {unread}
-                            </span>
-                          ) : null}
-                        </button>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </section>
-            ))}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 border-t border-[var(--border)] px-2 py-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="min-w-0 flex-1 justify-start"
-            onClick={onOpenCatalog}
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Sources
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0"
-            onClick={onImportOpml}
-            aria-label="Importer un OPML"
-          >
-            <Upload className="h-4 w-4" aria-hidden="true" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 w-8 p-0"
-            onClick={onExportOpml}
-            aria-label="Exporter en OPML"
-          >
-            <Download className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </div>
-      </aside>
-
       <main className="flex min-w-0 flex-1 flex-col px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 sm:p-4">
         <header className="glass-surface-strong rounded-card relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-x-4 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">

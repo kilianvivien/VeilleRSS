@@ -111,7 +111,7 @@ export function FeedCatalogModal({
             depuis la barre du lecteur.
           </p>
         ) : (
-          <div className="max-h-[58vh] min-w-0 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-x-none pr-1">
+          <div className="min-w-0 touch-pan-y space-y-4 overflow-x-hidden pr-1 sm:max-h-[58dvh] sm:overflow-y-auto sm:overscroll-contain">
             {packs.map((pack) => (
               <PackSection
                 key={pack.id}

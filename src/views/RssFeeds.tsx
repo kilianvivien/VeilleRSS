@@ -1,4 +1,14 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import {
   Check,
   CheckCheck,
@@ -18,18 +28,16 @@ import {
   ScrollText,
   Settings,
   Upload,
+  WifiOff,
   X,
 } from 'lucide-react'
-import { Button, Input, Modal, Select } from '@/components/ui'
+import { Button, Input, LoadingSpinner, Modal, Select } from '@/components/ui'
 import { SlidingTabBar } from '@/components/ui/SlidingTabBar'
 import { SearchBar } from '@/components/search'
 import {
-  FeedCatalogModal,
   FeedRail,
   RssArticleRow,
   RssReadingPane,
-  TrendBriefingPanel,
-  TrendMapView,
   TrendPanel,
   formatRefreshInterval,
   type FeedRailGroup,
@@ -37,26 +45,56 @@ import {
 } from '@/components/rss'
 import { computeFeedStats, getFeedHealth, useRssStore, type RssFeedHealth } from '@/stores/rssStore'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { SettingsModal } from '@/components/settings/SettingsModal'
 import type { RssDensity, RssFeed, RssItem, RssItemTranslation, RssSortMode } from '@/types/rss'
 import { cn } from '@/lib/utils/cn'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { exportFeedsToOpml, parseOpml } from '@/lib/rss/opml'
 import { computeTrends, filterItemsByTerm } from '@/lib/rss/trendAnalysis'
-import { applyStoredTrendSelection } from '@/lib/rss/trendRefinementService'
+import { applyStoredTrendSelection } from '@/lib/rss/trendSelection'
 import { foldForMatching } from '@/lib/rss/textAnalysis'
 import type { CatalogFeed } from '@/lib/rss/feedCatalog'
 import { openFileDialog, saveFile } from '@/lib/platform/fileService'
 import { confirmDialog } from '@/lib/platform/dialogService'
-import { translateText, type LanguageCode } from '@/lib/ai/translationService'
+import type { LanguageCode } from '@/lib/ai/languages'
 import { isAbortError } from '@/lib/ai/requestControl'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
+import { usePullToRefresh } from '@/lib/hooks/usePullToRefresh'
+import { useHistoryBackGesture } from '@/lib/hooks/useHistoryBackGesture'
+import { readLaunchIntent } from '@/lib/pwa/launchIntent'
 import {
   getEffectiveProvider,
   getProviderLabel,
   isProviderConfigured,
 } from '@/lib/utils/aiProvider'
 import { aiErrorToUserMessage } from '@/lib/ai/aiProviderError'
+
+/**
+ * Vues secondaires chargées à la demande : la cartographie, le briefing, le
+ * catalogue et les paramètres représentent une part importante du bundle pour
+ * des écrans qu'une session n'ouvre pas forcément. Import direct (et non via
+ * le baril `@/components/rss`) : un export de baril les ramènerait dans le
+ * chunk d'entrée.
+ */
+const FeedCatalogModal = lazy(() =>
+  import('@/components/rss/FeedCatalogModal').then((m) => ({ default: m.FeedCatalogModal }))
+)
+const TrendBriefingPanel = lazy(() =>
+  import('@/components/rss/TrendBriefingPanel').then((m) => ({ default: m.TrendBriefingPanel }))
+)
+const TrendMapView = lazy(() =>
+  import('@/components/rss/TrendMapView').then((m) => ({ default: m.TrendMapView }))
+)
+const SettingsModal = lazy(() =>
+  import('@/components/settings/SettingsModal').then((m) => ({ default: m.SettingsModal }))
+)
+
+/** Attente d'un volet paresseux : occupe toute la hauteur pour ne pas sauter. */
+const lazyPanelFallback = (
+  <div className="flex h-full items-center justify-center">
+    <LoadingSpinner size="lg" className="text-[var(--text-muted)]" />
+  </div>
+)
 
 const REFRESH_OFF = 'off'
 const REFRESH_OPTIONS = [
@@ -155,6 +193,13 @@ export function RssFeeds() {
   const [showCreditsModal, setShowCreditsModal] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   /**
+   * Les modales paresseuses restent montées une fois ouvertes : Radix a besoin
+   * du composant dans l'arbre pour animer la fermeture, on ne peut donc pas
+   * les conditionner directement sur `open`.
+   */
+  const [hasOpenedCatalog, setHasOpenedCatalog] = useState(false)
+  const [hasOpenedSettings, setHasOpenedSettings] = useState(false)
+  /**
    * Cartographie des tendances : montée/démontée différée pour animer
    * l'entrée (fondu + léger zoom) et la sortie. `isTrendMapMounted` garde
    * l'overlay dans le DOM pendant la transition de sortie.
@@ -162,6 +207,13 @@ export function RssFeeds() {
   const [isTrendMapMounted, setIsTrendMapMounted] = useState(false)
   const [isTrendMapVisible, setIsTrendMapVisible] = useState(false)
   const trendMapUnmountTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (showCatalog) setHasOpenedCatalog(true)
+  }, [showCatalog])
+  useEffect(() => {
+    if (showSettingsModal) setHasOpenedSettings(true)
+  }, [showSettingsModal])
   const [translatingId, setTranslatingId] = useState<string | null>(null)
   const [translationErrors, setTranslationErrors] = useState<Record<string, string>>({})
   const [showOriginalIds, setShowOriginalIds] = useState<Set<string>>(new Set())
@@ -176,6 +228,8 @@ export function RssFeeds() {
   const briefingAbortRef = useRef<AbortController | null>(null)
   const [renderedItemCount, setRenderedItemCount] = useState(ARTICLE_BATCH_SIZE)
   const articleListRef = useRef<HTMLDivElement>(null)
+  const listScrollTopRef = useRef(0)
+  const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
 
   /**
@@ -184,7 +238,47 @@ export function RssFeeds() {
    * colonnes ; `isDesktop` évite de monter deux fois les mêmes composants.
    */
   const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const isOnline = useOnlineStatus()
   const [isSourcesOpen, setIsSourcesOpen] = useState(false)
+
+  /**
+   * Raccourcis d'application et cible de partage (cf. manifeste).
+   * Lu une seule fois : `readLaunchIntent` nettoie la query au passage.
+   */
+  useEffect(() => {
+    const intent = readLaunchIntent()
+
+    if (intent.view === 'trends' || intent.view === 'briefing') {
+      setRightPane(intent.view)
+    } else if (intent.view) {
+      setSmartView(intent.view)
+      setRightPane('article')
+    }
+
+    if (intent.sharedUrl) {
+      setFeedUrl(intent.sharedUrl)
+      setAddFeedError(null)
+      setShowAddFeedModal(true)
+    }
+  }, [])
+
+  /**
+   * Clic sur une notification de mot-clé suivi : le service worker remet la
+   * fenêtre au premier plan puis transmet le terme, on filtre la liste dessus.
+   */
+  useEffect(() => {
+    const onServiceWorkerMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; term?: string } | null
+      if (data?.type !== 'NOTIFICATION_CLICK' || !data.term) return
+      setActiveTerm({ key: foldForMatching(data.term), label: data.term })
+      setQuery('')
+      setRightPane('article')
+      setOpenItemId(null)
+    }
+
+    navigator.serviceWorker?.addEventListener('message', onServiceWorkerMessage)
+    return () => navigator.serviceWorker?.removeEventListener('message', onServiceWorkerMessage)
+  }, [])
 
   useEffect(() => {
     if (isDesktop) setIsSourcesOpen(false)
@@ -501,6 +595,9 @@ export function RssFeeds() {
 
   const handleOpenItem = useCallback(
     (item: RssItem) => {
+      // Sur mobile la liste est démontée pendant la lecture : on garde la
+      // position pour ne pas renvoyer l'utilisateur en haut au retour.
+      listScrollTopRef.current = articleListRef.current?.scrollTop ?? 0
       setOpenItemId(item.id)
       setRightPane('article')
       if (settings.markReadOnOpen !== false && !item.readAt) {
@@ -611,7 +708,26 @@ export function RssFeeds() {
   // compteurs et les actions de masse continuent d'utiliser `visibleItems`.
   useEffect(() => {
     setRenderedItemCount(ARTICLE_BATCH_SIZE)
+    listScrollTopRef.current = 0
   }, [activeFeedId, activeTerm?.key, query, smartView, sortMode])
+
+  /**
+   * Restaure la position de la liste au retour du lecteur (mobile).
+   * `useLayoutEffect` pour éviter un saut visible, et une seconde passe à la
+   * frame suivante : le premier lot d'articles peut être encore en peinture.
+   */
+  useLayoutEffect(() => {
+    if (isDesktop || openItemId) return
+    const scroller = articleListRef.current
+    const target = listScrollTopRef.current
+    if (!scroller || target === 0) return
+
+    scroller.scrollTop = target
+    const frame = requestAnimationFrame(() => {
+      scroller.scrollTop = target
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [isDesktop, openItemId])
 
   useEffect(() => {
     const root = articleListRef.current
@@ -786,6 +902,9 @@ export function RssFeeds() {
       const sourceSummary = item.summary || item.contentSnippet || ''
       const composed = sourceSummary ? `${item.title}\n\n${sourceSummary}` : item.title
       try {
+        // Import dynamique : la pile IA (SDK fournisseurs) ne doit pas peser
+        // sur le chunk d'entrée, seule la première traduction la télécharge.
+        const { translateText } = await import('@/lib/ai/translationService')
         const result = await translateText({
           sourceText: composed,
           sourceLanguage: 'auto',
@@ -852,6 +971,14 @@ export function RssFeeds() {
 
   /** Ferme la lecture : bouton retour du volet mobile. */
   const closeReader = useCallback(() => setOpenItemId(null), [])
+
+  /**
+   * Retour système (bouton Android, geste de bord) : referme le panneau
+   * ouvert au lieu de quitter l'application — c'est le réflexe le plus
+   * courant sur mobile, et il donnait jusqu'ici le pire résultat possible.
+   */
+  useHistoryBackGesture(!isDesktop && Boolean(openItemId), closeReader)
+  useHistoryBackGesture(isSourcesOpen, () => setIsSourcesOpen(false))
 
   /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
   const handleMobileTab = useCallback(
@@ -964,6 +1091,16 @@ export function RssFeeds() {
     </aside>
   )
 
+  /**
+   * Tirer pour rafraîchir : seul geste de rafraîchissement sur mobile, le
+   * pull-to-refresh natif étant neutralisé globalement. Désarmé au bureau
+   * (souris) et hors connexion, où il ne pourrait qu'échouer.
+   */
+  const pullToRefresh = usePullToRefresh(articleListRef, {
+    enabled: !isDesktop && isOnline && feeds.length > 0,
+    onRefresh: refreshAllFeeds,
+  })
+
   const articleListSection = (
     <section className="flex h-full min-h-0 flex-col" aria-label="Articles">
         <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
@@ -1033,7 +1170,35 @@ export function RssFeeds() {
           </div>
         ) : null}
 
-        <div ref={articleListRef} className="min-h-0 flex-1 overflow-auto">
+        <div
+          ref={articleListRef}
+          className={cn(
+            'min-h-0 flex-1 overflow-auto overscroll-contain',
+            pullToRefresh.pull > 0 && 'touch-pan-y'
+          )}
+        >
+          {pullToRefresh.pull > 0 || pullToRefresh.refreshing ? (
+            <div
+              className="pointer-events-none flex items-center justify-center overflow-hidden"
+              style={{ height: pullToRefresh.refreshing ? 40 : pullToRefresh.pull }}
+              aria-hidden="true"
+            >
+              <RefreshCw
+                className={cn(
+                  'h-4 w-4',
+                  pullToRefresh.armed || pullToRefresh.refreshing
+                    ? 'text-[var(--accent)]'
+                    : 'text-[var(--text-muted)]',
+                  pullToRefresh.refreshing && 'animate-spin'
+                )}
+                style={
+                  prefersReducedMotion || pullToRefresh.refreshing
+                    ? undefined
+                    : { transform: `rotate(${pullToRefresh.pull * 3}deg)` }
+                }
+              />
+            </div>
+          ) : null}
           {visibleItems.length === 0 ? (
             <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
           ) : (
@@ -1062,6 +1227,12 @@ export function RssFeeds() {
                       onOpen={() => handleOpenItem(item)}
                       onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
                       onToggleSaved={() => toggleSaved(item.id)}
+                      onSwipeToggleRead={
+                        isDesktop
+                          ? undefined
+                          : () => (item.readAt ? markUnread([item.id]) : markRead([item.id]))
+                      }
+                      onSwipeToggleSaved={isDesktop ? undefined : () => toggleSaved(item.id)}
                     />
                   )
                 })}
@@ -1165,23 +1336,25 @@ export function RssFeeds() {
   )
 
   const briefingPanelElement = (
-    <TrendBriefingPanel
-      briefing={trendBriefing}
-      windowHours={briefingWindowHours}
-      onWindowChange={(hours) => updateRssSettings({ briefingWindowHours: hours })}
-      topic={briefingTopic}
-      onTopicChange={(value) => updateRssSettings({ briefingTopic: value })}
-      currentItemCount={briefingReport.itemCount}
-      available={trendProviderReady}
-      loading={isGeneratingBriefing}
-      providerLabel={trendProviderLabel}
-      error={briefingError}
-      onGenerate={() => void handleGenerateBriefing()}
-      onClear={() => {
-        clearTrendBriefing()
-        setBriefingError(null)
-      }}
-    />
+    <Suspense fallback={lazyPanelFallback}>
+      <TrendBriefingPanel
+        briefing={trendBriefing}
+        windowHours={briefingWindowHours}
+        onWindowChange={(hours) => updateRssSettings({ briefingWindowHours: hours })}
+        topic={briefingTopic}
+        onTopicChange={(value) => updateRssSettings({ briefingTopic: value })}
+        currentItemCount={briefingReport.itemCount}
+        available={trendProviderReady}
+        loading={isGeneratingBriefing}
+        providerLabel={trendProviderLabel}
+        error={briefingError}
+        onGenerate={() => void handleGenerateBriefing()}
+        onClear={() => {
+          clearTrendBriefing()
+          setBriefingError(null)
+        }}
+      />
+    </Suspense>
   )
 
   const readingPaneElement = (
@@ -1276,7 +1449,7 @@ export function RssFeeds() {
               variant="ghost"
               onClick={() => void refreshAllFeeds()}
               isLoading={isRefreshing}
-              disabled={feeds.length === 0}
+              disabled={feeds.length === 0 || !isOnline}
               title="Rafraîchir toutes les sources"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -1337,7 +1510,7 @@ export function RssFeeds() {
             className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
             onClick={() => void refreshAllFeeds()}
             isLoading={isRefreshing}
-            disabled={feeds.length === 0}
+            disabled={feeds.length === 0 || !isOnline}
             title="Rafraîchir toutes les sources"
             aria-label="Rafraîchir toutes les sources"
           >
@@ -1377,7 +1550,17 @@ export function RssFeeds() {
       )}
 
       {/* Messages en bandeau fin : ils ne doivent pas repousser les volets */}
-      {error || notice ? (
+      {!isOnline ? (
+        <div
+          className="flex flex-shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/8 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-300"
+          role="status"
+        >
+          <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate">
+            Hors connexion — vos articles restent consultables.
+          </span>
+        </div>
+      ) : error || notice ? (
         <div
           className={cn(
             'flex flex-shrink-0 items-center gap-2 border-b px-4 py-1.5 text-xs',
@@ -1427,9 +1610,12 @@ export function RssFeeds() {
           {/* Tiroir des sources : le rail habituel dans un panneau coulissant. */}
           {isSourcesOpen ? (
             <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Sources et vues">
+              {/* Voile : doublon du bouton de fermeture pour un lecteur
+                  d'écran, on le retire de l'arbre d'accessibilité. */}
               <button
                 type="button"
-                aria-label="Fermer le tiroir des sources"
+                tabIndex={-1}
+                aria-hidden="true"
                 onClick={() => setIsSourcesOpen(false)}
                 className="animate-fade-in absolute inset-0 bg-black/45"
               />
@@ -1457,12 +1643,16 @@ export function RssFeeds() {
         </>
       )}
 
-      <FeedCatalogModal
-        open={showCatalog}
-        onOpenChange={setShowCatalog}
-        subscribedUrls={subscribedUrls}
-        onAddFeeds={handleAddCatalogFeeds}
-      />
+      {hasOpenedCatalog ? (
+        <Suspense fallback={null}>
+          <FeedCatalogModal
+            open={showCatalog}
+            onOpenChange={setShowCatalog}
+            subscribedUrls={subscribedUrls}
+            onAddFeeds={handleAddCatalogFeeds}
+          />
+        </Suspense>
+      ) : null}
 
       <Modal
         open={showAddFeedModal}
@@ -1551,7 +1741,11 @@ export function RssFeeds() {
         </div>
       </Modal>
 
-      <SettingsModal open={showSettingsModal} onOpenChange={setShowSettingsModal} />
+      {hasOpenedSettings ? (
+        <Suspense fallback={null}>
+          <SettingsModal open={showSettingsModal} onOpenChange={setShowSettingsModal} />
+        </Suspense>
+      ) : null}
 
       <Modal
         open={showCreditsModal}
@@ -1581,32 +1775,27 @@ export function RssFeeds() {
           )}
           style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
         >
-          <TrendMapView
-            report={displayedTrendReport}
-            feeds={feeds}
-            items={items}
-            activeFeedId={activeFeedId}
-            smartView={smartView}
-            totals={totals}
-            windowHours={trendWindowHours}
-            onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
-            onSelectFeed={setActiveFeedId}
-            onSelectSmartView={setSmartView}
-            onOpenTerm={(term) => {
-              setActiveTerm({ key: term.key, label: term.label })
-              setQuery('')
-              setRightPane(isDesktop ? 'trends' : 'article')
-              closeTrendMap()
-            }}
-            onOpenItem={(item) => {
-              handleOpenItem(item)
-              closeTrendMap()
-            }}
-            onOpenCatalog={() => setShowCatalog(true)}
-            onImportOpml={() => void handleImportOpml()}
-            onExportOpml={() => void handleExportOpml()}
-            onClose={() => closeTrendMap()}
-          />
+          <Suspense fallback={lazyPanelFallback}>
+            <TrendMapView
+              report={displayedTrendReport}
+              feeds={feeds}
+              items={items}
+              activeFeedId={activeFeedId}
+              windowHours={trendWindowHours}
+              onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
+              onOpenTerm={(term) => {
+                setActiveTerm({ key: term.key, label: term.label })
+                setQuery('')
+                setRightPane(isDesktop ? 'trends' : 'article')
+                closeTrendMap()
+              }}
+              onOpenItem={(item) => {
+                handleOpenItem(item)
+                closeTrendMap()
+              }}
+              onClose={() => closeTrendMap()}
+            />
+          </Suspense>
           {!isDesktop ? (
             <MobileTabBar
               value="map"
@@ -1669,7 +1858,7 @@ function MobileTabBar({
   return (
     <nav
       aria-label="Navigation principale"
-      className="relative z-20 flex flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
+      className="relative z-20 flex min-h-[var(--mobile-tabbar-height)] flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
     >
       {MOBILE_TABS.map((tab) => {
         const active = tab.value === value

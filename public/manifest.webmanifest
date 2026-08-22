@@ -6,9 +6,11 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "lang": "fr",
+  "dir": "ltr",
+  "categories": ["news", "productivity"],
   "background_color": "#ffffff",
   "theme_color": "#4c8dff",
   "icons": [
@@ -25,10 +27,45 @@
       "purpose": "any"
     },
     {
+      "src": "/pwa-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
       "src": "/pwa-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Articles non lus",
+      "short_name": "Non lus",
+      "url": "/?view=unread",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Articles sauvegardés",
+      "short_name": "Sauvegardés",
+      "url": "/?view=saved",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tendances",
+      "short_name": "Tendances",
+      "url": "/?view=trends",
+      "icons": [{ "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
 }

@@ -18,6 +18,7 @@ import { isDatedRssItem, parseRssFeed } from '@/lib/rss/rssParser'
 import { mergeRssItems } from '@/lib/rss/rssDeduplication'
 import { formatRssItemsForMagicReview } from '@/lib/rss/rssImportFormatter'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
+import { isOnline } from '@/lib/hooks/useOnlineStatus'
 import type { OpmlFeedEntry } from '@/lib/rss/opml'
 import type { CatalogFeed } from '@/lib/rss/feedCatalog'
 import { foldForMatching } from '@/lib/rss/textAnalysis'
@@ -129,6 +130,7 @@ export const defaultRssSettings: RssSettings = {
   collapseWatchedKeywords: false,
   briefingWindowHours: 24,
   briefingTopic: '',
+  keywordNotificationsEnabled: false,
 }
 
 function createPendingFeed(
@@ -328,6 +330,10 @@ export const useRssStore = create<RssState>()(
           }))
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Impossible de rafraichir ce flux.'
+          // Hors connexion, TOUS les flux échouent : incrémenter le compteur
+          // ferait passer des sources parfaitement saines pour cassées dans le
+          // rail, et l'état survivrait au retour du réseau.
+          const isNetworkOutage = !isOnline()
           set((state) => ({
             feeds: state.feeds.map((candidate) =>
               candidate.id === id
@@ -335,7 +341,9 @@ export const useRssStore = create<RssState>()(
                     ...candidate,
                     lastFetchedAt: fetchedAt,
                     lastError: message,
-                    consecutiveFailures: (candidate.consecutiveFailures ?? 0) + 1,
+                    consecutiveFailures: isNetworkOutage
+                      ? (candidate.consecutiveFailures ?? 0)
+                      : (candidate.consecutiveFailures ?? 0) + 1,
                     updatedAt: Date.now(),
                   }
                 : candidate

@@ -5,6 +5,7 @@
    user has explicitly selected light mode. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+
 @theme {
   --radius-macos: 10px;
   --radius-card: 14px;
@@ -118,6 +119,15 @@
 
   /* Transitions */
   --transition-theme: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+
+  /**
+   * Hauteur de la barre d'onglets mobile, safe-area exclue.
+   * Partagée pour que les éléments flottants (bannières PWA) cessent de
+   * deviner cette valeur : la barre et ce qui se pose au-dessus d'elle
+   * doivent bouger ensemble.
+   * = cible tactile 3.5rem + pt-1 (0.25rem) + pb 0.375rem
+   */
+  --mobile-tabbar-height: 4.125rem;
 }
 
 .dark {
@@ -339,6 +349,16 @@ a,
   select,
   textarea {
     font-size: 16px !important;
+  }
+}
+
+/* Retour visuel à l'appui.
+   `-webkit-tap-highlight-color: transparent` ci-dessus supprime le seul
+   retour natif ; seul le composant `Button` compensait, via `active:scale`.
+   Les boutons bruts (barre d'onglets, lignes, puces) n'avaient plus rien. */
+@media (pointer: coarse) {
+  :where(button, [role='button']):not(:disabled):active {
+    opacity: 0.72;
   }
 }
 

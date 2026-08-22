@@ -74,7 +74,7 @@ export function Modal({
               'border border-[var(--glass-border)]',
               'transform-gpu will-change-[transform,opacity]',
               'rounded-t-overlay border-b-0 sm:border-b sm:rounded-b-overlay sm:rounded-overlay',
-              'max-h-[92dvh] overflow-y-auto sm:max-h-none sm:overflow-hidden',
+              'max-h-[92dvh] overflow-y-auto overscroll-contain sm:max-h-none sm:overflow-hidden',
               {
                 'sm:max-w-sm': size === 'sm',
                 'sm:max-w-md': size === 'md',

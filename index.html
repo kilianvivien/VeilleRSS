@@ -6,7 +6,13 @@
          WebKit peut alors calculer le layout viewport sur 812 px pour un écran
          de 874 px et laisser une bande système inaccessible sous la barre
          basse. Sans `cover`, iOS borne lui-même la web view à la zone utile ;
-         `100dvh` remplit ensuite exactement cette zone, comme dans Calqo. -->
+         `100dvh` remplit ensuite exactement cette zone, comme dans Calqo.
+
+         CONSÉQUENCE ASSUMÉE : `env(safe-area-inset-*)` vaut donc 0 en PWA iOS
+         autonome. Les marges de sécurité présentes dans l'interface restent
+         utiles sur Android et dans Safari en mode navigateur — ne les retirez
+         pas, et ne « réparez » pas leur inertie iOS en réintroduisant `cover`
+         sans avoir revalidé le bug de hauteur ci-dessus sur appareil réel. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0"
@@ -18,8 +24,14 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Veille RSS" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- `black-translucent` n'a de sens qu'avec `viewport-fit=cover` : sans lui,
+         WebKit ignore la translucidité et le rendu de la barre devient
+         imprévisible. `default` est la seule valeur qui ne fige pas une
+         couleur en conflit avec l'un des deux thèmes. iOS ne lit cette balise
+         qu'AU LANCEMENT : inutile de tenter de la permuter à l'exécution. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- Couleur d'accent du thème ; variante sombre pour la barre système. -->
