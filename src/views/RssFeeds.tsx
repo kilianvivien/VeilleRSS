@@ -1083,9 +1083,9 @@ export function RssFeeds() {
           )}
         </div>
 
-        {/* Sur mobile, masquer les actions inactives quand la liste est vide
-            évite une barre à deux lignes qui concurrence l'état vide. */}
-        {isDesktop || visibleItems.length > 0 ? (
+        {/* Sur mobile, cette barre est contextuelle : elle n'apparaît qu'après
+            la sélection d'au moins un article. Le bureau la garde toujours. */}
+        {isDesktop || selectedCount > 0 ? (
           <div className="flex flex-shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
             <Button
               variant="ghost"

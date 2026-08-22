@@ -296,24 +296,23 @@
 }
 
 html,
-body {
+body,
+#root {
   width: 100%;
-  height: 100%;
   margin: 0;
   padding: 0;
 }
 
-/* iOS peut conserver pour les hauteurs en pourcentage la taille du layout
-   viewport d'un ancien appareil/session PWA. La capture reste alors plus
-   haute que #root et laisse une bande vide sous la navigation. Ancrer la
-   racine au viewport dynamique garde la barre basse contre le bord réel ;
-   son propre padding continue de gérer la safe area du geste système. */
+html,
+body {
+  height: 100%;
+}
+
+/* Sans `viewport-fit=cover`, iOS standalone fournit ici la hauteur de sa zone
+   réellement utilisable. Le fallback `vh` garde la compatibilité Safari 14. */
 #root {
-  width: 100%;
   height: 100vh;
   height: 100dvh;
-  margin: 0;
-  padding: 0;
 }
 
 /* ── Ergonomie mobile / tactile ─────────────────────────────────────────── */
@@ -322,6 +321,7 @@ body {
    accidentel qui recharge la page entière sur mobile. */
 html,
 body {
+  overflow: hidden;
   overscroll-behavior-y: none;
 }
 

@@ -13,7 +13,7 @@
  * l'application qui envoie le message SKIP_WAITING, puis recharge la page.
  */
 
-const CACHE_VERSION = 'v2'
+const CACHE_VERSION = 'v3'
 const SHELL_CACHE = `veille-shell-${CACHE_VERSION}`
 const RUNTIME_CACHE = `veille-runtime-${CACHE_VERSION}`
 

@@ -2,11 +2,14 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <!-- viewport-fit=cover : nécessaire pour les safe-areas (encoche, barre
-         de geste) une fois l'app installée en plein écran. -->
+    <!-- Ne pas utiliser `viewport-fit=cover` ici. Dans une PWA iOS autonome,
+         WebKit peut alors calculer le layout viewport sur 812 px pour un écran
+         de 874 px et laisser une bande système inaccessible sous la barre
+         basse. Sans `cover`, iOS borne lui-même la web view à la zone utile ;
+         `100dvh` remplit ensuite exactement cette zone, comme dans Calqo. -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0"
     />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Outil de veille RSS — lecteur de flux, tendances et briefing" />
