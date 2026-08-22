@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Download, RefreshCw, Share, SquarePlus, X } from 'lucide-react'
+import { Check, Download, RefreshCw, Share, SquarePlus, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { usePwaInstall, usePwaUpdate } from '@/lib/pwa/pwaService'
 
@@ -9,95 +9,106 @@ import { usePwaInstall, usePwaUpdate } from '@/lib/pwa/pwaService'
  * restent discrètes et fermables.
  */
 export function PwaPrompts() {
-  return (
-    <>
-      <PwaUpdateBanner />
-      <PwaInstallBanner />
-    </>
-  )
-}
-
-function PwaUpdateBanner() {
-  const { updateReady, applyUpdate } = usePwaUpdate()
-  if (!updateReady) return null
-
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <div
-        role="status"
-        className="glass-surface-strong flex w-full max-w-md items-center gap-2 rounded-card border border-[var(--glass-border)] px-3 py-2 shadow-lg"
-      >
-        <RefreshCw className="h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-xs text-[var(--text-primary)]">
-          Une nouvelle version est disponible.
-        </p>
-        <Button size="sm" variant="primary" onClick={applyUpdate}>
-          Mettre à jour
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function PwaInstallBanner() {
   const { context, install, dismiss } = usePwaInstall()
-  const [manualDismissed, setManualDismissed] = useState(false)
+  const { updateReady, isApplying, applyUpdate } = usePwaUpdate()
+  const [hiddenPrompt, setHiddenPrompt] = useState<'install' | 'update' | null>(null)
+  const [isInstalling, setIsInstalling] = useState(false)
 
-  if (context === 'unsupported' || manualDismissed) return null
+  const activePrompt = updateReady ? 'update' : 'install'
+  if (hiddenPrompt === activePrompt || (!updateReady && context === 'unsupported')) return null
 
   const close = () => {
-    setManualDismissed(true)
-    dismiss()
+    setHiddenPrompt(activePrompt)
+    if (!updateReady) dismiss()
+  }
+
+  const handleInstall = async () => {
+    setIsInstalling(true)
+    const outcome = await install()
+    setIsInstalling(false)
+    if (outcome === 'dismissed') dismiss()
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[69] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
-      <div className="glass-surface-strong flex w-full max-w-md items-start gap-2.5 rounded-card border border-[var(--glass-border)] px-3 py-2.5 shadow-lg">
-        <Download className="mt-0.5 h-4 w-4 shrink-0 text-[var(--accent)]" aria-hidden="true" />
-        {context === 'native' ? (
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">
-              Installer l’application
-            </p>
-            <p className="mt-0.5 text-[11px] leading-4 text-[var(--text-secondary)]">
-              Accédez à votre veille en un geste, depuis l’écran d’accueil.
-            </p>
-            <div className="mt-2 flex gap-2">
-              <Button size="sm" variant="primary" onClick={() => void install()}>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom)+5.25rem)] lg:pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+      <section
+        role={updateReady ? 'status' : 'dialog'}
+        aria-label={updateReady ? 'Mise à jour disponible' : 'Installer l’application'}
+        className="pwa-prompt pointer-events-auto relative flex w-full max-w-[420px] items-start gap-3 overflow-hidden rounded-[22px] border border-[var(--glass-border)] bg-[var(--glass-bg-strong)] p-3.5 shadow-[0_20px_55px_rgba(15,23,42,0.22)] backdrop-blur-2xl"
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
+        <img
+          src="/pwa-192.png"
+          alt=""
+          className="h-12 w-12 shrink-0 rounded-[13px] shadow-[0_7px_18px_rgba(47,111,228,0.3)]"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-semibold tracking-[0.12em] text-[var(--accent)] uppercase">
+            {updateReady ? 'Nouveautés prêtes' : 'Veille RSS'}
+          </p>
+          <h2 className="mt-0.5 text-sm font-semibold text-[var(--text-primary)]">
+            {updateReady
+              ? 'Une version plus récente est disponible'
+              : context === 'native'
+                ? 'Gardez votre veille à portée de main'
+                : 'Ajoutez l’app à votre écran d’accueil'}
+          </h2>
+          <p className="mt-1 text-[11px] leading-[1.45] text-[var(--text-secondary)]">
+            {updateReady
+              ? 'Rechargez maintenant pour profiter des dernières améliorations.'
+              : context === 'native'
+                ? 'Lancez-la en un geste, avec une expérience plein écran plus confortable.'
+                : 'Dans Safari, suivez ces deux étapes rapides :'}
+          </p>
+
+          {!updateReady && context === 'ios-manual' ? (
+            <ol className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-medium text-[var(--text-secondary)]">
+              <li className="flex items-center gap-1 rounded-full bg-[var(--hover)] px-2 py-1">
+                <span className="text-[var(--accent)]">1</span>
+                <Share className="h-3 w-3" aria-hidden="true" /> Partager
+              </li>
+              <li className="flex items-center gap-1 rounded-full bg-[var(--hover)] px-2 py-1">
+                <span className="text-[var(--accent)]">2</span>
+                <SquarePlus className="h-3 w-3" aria-hidden="true" /> Sur l’écran d’accueil
+              </li>
+            </ol>
+          ) : null}
+
+          <div className="mt-3 flex items-center gap-2">
+            {updateReady ? (
+              <Button size="sm" variant="primary" isLoading={isApplying} onClick={applyUpdate}>
+                {!isApplying && <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />}
+                {isApplying ? 'Mise à jour…' : 'Mettre à jour'}
+              </Button>
+            ) : context === 'native' ? (
+              <Button
+                size="sm"
+                variant="primary"
+                isLoading={isInstalling}
+                onClick={() => void handleInstall()}
+              >
+                {!isInstalling && <Download className="h-3.5 w-3.5" aria-hidden="true" />}
                 Installer
               </Button>
-              <Button size="sm" variant="ghost" onClick={close}>
-                Plus tard
+            ) : (
+              <Button size="sm" variant="primary" onClick={close}>
+                <Check className="h-3.5 w-3.5" aria-hidden="true" /> J’ai compris
               </Button>
-            </div>
+            )}
+            <Button size="sm" variant="ghost" onClick={close}>
+              Plus tard
+            </Button>
           </div>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-[var(--text-primary)]">
-              Ajouter à l’écran d’accueil
-            </p>
-            <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[11px] leading-4 text-[var(--text-secondary)]">
-              Dans Safari : <Share className="inline h-3 w-3 shrink-0" aria-hidden="true" />
-              Partager puis{' '}
-              <SquarePlus className="inline h-3 w-3 shrink-0" aria-hidden="true" />
-              « Sur l’écran d’accueil ».
-            </p>
-            <div className="mt-2">
-              <Button size="sm" variant="ghost" onClick={close}>
-                J’ai compris
-              </Button>
-            </div>
-          </div>
-        )}
+        </div>
         <button
           type="button"
           onClick={close}
           aria-label="Masquer ce message"
-          className="shrink-0 rounded p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+          className="-mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
         >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
+          <X className="h-4 w-4" aria-hidden="true" />
         </button>
-      </div>
+      </section>
     </div>
   )
 }

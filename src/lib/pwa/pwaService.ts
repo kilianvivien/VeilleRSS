@@ -62,6 +62,7 @@ export function registerServiceWorker() {
 
 export function usePwaUpdate() {
   const [updateReady, setUpdateReady] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
 
   useEffect(() => {
     const listener = () => setUpdateReady(true)
@@ -86,13 +87,16 @@ export function usePwaUpdate() {
   }, [])
 
   const applyUpdate = useCallback(() => {
+    setIsApplying(true)
     pendingRegistration?.waiting?.postMessage('SKIP_WAITING')
     // Si aucun controllerchange n'arrive (cas marginal), on force le rechargement.
     window.setTimeout(() => window.location.reload(), 3000)
   }, [])
 
-  return { updateReady, applyUpdate }
-}interface BeforeInstallPromptEvent extends Event {
+  return { updateReady, isApplying, applyUpdate }
+}
+
+interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
@@ -145,6 +149,7 @@ export function usePwaInstall() {
   const [standalone, setStandalone] = useState(isStandaloneDisplay)
   const [iosManual, setIosManual] = useState(false)
   const [dismissed, setDismissed] = useState(wasRecentlyDismissed)
+  const [engaged, setEngaged] = useState(false)
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -159,8 +164,10 @@ export function usePwaInstall() {
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt)
     window.addEventListener('appinstalled', onInstalled)
 
-    // Safari iOS : on n'affiche l'aide qu'après un délai d'usage, pour ne pas
-    // brusquer les visiteurs de passage.
+    // Laisser d'abord le visiteur découvrir l'interface. Le prompt apparaît
+    // ensuite comme une suggestion contextuelle plutôt qu'une interstitial.
+    const engagementTimer = window.setTimeout(() => setEngaged(true), 3500)
+
     let iosTimer: number | null = null
     if (isIosSafari() && !isStandaloneDisplay()) {
       iosTimer = window.setTimeout(() => setIosManual(true), 4000)
@@ -169,15 +176,16 @@ export function usePwaInstall() {
     return () => {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
       window.removeEventListener('appinstalled', onInstalled)
+      window.clearTimeout(engagementTimer)
       if (iosTimer !== null) window.clearTimeout(iosTimer)
     }
   }, [])
 
   const context: InstallContext = standalone
     ? 'unsupported'
-    : installEvent
+    : installEvent && engaged && !dismissed
       ? 'native'
-      : iosManual && !dismissed
+      : iosManual && engaged && !dismissed
         ? 'ios-manual'
         : 'unsupported'
 

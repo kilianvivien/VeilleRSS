@@ -13,7 +13,7 @@
  * l'application qui envoie le message SKIP_WAITING, puis recharge la page.
  */
 
-const CACHE_VERSION = 'v1'
+const CACHE_VERSION = 'v2'
 const SHELL_CACHE = `veille-shell-${CACHE_VERSION}`
 const RUNTIME_CACHE = `veille-runtime-${CACHE_VERSION}`
 
@@ -22,8 +22,8 @@ const RUNTIME_CACHE = `veille-runtime-${CACHE_VERSION}`
 const PRECACHE_URLS = [
   '/',
   '/manifest.webmanifest',
-  '/favicon.svg',
   '/favicon.ico',
+  '/favicon-64.png',
   '/apple-touch-icon.png',
   '/pwa-192.png',
   '/pwa-512.png',

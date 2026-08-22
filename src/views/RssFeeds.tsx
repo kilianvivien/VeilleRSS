@@ -1490,7 +1490,6 @@ export function RssFeeds() {
         title="À propos"
         description="Outil de veille RSS"
         size="sm"
-        footer={<Button onClick={() => setShowCreditsModal(false)}>Fermer</Button>}
       >
         <div className="space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
           <p>
@@ -1539,6 +1538,16 @@ export function RssFeeds() {
             onExportOpml={() => void handleExportOpml()}
             onClose={() => closeTrendMap()}
           />
+          {!isDesktop ? (
+            <MobileTabBar
+              value="map"
+              onChange={(value) => {
+                if (value === 'map') return
+                closeTrendMap()
+                handleMobileTab(value)
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -1585,7 +1594,7 @@ function MobileTabBar({
   value,
   onChange,
 }: {
-  value: RightPane
+  value: RightPane | 'map'
   onChange: (value: RightPane | 'map') => void
 }) {
   return (

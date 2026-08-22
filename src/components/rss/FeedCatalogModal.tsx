@@ -62,7 +62,7 @@ export function FeedCatalogModal({
       size="xl"
       footer={<Button onClick={() => onOpenChange(false)}>Fermer</Button>}
     >
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4 overflow-x-hidden">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search
@@ -111,7 +111,7 @@ export function FeedCatalogModal({
             depuis la barre du lecteur.
           </p>
         ) : (
-          <div className="max-h-[58vh] space-y-4 overflow-auto pr-1">
+          <div className="max-h-[58vh] min-w-0 touch-pan-y space-y-4 overflow-x-hidden overflow-y-auto overscroll-x-none pr-1">
             {packs.map((pack) => (
               <PackSection
                 key={pack.id}
@@ -182,7 +182,7 @@ function PackSection({
   }
 
   return (
-    <section className="rounded-card border border-[var(--border)] bg-[var(--surface)] p-3">
+    <section className="rounded-card min-w-0 max-w-full overflow-hidden border border-[var(--border)] bg-[var(--surface)] p-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 basis-full sm:basis-0 sm:flex-1">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">

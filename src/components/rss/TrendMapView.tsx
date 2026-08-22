@@ -428,7 +428,7 @@ export function TrendMapView({
         </div>
       </aside>
 
-      <main className="flex min-w-0 flex-1 flex-col px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:p-4">
+      <main className="flex min-w-0 flex-1 flex-col px-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 sm:p-4">
         <header className="glass-surface-strong rounded-card relative z-20 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 px-3 py-3 sm:gap-x-4 sm:px-4">
           <div className="flex min-w-0 items-center gap-2.5">
             <Network className="h-5 w-5 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
