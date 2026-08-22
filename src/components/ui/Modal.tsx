@@ -45,7 +45,7 @@ export function Modal({
           )}
         />
 
-        {/* Content */}
+        {/* Content — sur mobile : feuille glissant du bas ; ≥ sm : carte centrée. */}
         <Dialog.Content
           onEscapeKeyDown={(event) => {
             if (disableDismiss) {
@@ -63,20 +63,23 @@ export function Modal({
             }
           }}
           className={cn(
-            'fixed inset-0 z-50 grid place-items-center p-4 sm:p-6 pointer-events-none modal-content-root'
+            'fixed inset-0 z-50 grid pointer-events-none modal-content-root',
+            'items-end sm:items-center',
+            'p-0 sm:p-6'
           )}
         >
           <div
             className={cn(
-              'relative pointer-events-auto w-full glass-surface-strong rounded-overlay modal-glass-shell modal-content-shell',
+              'relative pointer-events-auto w-full glass-surface-strong modal-glass-shell modal-content-shell',
               'border border-[var(--glass-border)]',
               'transform-gpu will-change-[transform,opacity]',
-              'overflow-hidden',
+              'rounded-t-overlay border-b-0 sm:border-b sm:rounded-b-overlay sm:rounded-overlay',
+              'max-h-[92dvh] overflow-y-auto sm:max-h-none sm:overflow-hidden',
               {
-                'max-w-sm': size === 'sm',
-                'max-w-md': size === 'md',
-                'max-w-2xl': size === 'lg',
-                'max-w-4xl': size === 'xl',
+                'sm:max-w-sm': size === 'sm',
+                'sm:max-w-md': size === 'md',
+                'sm:max-w-2xl': size === 'lg',
+                'sm:max-w-4xl': size === 'xl',
               },
               className
             )}
@@ -140,9 +143,9 @@ export function Modal({
               </div>
             )}
 
-            {/* Footer */}
+            {/* Footer — marge basse étendue au-dessus de la barre de geste mobile. */}
             {footer && (
-              <div className="relative z-10 flex items-center justify-end gap-2 border-t border-[var(--glass-border)] px-6 py-4 pt-2">
+              <div className="relative z-10 flex items-center justify-end gap-2 border-t border-[var(--glass-border)] px-6 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
                 {footer}
               </div>
             )}

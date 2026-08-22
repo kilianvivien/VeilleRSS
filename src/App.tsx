@@ -3,6 +3,7 @@ import { Analytics } from '@vercel/analytics/react'
 import { RssFeeds } from '@/views/RssFeeds'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useRssRefreshScheduler } from '@/lib/hooks/useRssRefreshScheduler'
+import { PwaPrompts } from '@/components/pwa/PwaPrompts'
 
 export default function App() {
   const theme = useSettingsStore((state) => state.theme)
@@ -24,6 +25,7 @@ export default function App() {
   return (
     <div className="h-full min-h-0 bg-[var(--bg-primary)]">
       <RssFeeds />
+      <PwaPrompts />
       <Analytics />
     </div>
   )

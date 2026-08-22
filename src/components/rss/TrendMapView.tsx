@@ -495,7 +495,7 @@ export function TrendMapView({
           </p>
         </header>
 
-        <div className="mt-3 flex min-h-0 flex-1 gap-3">
+        <div className="relative mt-3 flex min-h-0 flex-1 gap-3">
           <section
             ref={graphRef}
             className="relative min-w-0 flex-1 overflow-hidden"
@@ -605,7 +605,7 @@ export function TrendMapView({
 
           {selectedTerm ? (
             <aside
-              className="glass-surface-strong rounded-card flex w-[250px] flex-shrink-0 flex-col overflow-hidden"
+              className="glass-surface-strong rounded-card flex w-[250px] flex-shrink-0 flex-col overflow-hidden max-lg:absolute max-lg:inset-x-3 max-lg:bottom-0 max-lg:z-20 max-lg:h-[min(58%,400px)] max-lg:w-auto max-lg:border max-lg:shadow-lg"
               aria-label={`Détails de la tendance ${selectedTerm.label}`}
             >
               <div className="min-h-0 flex-1 overflow-auto p-4">

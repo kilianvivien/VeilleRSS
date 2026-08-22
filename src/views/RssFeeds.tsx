@@ -6,6 +6,7 @@ import {
   FileDown,
   Inbox,
   Library,
+  Menu,
   Network,
   Newspaper,
   Plus,
@@ -48,6 +49,7 @@ import { openFileDialog, saveFile } from '@/lib/platform/fileService'
 import { confirmDialog } from '@/lib/platform/dialogService'
 import { translateText, type LanguageCode } from '@/lib/ai/translationService'
 import { isAbortError } from '@/lib/ai/requestControl'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import {
   getEffectiveProvider,
   getProviderLabel,
@@ -168,6 +170,27 @@ export function RssFeeds() {
   const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false)
   const [briefingError, setBriefingError] = useState<string | null>(null)
   const briefingAbortRef = useRef<AbortController | null>(null)
+
+  /**
+   * Composition mobile (< 1024 px) : un seul volet à l'écran, navigation par
+   * onglets bas + tiroir de sources. Le bureau conserve la grille trois
+   * colonnes ; `isDesktop` évite de monter deux fois les mêmes composants.
+   */
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const [isSourcesOpen, setIsSourcesOpen] = useState(false)
+
+  useEffect(() => {
+    if (isDesktop) setIsSourcesOpen(false)
+  }, [isDesktop])
+
+  useEffect(() => {
+    if (!isSourcesOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsSourcesOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isSourcesOpen])
 
   const normalizedQuery = query.trim()
   const density: RssDensity = settings.density ?? 'comfortable'
@@ -774,49 +797,482 @@ export function RssFeeds() {
         ? 'Sauvegardés'
         : 'Tous les articles'
 
-  return (
-    <div className="relative flex h-full flex-col overflow-hidden bg-[var(--bg-primary)]">
-      {/* En-tête flottant, transparent au repos comme les barres d’action des autres vues. */}
-      <header className="relative z-20 flex flex-shrink-0 flex-wrap items-start gap-x-4 gap-y-4 bg-transparent px-8 pt-8 pb-6">
-        <div className="min-w-0">
-          <h1 className="text-4xl font-bold text-[var(--text-primary)]">Outil de veille RSS</h1>
-          <p className="mt-2 text-[var(--text-secondary)]">
-            {feeds.length === 0
-              ? 'Aucune source suivie'
-              : `Veille de ${feeds.length} source${feeds.length > 1 ? 's' : ''} · ${totals.unread} article${totals.unread > 1 ? 's' : ''} non lu${totals.unread > 1 ? 's' : ''}`}
-          </p>
+    /** Ferme la lecture : bouton retour du volet mobile. */
+  const closeReader = useCallback(() => setOpenItemId(null), [])  /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
+  const handleMobileTab = useCallback(
+    (value: RightPane | 'map') => {
+      if (value === 'map') {
+        openTrendMap()
+        return
+      }
+      if (value === rightPane) {
+        if (value === 'article' && openItemId) setOpenItemId(null)
+        return
+      }
+      setRightPane(value)
+    },
+    [openItemId, openTrendMap, rightPane]
+  )
+
+  /** Sur mobile, filtrer sur une tendance bascule vers la liste filtrée. */
+  const selectTerm = useCallback(
+    (term: { key: string; label: string }) => {
+      setActiveTerm(term)
+      setQuery('')
+      if (!isDesktop) setRightPane('article')
+    },
+    [isDesktop]
+  )
+
+  // ── Blocs partagés entre la composition bureau et la composition mobile ──
+
+  /** Rail des sources : colonne de gauche au bureau, tiroir sur mobile. */
+  const feedRailElement = (
+    <FeedRail
+      groups={railGroups}
+      stats={feedStats}
+      health={feedHealth}
+      refreshingFeedIds={refreshingSet}
+      activeFeedId={activeFeedId}
+      smartView={smartView}
+      totals={totals}
+      variant={isDesktop ? 'sidebar' : 'drawer'}
+      onSelectSmartView={(view) => {
+        setSmartView(view)
+        if (!isDesktop) setIsSourcesOpen(false)
+      }}
+      onSelectFeed={(feedId) => {
+        setActiveFeedId(feedId)
+        if (!isDesktop) setIsSourcesOpen(false)
+      }}
+      onRefreshFeed={(feedId) => void refreshFeed(feedId)}
+      onToggleFeed={(feed) => updateFeed(feed.id, { enabled: !feed.enabled })}
+      onEditFeed={(feed) => {
+        // Le formulaire d'édition s'ouvre en modal au-dessus du tiroir :
+        // on replie le tiroir pour laisser la place sur mobile.
+        if (!isDesktop) setIsSourcesOpen(false)
+        startEditFeed(feed)
+      }}
+      onDeleteFeed={(feed) => void handleDeleteFeed(feed)}
+    />
+  )
+
+  const railActionBar = (
+    <div
+      className={cn(
+        'flex flex-shrink-0 items-center border-t border-[var(--border)]',
+        isDesktop ? 'gap-1 px-2 py-1.5' : 'justify-around gap-2 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]'
+      )}
+    >
+      <Button
+        size="sm"
+        variant="ghost"
+        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        onClick={() => {
+          setAddFeedError(null)
+          setShowAddFeedModal(true)
+          if (!isDesktop) setIsSourcesOpen(false)
+        }}
+        title="Ajouter un flux RSS"
+        aria-label="Ajouter un flux RSS"
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        onClick={() => void handleImportOpml()}
+        title="Importer un OPML"
+        aria-label="Importer un OPML"
+      >
+        <Upload className="h-4 w-4" aria-hidden="true" />
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className={cn('shrink-0 p-0', isDesktop ? 'h-8 w-8' : 'h-11 w-11')}
+        onClick={() => void handleExportOpml()}
+        disabled={feeds.length === 0}
+        title="Exporter en OPML"
+        aria-label="Exporter en OPML"
+      >
+        <Download className="h-4 w-4" aria-hidden="true" />
+      </Button>
+    </div>
+  )
+
+  const sourcesColumn = (
+    <aside className="flex min-h-0 flex-col">
+      <div className="min-h-0 flex-1 overflow-auto p-2">{feedRailElement}</div>
+      {railActionBar}
+    </aside>
+  )
+
+  const articleListSection = (
+    <section className="flex min-h-0 flex-col" aria-label="Articles">
+        <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2
+              className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)]"
+              title={listTitle}
+            >
+              {listTitle}
+            </h2>
+            <span className="shrink-0 rounded-full bg-[var(--hover)] px-2 py-0.5 text-xs text-[var(--text-muted)] tabular-nums">
+              {visibleItems.length}
+            </span>
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1.5">
+            <SearchBar
+              value={query}
+              onChange={setQuery}
+              placeholder="Rechercher…"
+              className="min-w-0 flex-1"
+            />
+            <Select
+              size="sm"
+              value={sortMode}
+              onValueChange={(value) => setSortMode(value as RssSortMode)}
+              options={SORT_OPTIONS}
+              aria-label="Trier les articles"
+              className="w-[112px] shrink-0"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 shrink-0 p-0"
+              onClick={() =>
+                updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })
+              }
+              title={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
+              aria-label={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
+            >
+              {density === 'compact' ? (
+                <Rows2 className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Rows3 className="h-4 w-4" aria-hidden="true" />
+              )}
+            </Button>
+          </div>
         </div>
 
-        <div className="ml-auto flex flex-wrap items-center gap-1.5 pt-1">
+        {activeTerm ? (
+          <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-muted)] px-3 py-1.5">
+            <Radar className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate text-xs text-[var(--text-primary)]">
+              Filtré sur « {activeTerm.label} »
+            </span>
+            <button
+              type="button"
+              onClick={() => setActiveTerm(null)}
+              aria-label="Retirer le filtre de tendance"
+              className="rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ) : null}
+
+        <div className="min-h-0 flex-1 overflow-auto">
+          {visibleItems.length === 0 ? (
+            <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
+          ) : (
+            <ul>
+              {visibleItems.map((item) => {
+                const cached =
+                  item.translation && item.translation.targetLanguage === targetLanguage
+                    ? item.translation
+                    : null
+                const showTranslated = Boolean(cached) && !showOriginalIds.has(item.id)
+                return (
+                  <RssArticleRow
+                    key={item.id}
+                    item={item}
+                    feed={feedById.get(item.feedId)}
+                    selected={selectedIds.has(item.id)}
+                    active={openItemId === item.id}
+                    density={density}
+                    displayTitle={showTranslated && cached ? cached.title : item.title}
+                    displaySummary={
+                      showTranslated && cached
+                        ? cached.summary || item.contentSnippet || item.summary
+                        : item.contentSnippet || item.summary
+                    }
+                    onOpen={() => handleOpenItem(item)}
+                    onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
+                    onToggleSaved={() => toggleSaved(item.id)}
+                  />
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+          {/* Barre de sélection : n’apparaît qu’une fois des articles cochés.
+              flex-wrap : les libellés passent à la ligne sur les petits écrans. */}
+          <div className="flex flex-shrink-0 flex-wrap items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSelectVisible}
+            disabled={visibleItems.length === 0}
+          >
+            <Check className="h-4 w-4" aria-hidden="true" />
+            Sélection visible
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void handleMarkAllRead()}
+            disabled={totals.unread === 0}
+            title="Marquer tout comme lu"
+          >
+            <CheckCheck className="h-4 w-4" aria-hidden="true" />
+            Tout lu
+          </Button>
+          <Button
+            size="sm"
+            variant={selectedCount > 0 ? 'primary' : 'ghost'}
+            className="ml-auto"
+            onClick={() => void handleExportSelection()}
+            disabled={selectedCount === 0}
+          >
+            <FileDown className="h-4 w-4" aria-hidden="true" />
+            Exporter la sélection{selectedCount > 0 ? ` (${selectedCount})` : ''}
+          </Button>
+        </div>
+    </section>
+  )
+
+  const trendsPanelElement = (
+    <TrendPanel
+      report={displayedTrendReport}
+      windowHours={trendWindowHours}
+      onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
+      watchedTerms={watchedKeywords}
+      onWatchTerm={watchKeyword}
+      onUnwatchTerm={unwatchKeyword}
+      watchedCollapsed={settings.collapseWatchedKeywords === true}
+      onToggleWatchedCollapsed={() =>
+        updateRssSettings({
+          collapseWatchedKeywords: settings.collapseWatchedKeywords !== true,
+        })
+      }
+      onSelectTerm={selectTerm}
+      onSelectWatched={(term) => {
+        setActiveTerm(null)
+        setQuery(term)
+        if (!isDesktop) setRightPane('article')
+      }}
+      activeTermKey={activeTerm?.key ?? null}
+      aiRefinement={{
+        available: trendProviderReady,
+        loading: isRefiningTrends,
+        active: aiTrendSelection !== null,
+        providerLabel: aiTrendSelection?.providerLabel ?? trendProviderLabel,
+        error: trendRefinementError,
+      }}
+      onRefineWithAi={() => void handleRefineTrends()}
+      onClearAiRefinement={() => {
+        clearAiTrendSelection()
+        setTrendRefinementError(null)
+      }}
+    />
+  )
+
+  const briefingPanelElement = (
+    <TrendBriefingPanel
+      briefing={trendBriefing}
+      windowHours={briefingWindowHours}
+      onWindowChange={(hours) => updateRssSettings({ briefingWindowHours: hours })}
+      topic={briefingTopic}
+      onTopicChange={(value) => updateRssSettings({ briefingTopic: value })}
+      currentItemCount={briefingReport.itemCount}
+      available={trendProviderReady}
+      loading={isGeneratingBriefing}
+      providerLabel={trendProviderLabel}
+      error={briefingError}
+      onGenerate={() => void handleGenerateBriefing()}
+      onClear={() => {
+        clearTrendBriefing()
+        setBriefingError(null)
+      }}
+    />
+  )
+
+  const readingPaneElement = (
+    <RssReadingPane
+      item={openItem}
+      feed={openItem ? feedById.get(openItem.feedId) : undefined}
+      targetLanguage={targetLanguage}
+      isTranslating={translatingId === openItem?.id}
+      translationError={openItem ? translationErrors[openItem.id] : undefined}
+      showOriginal={openItem ? showOriginalIds.has(openItem.id) : false}
+      onBack={isDesktop ? undefined : closeReader}
+      onTranslate={() => {
+        if (openItem) void handleTranslateItem(openItem)
+      }}
+      onToggleRead={() => {
+        if (!openItem) return
+        if (openItem.readAt) markUnread([openItem.id])
+        else markRead([openItem.id])
+      }}
+      onToggleSaved={() => {
+        if (openItem) toggleSaved(openItem.id)
+      }}
+      onOpenOriginal={() => {
+        if (openItem) void openExternalUrl(openItem.link)
+      }}
+    />
+  )
+
+  /** Volet droit bureau : lecture, tendances ou briefing selon l'onglet. */
+  const rightPaneContent =
+    rightPane === 'trends'
+      ? trendsPanelElement
+      : rightPane === 'briefing'
+        ? briefingPanelElement
+        : readingPaneElement
+
+  const rightColumn = (
+    <section className="flex min-h-0 flex-col" aria-label="Lecture et tendances">
+      <div className="flex flex-shrink-0 items-center border-b border-[var(--border)] px-3 py-2">
+        <SlidingTabBar<RightPane | 'map'>
+          size="xs"
+          value={rightPane}
+          onChange={(value) => {
+            if (value === 'map') {
+              openTrendMap()
+              return
+            }
+            setRightPane(value)
+          }}
+          tabs={[
+            { value: 'article', label: 'Article', icon: <Newspaper className="h-3.5 w-3.5" /> },
+            { value: 'trends', label: 'Tendances', icon: <Radar className="h-3.5 w-3.5" /> },
+            {
+              value: 'map',
+              label: 'Carte',
+              ariaLabel: 'Cartographie',
+              title: 'Cartographie des tendances',
+              icon: <Network className="h-3.5 w-3.5" />,
+            },
+            {
+              value: 'briefing',
+              label: 'Briefing',
+              ariaLabel: 'Briefing IA',
+              title: 'Briefing IA',
+              icon: <ScrollText className="h-3.5 w-3.5" />,
+            },
+          ]}
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 overflow-hidden">{rightPaneContent}</div>
+    </section>
+  )
+
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden bg-[var(--bg-primary)]">
+      {isDesktop ? (
+        /* En-tête flottant, transparent au repos comme les barres d'action des autres vues. */
+        <header className="relative z-20 flex flex-shrink-0 flex-wrap items-start gap-x-4 gap-y-4 bg-transparent px-8 pt-[calc(env(safe-area-inset-top)+2rem)] pb-6">
+          <div className="min-w-0">
+            <h1 className="text-4xl font-bold text-[var(--text-primary)]">Outil de veille RSS</h1>
+            <p className="mt-2 text-[var(--text-secondary)]">
+              {feeds.length === 0
+                ? 'Aucune source suivie'
+                : `Veille de ${feeds.length} source${feeds.length > 1 ? 's' : ''} · ${totals.unread} article${totals.unread > 1 ? 's' : ''} non lu${totals.unread > 1 ? 's' : ''}`}
+            </p>
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5 pt-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void refreshAllFeeds()}
+              isLoading={isRefreshing}
+              disabled={feeds.length === 0}
+              title="Rafraîchir toutes les sources"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
+              Rafraîchir
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setShowCatalog(true)}>
+              <Library className="h-4 w-4" aria-hidden="true" />
+              Sources
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-9 w-9 p-0"
+              title="Paramètres"
+              aria-label="Paramètres"
+              onClick={() => setShowSettingsModal(true)}
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </header>
+      ) : (
+        /* En-tête compact mobile : actions en icônes, cibles ≥ 40 px. */
+        <header className="relative z-20 flex flex-shrink-0 items-center gap-1 bg-transparent px-2 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2">
           <Button
             size="sm"
             variant="ghost"
+            className="h-11 w-11 shrink-0 p-0"
+            title="Sources et vues"
+            aria-label="Ouvrir les sources et vues"
+            onClick={() => setIsSourcesOpen(true)}
+          >
+            <Menu className="h-5 w-5" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-lg font-bold text-[var(--text-primary)]">Veille RSS</h1>
+            <p className="truncate text-[11px] text-[var(--text-secondary)]">
+              {feeds.length === 0
+                ? 'Aucune source suivie'
+                : `${totals.unread} non lu${totals.unread > 1 ? 's' : ''} · ${feeds.length} source${feeds.length > 1 ? 's' : ''}`}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-11 w-11 shrink-0 p-0"
             onClick={() => void refreshAllFeeds()}
             isLoading={isRefreshing}
             disabled={feeds.length === 0}
             title="Rafraîchir toutes les sources"
+            aria-label="Rafraîchir toutes les sources"
           >
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            Rafraîchir
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => setShowCatalog(true)}>
-            <Library className="h-4 w-4" aria-hidden="true" />
-            Sources
+            {!isRefreshing ? <RefreshCw className="h-5 w-5" aria-hidden="true" /> : null}
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-9 w-9 p-0"
+            className="h-11 w-11 shrink-0 p-0"
+            title="Catalogue de sources"
+            aria-label="Catalogue de sources"
+            onClick={() => setShowCatalog(true)}
+          >
+            <Library className="h-5 w-5" aria-hidden="true" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-11 w-11 shrink-0 p-0"
             title="Paramètres"
             aria-label="Paramètres"
             onClick={() => setShowSettingsModal(true)}
           >
-            <Settings className="h-4 w-4" aria-hidden="true" />
+            <Settings className="h-5 w-5" aria-hidden="true" />
           </Button>
-        </div>
-      </header>
+        </header>
+      )}
 
-      {/* Messages en bandeau fin : ils ne doivent pas repousser les trois volets */}
+      {/* Messages en bandeau fin : ils ne doivent pas repousser les volets */}
       {error || notice ? (
         <div
           className={cn(
@@ -842,316 +1298,60 @@ export function RssFeeds() {
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 divide-y divide-[var(--border)] lg:grid-cols-[200px_minmax(0,0.95fr)_minmax(0,1.05fr)] lg:divide-x lg:divide-y-0">
-        {/* Colonne des sources */}
-        <aside className="flex min-h-0 flex-col">
-          <div className="min-h-0 flex-1 overflow-auto p-2">
-            <FeedRail
-              groups={railGroups}
-              stats={feedStats}
-              health={feedHealth}
-              refreshingFeedIds={refreshingSet}
-              activeFeedId={activeFeedId}
-              smartView={smartView}
-              totals={totals}
-              onSelectSmartView={setSmartView}
-              onSelectFeed={setActiveFeedId}
-              onRefreshFeed={(feedId) => void refreshFeed(feedId)}
-              onToggleFeed={(feed) => updateFeed(feed.id, { enabled: !feed.enabled })}
-              onEditFeed={startEditFeed}
-              onDeleteFeed={(feed) => void handleDeleteFeed(feed)}
-            />
+      {isDesktop ? (
+        /* Bureau : grille trois colonnes inchangée. */
+        <div className="grid min-h-0 flex-1 grid-cols-[200px_minmax(0,0.95fr)_minmax(0,1.05fr)] divide-x divide-[var(--border)]">
+          {sourcesColumn}
+          {articleListSection}
+          {rightColumn}
+        </div>
+      ) : (
+        <>
+          {/* Mobile : un seul volet à la fois ; la barre d'onglets pilote l'affichage. */}
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {rightPane === 'article' && !openItem
+              ? articleListSection
+              : rightPane === 'trends'
+                ? trendsPanelElement
+                : rightPane === 'briefing'
+                  ? briefingPanelElement
+                  : readingPaneElement}
           </div>
 
-          <div className="flex flex-shrink-0 items-center gap-1 border-t border-[var(--border)] px-2 py-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 shrink-0 p-0"
-              onClick={() => {
-                setAddFeedError(null)
-                setShowAddFeedModal(true)
-              }}
-              title="Ajouter un flux RSS"
-              aria-label="Ajouter un flux RSS"
-            >
-              <Plus className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 shrink-0 p-0"
-              onClick={() => void handleImportOpml()}
-              title="Importer un OPML"
-              aria-label="Importer un OPML"
-            >
-              <Upload className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 w-8 shrink-0 p-0"
-              onClick={() => void handleExportOpml()}
-              disabled={feeds.length === 0}
-              title="Exporter en OPML"
-              aria-label="Exporter en OPML"
-            >
-              <Download className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </div>
-        </aside>
+          <MobileTabBar value={rightPane} onChange={handleMobileTab} />
 
-        {/* Liste d’articles */}
-        <section className="flex min-h-0 flex-col" aria-label="Articles">
-          <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
-            <div className="flex min-w-0 items-center gap-2">
-              <h2
-                className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)]"
-                title={listTitle}
-              >
-                {listTitle}
-              </h2>
-              <span className="shrink-0 rounded-full bg-[var(--hover)] px-2 py-0.5 text-xs text-[var(--text-muted)] tabular-nums">
-                {visibleItems.length}
-              </span>
-            </div>
-
-            <div className="flex min-w-0 items-center gap-1.5">
-              <SearchBar
-                value={query}
-                onChange={setQuery}
-                placeholder="Rechercher…"
-                className="min-w-0 flex-1"
-              />
-              <Select
-                size="sm"
-                value={sortMode}
-                onValueChange={(value) => setSortMode(value as RssSortMode)}
-                options={SORT_OPTIONS}
-                aria-label="Trier les articles"
-                className="w-[112px] shrink-0"
-              />
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-9 w-9 shrink-0 p-0"
-                onClick={() =>
-                  updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })
-                }
-                title={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
-                aria-label={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
-              >
-                {density === 'compact' ? (
-                  <Rows2 className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  <Rows3 className="h-4 w-4" aria-hidden="true" />
-                )}
-              </Button>
-            </div>
-          </div>
-
-          {activeTerm ? (
-            <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-muted)] px-3 py-1.5">
-              <Radar className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
-              <span className="min-w-0 flex-1 truncate text-xs text-[var(--text-primary)]">
-                Filtré sur « {activeTerm.label} »
-              </span>
+          {/* Tiroir des sources : le rail habituel dans un panneau coulissant. */}
+          {isSourcesOpen ? (
+            <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Sources et vues">
               <button
                 type="button"
-                onClick={() => setActiveTerm(null)}
-                aria-label="Retirer le filtre de tendance"
-                className="rounded p-0.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              >
-                <X className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
+                aria-label="Fermer le tiroir des sources"
+                onClick={() => setIsSourcesOpen(false)}
+                className="animate-fade-in absolute inset-0 bg-black/45"
+              />
+              <div className="animate-drawer-in absolute inset-y-0 left-0 flex w-[304px] max-w-[86vw] flex-col border-r border-[var(--border)] bg-[var(--bg-primary)] shadow-2xl">
+                <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] pt-[calc(env(safe-area-inset-top)+0.75rem)] pr-2 pb-3 pl-4">
+                  <h2 className="text-sm font-semibold text-[var(--text-primary)]">
+                    Sources &amp; vues
+                  </h2>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-9 w-9 shrink-0 p-0"
+                    title="Fermer"
+                    aria-label="Fermer le tiroir des sources"
+                    onClick={() => setIsSourcesOpen(false)}
+                  >
+                    <X className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-auto p-2">{feedRailElement}</div>
+                {railActionBar}
+              </div>
             </div>
           ) : null}
-
-          <div className="min-h-0 flex-1 overflow-auto">
-            {visibleItems.length === 0 ? (
-              <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
-            ) : (
-              <ul>
-                {visibleItems.map((item) => {
-                  const cached =
-                    item.translation && item.translation.targetLanguage === targetLanguage
-                      ? item.translation
-                      : null
-                  const showTranslated = Boolean(cached) && !showOriginalIds.has(item.id)
-                  return (
-                    <RssArticleRow
-                      key={item.id}
-                      item={item}
-                      feed={feedById.get(item.feedId)}
-                      selected={selectedIds.has(item.id)}
-                      active={openItemId === item.id}
-                      density={density}
-                      displayTitle={showTranslated && cached ? cached.title : item.title}
-                      displaySummary={
-                        showTranslated && cached
-                          ? cached.summary || item.contentSnippet || item.summary
-                          : item.contentSnippet || item.summary
-                      }
-                      onOpen={() => handleOpenItem(item)}
-                      onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
-                      onToggleSaved={() => toggleSaved(item.id)}
-                    />
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* Barre de sélection : n’apparaît qu’une fois des articles cochés */}
-          <div className="flex flex-shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSelectVisible}
-              disabled={visibleItems.length === 0}
-            >
-              <Check className="h-4 w-4" aria-hidden="true" />
-              Sélection visible
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void handleMarkAllRead()}
-              disabled={totals.unread === 0}
-              title="Marquer tout comme lu"
-            >
-              <CheckCheck className="h-4 w-4" aria-hidden="true" />
-              Tout lu
-            </Button>
-            <Button
-              size="sm"
-              variant={selectedCount > 0 ? 'primary' : 'ghost'}
-              className="ml-auto"
-              onClick={() => void handleExportSelection()}
-              disabled={selectedCount === 0}
-            >
-              <FileDown className="h-4 w-4" aria-hidden="true" />
-              Exporter la sélection{selectedCount > 0 ? ` (${selectedCount})` : ''}
-            </Button>
-          </div>
-        </section>
-
-        {/* Volet droit : lecture ou tendances */}
-        <section className="flex min-h-0 flex-col" aria-label="Lecture et tendances">
-          <div className="flex flex-shrink-0 items-center border-b border-[var(--border)] px-3 py-2">
-            <SlidingTabBar<RightPane | 'map'>
-              size="xs"
-              value={rightPane}
-              onChange={(value) => {
-                if (value === 'map') {
-                  openTrendMap()
-                  return
-                }
-                setRightPane(value)
-              }}
-              tabs={[
-                { value: 'article', label: 'Article', icon: <Newspaper className="h-3.5 w-3.5" /> },
-                { value: 'trends', label: 'Tendances', icon: <Radar className="h-3.5 w-3.5" /> },
-                {
-                  value: 'map',
-                  label: 'Carte',
-                  ariaLabel: 'Cartographie',
-                  title: 'Cartographie des tendances',
-                  icon: <Network className="h-3.5 w-3.5" />,
-                },
-                {
-                  value: 'briefing',
-                  label: 'Briefing',
-                  ariaLabel: 'Briefing IA',
-                  title: 'Briefing IA',
-                  icon: <ScrollText className="h-3.5 w-3.5" />,
-                },
-              ]}
-            />
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-hidden">
-            {rightPane === 'trends' ? (
-              <TrendPanel
-                report={displayedTrendReport}
-                windowHours={trendWindowHours}
-                onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
-                watchedTerms={watchedKeywords}
-                onWatchTerm={watchKeyword}
-                onUnwatchTerm={unwatchKeyword}
-                watchedCollapsed={settings.collapseWatchedKeywords === true}
-                onToggleWatchedCollapsed={() =>
-                  updateRssSettings({
-                    collapseWatchedKeywords: settings.collapseWatchedKeywords !== true,
-                  })
-                }
-                onSelectTerm={(term) => {
-                  setActiveTerm({ key: term.key, label: term.label })
-                  setQuery('')
-                }}
-                onSelectWatched={(term) => {
-                  setActiveTerm(null)
-                  setQuery(term)
-                }}
-                activeTermKey={activeTerm?.key ?? null}
-                aiRefinement={{
-                  available: trendProviderReady,
-                  loading: isRefiningTrends,
-                  active: aiTrendSelection !== null,
-                  providerLabel: aiTrendSelection?.providerLabel ?? trendProviderLabel,
-                  error: trendRefinementError,
-                }}
-                onRefineWithAi={() => void handleRefineTrends()}
-                onClearAiRefinement={() => {
-                  clearAiTrendSelection()
-                  setTrendRefinementError(null)
-                }}
-              />
-            ) : rightPane === 'briefing' ? (
-              <TrendBriefingPanel
-                briefing={trendBriefing}
-                windowHours={briefingWindowHours}
-                onWindowChange={(hours) => updateRssSettings({ briefingWindowHours: hours })}
-                topic={briefingTopic}
-                onTopicChange={(value) => updateRssSettings({ briefingTopic: value })}
-                currentItemCount={briefingReport.itemCount}
-                available={trendProviderReady}
-                loading={isGeneratingBriefing}
-                providerLabel={trendProviderLabel}
-                error={briefingError}
-                onGenerate={() => void handleGenerateBriefing()}
-                onClear={() => {
-                  clearTrendBriefing()
-                  setBriefingError(null)
-                }}
-              />
-            ) : (
-              <RssReadingPane
-                item={openItem}
-                feed={openItem ? feedById.get(openItem.feedId) : undefined}
-                targetLanguage={targetLanguage}
-                isTranslating={translatingId === openItem?.id}
-                translationError={openItem ? translationErrors[openItem.id] : undefined}
-                showOriginal={openItem ? showOriginalIds.has(openItem.id) : false}
-                onTranslate={() => {
-                  if (openItem) void handleTranslateItem(openItem)
-                }}
-                onToggleRead={() => {
-                  if (!openItem) return
-                  if (openItem.readAt) markUnread([openItem.id])
-                  else markRead([openItem.id])
-                }}
-                onToggleSaved={() => {
-                  if (openItem) toggleSaved(openItem.id)
-                }}
-                onOpenOriginal={() => {
-                  if (openItem) void openExternalUrl(openItem.link)
-                }}
-              />
-            )}
-          </div>
-        </section>
-      </div>
+        </>
+      )}
 
       <FeedCatalogModal
         open={showCatalog}
@@ -1272,7 +1472,7 @@ export function RssFeeds() {
             onOpenTerm={(term) => {
               setActiveTerm({ key: term.key, label: term.label })
               setQuery('')
-              setRightPane('trends')
+              setRightPane(isDesktop ? 'trends' : 'article')
               closeTrendMap()
             }}
             onOpenItem={(item) => {
@@ -1311,5 +1511,57 @@ function EmptyState({ hasFeeds, onOpenCatalog }: { hasFeeds: boolean; onOpenCata
         </Button>
       ) : null}
     </div>
+  )
+}
+
+/** Onglets de la barre de navigation mobile. */
+const MOBILE_TABS = [
+  { value: 'article', label: 'Articles', icon: Newspaper },
+  { value: 'trends', label: 'Tendances', icon: Radar },
+  { value: 'briefing', label: 'Briefing', icon: ScrollText },
+  { value: 'map', label: 'Carte', icon: Network },
+] as const
+
+/**
+ * Barre d'onglets basse, à hauteur de pouce. « Carte » ouvre l'overlay plein
+ * écran ; re-taper « Articles » pendant la lecture ramène à la liste.
+ */
+function MobileTabBar({
+  value,
+  onChange,
+}: {
+  value: RightPane
+  onChange: (value: RightPane | 'map') => void
+}) {
+  return (
+    <nav
+      aria-label="Navigation principale"
+      className="relative z-20 flex flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
+    >
+      {MOBILE_TABS.map((tab) => {
+        const active = tab.value === value
+        const Icon = tab.icon
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => onChange(tab.value)}
+            aria-current={active ? 'page' : undefined}
+            className={cn(
+              'flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 font-medium transition-colors',
+              active
+                ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            )}
+          >
+            <Icon
+              className={cn('h-5 w-5 shrink-0', active && 'text-[var(--accent)]')}
+              aria-hidden="true"
+            />
+            <span className="max-w-full truncate text-[10px]">{tab.label}</span>
+          </button>
+        )
+      })}
+    </nav>
   )
 }

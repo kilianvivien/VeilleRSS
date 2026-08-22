@@ -1,4 +1,5 @@
 import {
+  ArrowLeft,
   Bookmark,
   BookmarkCheck,
   ExternalLink,
@@ -20,6 +21,8 @@ interface RssReadingPaneProps {
   isTranslating: boolean
   translationError?: string
   showOriginal: boolean
+  /** Affiché en lecture plein écran mobile : bouton retour vers la liste. */
+  onBack?: () => void
   onTranslate: () => void
   onToggleRead: () => void
   onToggleSaved: () => void
@@ -38,6 +41,7 @@ export function RssReadingPane({
   isTranslating,
   translationError,
   showOriginal,
+  onBack,
   onTranslate,
   onToggleRead,
   onToggleSaved,
@@ -89,6 +93,17 @@ export function RssReadingPane({
   return (
     <article className="flex h-full min-h-0 flex-col">
       <header className="flex-shrink-0 border-b border-[var(--border)] px-3 py-2.5">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Retour à la liste d’articles"
+            className="-ml-1.5 mb-1 inline-flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-xs font-medium text-[var(--accent)] transition-colors hover:bg-[var(--hover)]"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Retour à la liste
+          </button>
+        ) : null}
         <p className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-muted)]">
           <span className="font-medium text-[var(--accent)]">{feed?.title ?? 'Flux inconnu'}</span>
           <span aria-hidden="true">·</span>

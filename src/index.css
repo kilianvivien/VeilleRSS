@@ -9,10 +9,34 @@
   --radius-macos: 10px;
   --radius-card: 14px;
   --radius-overlay: 28px;
+
+  /* Animations utilitaires de la composition mobile */
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-drawer-in: drawer-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Tiroir des sources mobile : glissement depuis le bord gauche. */
+@keyframes drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 :root {
@@ -257,6 +281,32 @@ body,
   height: 100%;
   margin: 0;
   padding: 0;
+}
+
+/* ── Ergonomie mobile / tactile ─────────────────────────────────────────── */
+
+/* L'app possède son propre rafraîchissement : on évite le pull-to-refresh
+   accidentel qui recharge la page entière sur mobile. */
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
+button,
+a,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* iOS zoome automatiquement au focus des champs de moins de 16 px. On force
+   une taille lisible uniquement sur pointeur grossier (tactile), sans toucher
+   au rendu bureau. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 body {

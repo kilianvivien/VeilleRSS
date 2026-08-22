@@ -339,7 +339,8 @@ export function TrendPanel({
                         'rounded p-1 text-[var(--text-muted)] transition-opacity hover:bg-[var(--hover)] hover:text-[var(--text-primary)]',
                         watchedSet.has(term.label.toLowerCase())
                           ? 'text-[var(--accent)]'
-                          : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                          : // Pas de survol sur tactile : la cloche reste accessible.
+                            'opacity-0 group-hover:opacity-100 focus:opacity-100 pointer-coarse:opacity-100'
                       )}
                       onClick={() => onWatchTerm(term.label)}
                       aria-label={`Suivre le mot-clé ${term.label}`}

@@ -43,6 +43,11 @@ interface FeedRailProps {
   activeFeedId: string | null
   smartView: SmartView
   totals: { all: number; unread: number; saved: number }
+  /**
+   * `sidebar` : colonne fixe du bureau, actions révélées au survol.
+   * `drawer` : tiroir tactile — actions toujours visibles, lignes plus hautes.
+   */
+  variant?: 'sidebar' | 'drawer'
   onSelectSmartView: (view: SmartView) => void
   onSelectFeed: (feedId: string | null) => void
   onRefreshFeed: (feedId: string) => void
@@ -63,6 +68,7 @@ export function FeedRail({
   activeFeedId,
   smartView,
   totals,
+  variant = 'sidebar',
   onSelectSmartView,
   onSelectFeed,
   onRefreshFeed,
@@ -71,10 +77,11 @@ export function FeedRail({
   onDeleteFeed,
 }: FeedRailProps) {
   const hasFeeds = groups.some((group) => group.feeds.length > 0)
+  const isDrawer = variant === 'drawer'
 
   return (
     <nav aria-label="Sources RSS" className="space-y-4">
-      <ul className="space-y-0.5">
+      <ul className={cn('space-y-1', isDrawer && 'space-y-1.5')}>
         <SmartViewRow
           icon={<Rss className="h-4 w-4" aria-hidden="true" />}
           label="Tous les articles"
@@ -122,7 +129,7 @@ export function FeedRail({
               <h3 className="rss-section-label px-2 pt-1 pb-1 text-[var(--text-muted)] uppercase">
                 {group.category}
               </h3>
-              <ul className="space-y-0.5">
+              <ul className={cn('space-y-0.5', isDrawer && 'space-y-1')}>
                 {group.feeds.map((feed) => (
                   <FeedRow
                     key={feed.id}
@@ -131,6 +138,7 @@ export function FeedRail({
                     health={health.get(feed.id) ?? 'never'}
                     isRefreshing={refreshingFeedIds.has(feed.id)}
                     active={activeFeedId === feed.id}
+                    isDrawer={isDrawer}
                     onSelect={() => onSelectFeed(feed.id)}
                     onRefresh={() => onRefreshFeed(feed.id)}
                     onToggle={() => onToggleFeed(feed)}
@@ -200,6 +208,7 @@ function FeedRow({
   health,
   isRefreshing,
   active,
+  isDrawer,
   onSelect,
   onRefresh,
   onToggle,
@@ -211,6 +220,8 @@ function FeedRow({
   health: RssFeedHealth
   isRefreshing: boolean
   active: boolean
+  /** Variante tiroir tactile : actions permanentes, lignes plus hautes. */
+  isDrawer: boolean
   onSelect: () => void
   onRefresh: () => void
   onToggle: () => void
@@ -227,7 +238,7 @@ function FeedRow({
         active ? 'bg-[var(--accent-muted)]' : 'hover:bg-[var(--hover)]'
       )}
     >
-      <div className="flex items-center gap-1.5 px-2 py-1.5">
+      <div className={cn('flex items-center gap-1.5 px-2', isDrawer ? 'py-2.5' : 'py-1.5')}>
         <span
           className={cn('h-1.5 w-1.5 shrink-0 rounded-full', healthStyle.className)}
           title={healthStyle.label}
@@ -237,7 +248,7 @@ function FeedRow({
           type="button"
           onClick={onSelect}
           aria-current={active ? 'true' : undefined}
-          className="min-w-0 flex-1 text-left"
+          className="min-w-0 flex-1 py-1 text-left"
           title={feed.lastError ?? feed.title}
         >
           <span
@@ -274,12 +285,23 @@ function FeedRow({
         ) : null}
 
         {unread > 0 ? (
-          <span className="shrink-0 text-[11px] text-[var(--text-muted)] tabular-nums group-hover:hidden">
+          <span
+            className={cn(
+              'shrink-0 text-[11px] text-[var(--text-muted)] tabular-nums',
+              !isDrawer && 'group-hover:hidden'
+            )}
+          >
             {unread}
           </span>
         ) : null}
 
-        <div className="hidden shrink-0 items-center group-focus-within:flex group-hover:flex">
+        {/* Au survol (bureau) ou en permanence dans le tiroir tactile. */}
+        <div
+          className={cn(
+            'shrink-0 items-center',
+            isDrawer ? 'flex' : 'hidden group-focus-within:flex group-hover:flex'
+          )}
+        >
           <RailAction
             icon={<RefreshCw className="h-3.5 w-3.5" />}
             label={`Rafraîchir ${feed.title}`}

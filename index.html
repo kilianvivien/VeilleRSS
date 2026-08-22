@@ -2,15 +2,28 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- viewport-fit=cover : nécessaire pour les safe-areas (encoche, barre
+         de geste) une fois l'app installée en plein écran. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <meta name="color-scheme" content="light dark" />
     <meta name="description" content="Outil de veille RSS — lecteur de flux, tendances et briefing" />
+    <!-- PWA : manifeste + comportement d'app installée. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Veille RSS" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!-- SVG pour les navigateurs modernes, ICO en repli (le 16 px y est
          dessine plus gras, les traits fins bavant a cette taille). -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" sizes="48x48" href="/favicon.ico" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <meta name="theme-color" content="#4c8dff" />
+    <!-- Couleur d'accent du thème ; variante sombre pour la barre système. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#4c8dff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f0f0f" />
     <title>Outil de veille RSS</title>
     <style>
       /* Peint le fond thémé dès la première frame pour éviter tout flash blanc. */

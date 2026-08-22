@@ -109,7 +109,8 @@ export function RssArticleRow({
             'h-6 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors hover:bg-[var(--hover-strong,var(--hover))] hover:text-[var(--text-primary)]',
             item.savedAt
               ? 'text-[var(--accent)]'
-              : 'opacity-0 focus:opacity-100 group-hover:opacity-100'
+              : // Sur tactile il n'y a pas de survol : le marque-page reste visible.
+                'opacity-0 focus:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100'
           )}
         >
           {item.savedAt ? (
