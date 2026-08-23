@@ -1,20 +1,46 @@
-# Veille RSS
+<p align="center">
+  <img src="public/pwa-512.png" width="112" height="112" alt="Icône de Veille RSS">
+</p>
 
-Une application de veille de presse personnelle pour centraliser ses sources RSS, lire et classer les articles, repérer les sujets qui montent et produire des briefings assistés par IA.
+<h1 align="center">Veille RSS</h1>
 
-Elle fonctionne directement dans le navigateur, sans compte utilisateur. Les flux, articles, états de lecture et préférences restent enregistrés sur l'appareil. L'application peut aussi être installée comme une application mobile ou de bureau (PWA).
+<p align="center">
+  <strong>Votre veille de presse, au même endroit.</strong><br>
+  Centralisez vos sources, classez vos lectures, repérez les sujets qui montent<br>
+  et produisez des briefings assistés par IA — sans compte utilisateur.
+</p>
 
-[![Version](https://img.shields.io/github/v/release/kilianvivien/VeilleRSS?label=version)](https://github.com/kilianvivien/VeilleRSS/releases)
-[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
-[![Déployer sur Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkilianvivien%2FVeilleRSS)
+<p align="center">
+  <a href="https://github.com/kilianvivien/VeilleRSS/releases"><img src="https://img.shields.io/github/v/release/kilianvivien/VeilleRSS?label=version&style=flat-square" alt="Dernière version"></a>
+  <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
+  <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
+  <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-MIT-2f855a?style=flat-square" alt="Licence MIT"></a>
+</p>
+
+<p align="center">
+  <a href="#aperçu">Aperçu</a> ·
+  <a href="#fonctionnalités">Fonctionnalités</a> ·
+  <a href="#démarrage-rapide">Démarrage</a> ·
+  <a href="#auto-hébergement-avec-docker">Docker</a> ·
+  <a href="#architecture-technique">Technique</a>
+</p>
+
+<p align="center">
+  <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkilianvivien%2FVeilleRSS"><img src="https://vercel.com/button" alt="Déployer sur Vercel"></a>
+</p>
 
 > **Déploiement recommandé : Vercel.** Le dépôt contient également une image Docker autonome pour les personnes qui souhaitent auto-héberger l'application.
+
+---
 
 ## Aperçu
 
 ### Tableau de veille sur ordinateur
 
 ![Tableau de veille RSS sur ordinateur, avec les sources, la liste d'articles et les tendances](public/screenshots/ordinateur@0.5x.png)
+
+<p align="center"><sub>Sources, articles et tendances réunis dans un tableau de veille à trois volets.</sub></p>
 
 ### Une interface pensée pour le mobile
 
@@ -24,15 +50,28 @@ Elle fonctionne directement dans le navigateur, sans compte utilisateur. Les flu
   <img src="public/screenshots/android@0.5x.png" width="270" alt="Cartographie des tendances de Veille RSS sur Android">
 </p>
 
+<p align="center"><sub>Une navigation tactile dédiée sur iPhone et Android, jusqu'à la cartographie des sujets.</sub></p>
+
+---
+
 ## À quoi sert l'application ?
 
 Veille RSS s'adresse aux journalistes, chercheurs, analystes, communicants et à toute personne qui consulte régulièrement plusieurs médias. Elle remplace l'ouverture manuelle de nombreux sites par un espace unique : les nouvelles publications arrivent dans une liste, les contenus importants peuvent être sauvegardés et les tendances sont calculées à partir de l'ensemble des articles reçus.
 
 L'intelligence artificielle est facultative. Sans clé API, la lecture, la recherche, le classement et l'analyse locale des tendances restent pleinement utilisables.
 
+<table>
+  <tr>
+    <td width="25%"><strong>📰 Centraliser</strong><br><sub>RSS, Atom, catalogue de sources et OPML.</sub></td>
+    <td width="25%"><strong>🔎 Trier</strong><br><sub>Recherche, non lus, sauvegardes et sélections.</sub></td>
+    <td width="25%"><strong>📈 Comprendre</strong><br><sub>Tendances, mots-clés et cartographie locale.</sub></td>
+    <td width="25%"><strong>✨ Synthétiser</strong><br><sub>Traduction et briefings IA facultatifs.</sub></td>
+  </tr>
+</table>
+
 ## Fonctionnalités
 
-### Sources et collecte
+### 🛰️ Sources et collecte
 
 - ajout de n'importe quel flux RSS ou Atom à partir de son URL ;
 - détection automatique du flux lorsqu'une page web compatible est collée ;
@@ -42,7 +81,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - actualisation manuelle ou automatique, avec une fréquence réglable par source ;
 - indicateur de santé des flux et déduplication des articles.
 
-### Lecture et organisation
+### 📖 Lecture et organisation
 
 - vues **Tous les articles**, **Non lus** et **Sauvegardés** ;
 - recherche instantanée dans les titres, extraits, auteurs et noms de sources ;
@@ -52,7 +91,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - navigation tactile : tirer pour actualiser, balayer un article pour le classer et passer au précédent ou au suivant dans le lecteur ;
 - export d'une sélection d'articles en Markdown.
 
-### Tendances et suivi
+### 📈 Tendances et suivi
 
 - analyse locale sur une fenêtre de 6 heures, 24 heures, 3 jours ou 7 jours ;
 - comparaison avec la période précédente, volumes, évolutions et mini-graphiques ;
@@ -61,7 +100,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - notifications locales pour les nouveaux résultats lorsque l'application tourne en arrière-plan ;
 - cartographie interactive des sujets et de leurs termes associés.
 
-### Fonctions d'intelligence artificielle
+### ✨ Intelligence artificielle
 
 - traduction d'un article vers la langue choisie ;
 - affinage des tendances afin d'écarter les termes trop génériques ;
@@ -71,7 +110,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 Les appels IA sont envoyés directement depuis le navigateur au fournisseur configuré. Les clés API sont stockées dans le `localStorage` de l'appareil : utilisez de préférence des clés dédiées, limitées en quota, et évitez les appareils partagés.
 
-### Application installable et hors connexion
+### 📲 Application installable et hors connexion
 
 - installation sur ordinateur, Android, iPhone et iPad depuis le navigateur ;
 - interface responsive adaptée aux écrans tactiles ;
@@ -82,6 +121,8 @@ Les appels IA sont envoyés directement depuis le navigateur au fournisseur conf
 - tutoriel de prise en main au premier lancement.
 
 > La récupération de nouveaux flux, la traduction et la génération IA nécessitent une connexion. Les notifications sont locales : sans serveur de notification, elles ne peuvent pas réveiller une application complètement fermée. Sur iPhone, elles nécessitent l'installation de la PWA.
+
+---
 
 ## Démarrage rapide
 
@@ -104,6 +145,8 @@ Le tutoriel intégré guide ensuite l'ajout des premières sources.
 ## Auto-hébergement avec Docker
 
 La release `v0.1.0` fournit un déploiement Docker secondaire et autonome. Le conteneur compile l'interface, sert les fichiers statiques et expose le proxy RSS sur le même domaine.
+
+> **En bref :** aucune base de données, aucun volume et aucune variable secrète ne sont nécessaires. Les données restent dans le navigateur de chaque utilisateur.
 
 ### Avec Docker Compose
 
@@ -131,6 +174,8 @@ docker run -p 3000:3000 -e PORT=3000 veille-rss:0.1.0
 ```
 
 Un point de contrôle est disponible sur `/healthz`. Aucune persistance Docker n'est nécessaire, car les données utilisateur sont stockées dans le navigateur et non dans le conteneur.
+
+---
 
 ## Développement local
 
@@ -162,6 +207,14 @@ L'application est alors accessible sur [http://localhost:5174](http://localhost:
 ## Architecture technique
 
 Veille RSS est une application web monopage en React 19 et TypeScript, construite avec Vite 7. L'état est géré avec Zustand et l'interface utilise Tailwind CSS 4, Radix UI et Lucide.
+
+| Couche | Technologies | Responsabilité |
+| --- | --- | --- |
+| Interface | React 19, TypeScript, Tailwind CSS 4, Radix UI | Lecture, navigation responsive et accessibilité |
+| État local | Zustand, IndexedDB, localStorage | Sources, articles, statuts et préférences |
+| Analyse | Modules TypeScript locaux | Déduplication, tendances, mots-clés et cartographie |
+| IA | Connecteurs chargés à la demande | Traduction, affinage et briefing |
+| Livraison | Vite, Vercel Functions, PWA, Docker | Build, proxy RSS, cache et auto-hébergement |
 
 ```text
 src/
@@ -228,3 +281,5 @@ Merci de ne jamais committer de clé API ou de donnée privée. Les changements 
 ## Licence
 
 Ce projet est distribué sous licence [MIT](LICENSE). © 2026 Kilian Vivien.
+
+<p align="center"><sub>Conçu pour transformer un flux d'actualités en veille exploitable.</sub></p>
