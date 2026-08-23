@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 import { Input } from '@/components/ui/Input'
+import { cn } from '@/lib/utils/cn'
 
 interface SearchBarProps {
   value: string
@@ -8,6 +9,8 @@ interface SearchBarProps {
   placeholder?: string
   debounceMs?: number
   className?: string
+  /** Classes du champ lui-même, pour l'aligner sur un contrôle voisin. */
+  inputClassName?: string
 }
 
 /**
@@ -19,6 +22,7 @@ export function SearchBar({
   placeholder = 'Rechercher...',
   debounceMs = 300,
   className,
+  inputClassName,
 }: SearchBarProps) {
   const [localValue, setLocalValue] = useState(value)
 
@@ -52,7 +56,7 @@ export function SearchBar({
           onChange={(e) => setLocalValue(e.target.value)}
           placeholder={placeholder}
           leftIcon={<Search className="w-4 h-4 text-[var(--text-muted)]" />}
-          className="pr-10"
+          className={cn('pr-10', inputClassName)}
         />
         {localValue && (
           <button

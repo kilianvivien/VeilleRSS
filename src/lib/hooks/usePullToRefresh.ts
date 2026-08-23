@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface UsePullToRefreshOptions {
   onRefresh: () => Promise<void> | void
@@ -26,10 +26,16 @@ export interface PullToRefreshState {
  *
  * Nécessite un écouteur `touchmove` NON passif : supprimer le rebond
  * élastique iOS impose `preventDefault()`, impossible via les gestionnaires
- * synthétiques de React, qui sont passifs. D'où l'attachement natif sur la ref.
+ * synthétiques de React, qui sont passifs. D'où l'attachement natif.
+ *
+ * Prend l'élément, PAS une `RefObject` : le volet Articles se démonte à
+ * chaque changement d'onglet mobile, et une ref ne notifie personne de son
+ * remontage. L'effet ne se rejouait donc jamais, et le geste restait mort
+ * sur tout parcours où la liste n'existait pas encore au premier rendu —
+ * c'est-à-dire le parcours par défaut, qui ouvre sur les Tendances.
  */
 export function usePullToRefresh<T extends HTMLElement>(
-  ref: RefObject<T | null>,
+  element: T | null,
   options: UsePullToRefreshOptions
 ): PullToRefreshState {
   const { enabled = true, threshold = 64, maxPull = 96 } = options
@@ -41,7 +47,6 @@ export function usePullToRefresh<T extends HTMLElement>(
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
-    const element = ref.current
     if (!element || !enabled) return
 
     let tracking = false
@@ -109,7 +114,7 @@ export function usePullToRefresh<T extends HTMLElement>(
       element.removeEventListener('touchend', onTouchEnd)
       element.removeEventListener('touchcancel', onTouchEnd)
     }
-  }, [ref, enabled, threshold, maxPull])
+  }, [element, enabled, threshold, maxPull])
 
   return { pull, armed: pull >= threshold, refreshing }
 }

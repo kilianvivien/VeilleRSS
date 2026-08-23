@@ -159,6 +159,48 @@ describe('RssFeeds mobile composition', () => {
     expect(screen.queryAllByTestId('article-row')).toHaveLength(0)
   })
 
+  /**
+   * Le volet Tendances s'ouvre par défaut : la liste n'est donc PAS montée au
+   * premier rendu, et n'apparaît qu'au retour sur l'onglet Articles. C'est le
+   * parcours réel sur téléphone, et celui qui a laissé le geste sans écouteur.
+   */
+  it('arms pull-to-refresh on a list mounted after the first render', async () => {
+    const refreshAllFeeds = vi.fn(async () => {})
+    useRssStore.setState({
+      refreshAllFeeds,
+      settings: { ...defaultRssSettings, showTrendsByDefault: true },
+    })
+
+    render(<RssFeeds />)
+    expect(screen.queryByTestId('article-scroller')).not.toBeInTheDocument()
+
+    const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
+    fireEvent.click(within(nav).getByText('Articles'))
+
+    const scroller = screen.getByTestId('article-scroller')
+    scroller.scrollTop = 0
+
+    expect(screen.queryByTestId('pull-indicator')).not.toBeInTheDocument()
+
+    // Traction courte : la pastille sort, mais le seuil n'est pas atteint.
+    await act(async () => {
+      fireEvent.touchStart(scroller, { touches: [{ clientY: 0 }] })
+      fireEvent.touchMove(scroller, { touches: [{ clientY: 40 }] })
+    })
+    expect(screen.getByTestId('pull-indicator')).toHaveAttribute('data-armed', 'false')
+
+    // Au-delà du seuil, elle s'arme ; le relâchement déclenche alors le refresh.
+    await act(async () => {
+      fireEvent.touchMove(scroller, { touches: [{ clientY: 200 }] })
+    })
+    expect(screen.getByTestId('pull-indicator')).toHaveAttribute('data-armed', 'true')
+
+    await act(async () => {
+      fireEvent.touchEnd(scroller, { touches: [] })
+    })
+    expect(refreshAllFeeds).toHaveBeenCalled()
+  })
+
   it('reveals the back-to-top button past the scroll threshold and scrolls back up', () => {
     render(<RssFeeds />)
 

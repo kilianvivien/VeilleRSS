@@ -258,7 +258,18 @@ export function RssFeeds() {
   const [briefingError, setBriefingError] = useState<string | null>(null)
   const briefingAbortRef = useRef<AbortController | null>(null)
   const [renderedItemCount, setRenderedItemCount] = useState(ARTICLE_BATCH_SIZE)
-  const articleListRef = useRef<HTMLDivElement>(null)
+  const articleListRef = useRef<HTMLDivElement | null>(null)
+  /**
+   * Le volet Articles se démonte à chaque changement d'onglet mobile et au
+   * passage dans le lecteur. Une `ref` seule ne le signale à personne : les
+   * effets qui doivent s'attacher au conteneur défilant s'accrochent donc à
+   * cet état, réévalué par la callback ref à chaque (dé)montage.
+   */
+  const [articleListNode, setArticleListNode] = useState<HTMLDivElement | null>(null)
+  const setArticleListElement = useCallback((node: HTMLDivElement | null) => {
+    articleListRef.current = node
+    setArticleListNode(node)
+  }, [])
   const listScrollTopRef = useRef(0)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
@@ -761,7 +772,7 @@ export function RssFeeds() {
   }, [isDesktop, openItemId])
 
   useEffect(() => {
-    const root = articleListRef.current
+    const root = articleListNode
     const sentinel = loadMoreSentinelRef.current
     if (!root || !sentinel || !hasMoreItems || typeof IntersectionObserver === 'undefined') {
       return
@@ -775,7 +786,7 @@ export function RssFeeds() {
     )
     observer.observe(sentinel)
     return () => observer.disconnect()
-  }, [hasMoreItems, loadMoreItems])
+  }, [articleListNode, hasMoreItems, loadMoreItems])
 
   const handleExportSelection = async () => {
     const markdown = getSelectedItemsAsMagicReviewText()
@@ -1127,7 +1138,7 @@ export function RssFeeds() {
    * pull-to-refresh natif étant neutralisé globalement. Désarmé au bureau
    * (souris) et hors connexion, où il ne pourrait qu'échouer.
    */
-  const pullToRefresh = usePullToRefresh(articleListRef, {
+  const pullToRefresh = usePullToRefresh(articleListNode, {
     enabled: !isDesktop && isOnline && feeds.length > 0,
     onRefresh: refreshAllFeeds,
   })
@@ -1143,7 +1154,7 @@ export function RssFeeds() {
       setShowBackToTop(false)
       return
     }
-    const scroller = articleListRef.current
+    const scroller = articleListNode
     if (!scroller) return
 
     // React ignore un `setState` de valeur identique : inutile d'amortir
@@ -1153,7 +1164,7 @@ export function RssFeeds() {
     onScroll()
     scroller.addEventListener('scroll', onScroll, { passive: true })
     return () => scroller.removeEventListener('scroll', onScroll)
-  }, [isDesktop, rightPane, openItemId])
+  }, [isDesktop, articleListNode])
 
   const scrollListToTop = useCallback(() => {
     articleListRef.current?.scrollTo({
@@ -1189,14 +1200,18 @@ export function RssFeeds() {
               onChange={setQuery}
               placeholder="Rechercher…"
               className="min-w-0 flex-1"
+              inputClassName="field-row-control"
             />
+            {/* `md` et non `sm` : mêmes rembourrage, corps de texte et rayon
+                que le champ de recherche, donc exactement la même hauteur. */}
             <Select
-              size="sm"
+              size="md"
               value={sortMode}
               onValueChange={(value) => setSortMode(value as RssSortMode)}
               options={SORT_OPTIONS}
               aria-label="Trier les articles"
-              className="w-[112px] shrink-0"
+              className="w-[124px] shrink-0"
+              triggerClassName="field-row-control"
             />
             <Button
               size="sm"
@@ -1235,33 +1250,43 @@ export function RssFeeds() {
         ) : null}
 
         <div
-          ref={articleListRef}
+          ref={setArticleListElement}
           data-testid="article-scroller"
           className={cn(
             'min-h-0 flex-1 overflow-auto overscroll-contain',
-            pullToRefresh.pull > 0 && 'touch-pan-y'
+            // Posé en permanence, pas seulement pendant la traction : le
+            // compositeur doit savoir dès le premier contact qu'il nous laisse
+            // l'horizontale et que le geste vertical peut être intercepté.
+            !isDesktop && 'touch-pan-y'
           )}
         >
           {pullToRefresh.pull > 0 || pullToRefresh.refreshing ? (
             <div
               className="pointer-events-none flex items-center justify-center overflow-hidden"
-              style={{ height: pullToRefresh.refreshing ? 40 : pullToRefresh.pull }}
+              style={{ height: pullToRefresh.refreshing ? 44 : pullToRefresh.pull }}
               aria-hidden="true"
             >
-              <RefreshCw
+              {/* Pastille pleine plutôt qu'une icône nue : sur fond sombre, un
+                  glyphe de 16 px se perd dans la bande dégagée par la traction. */}
+              <span
+                data-testid="pull-indicator"
+                data-armed={pullToRefresh.armed || pullToRefresh.refreshing ? 'true' : 'false'}
                 className={cn(
-                  'h-4 w-4',
+                  'flex h-9 w-9 items-center justify-center rounded-full border shadow-sm transition-colors duration-150',
                   pullToRefresh.armed || pullToRefresh.refreshing
-                    ? 'text-[var(--accent)]'
-                    : 'text-[var(--text-muted)]',
-                  pullToRefresh.refreshing && 'animate-spin'
+                    ? 'border-[color-mix(in_srgb,var(--accent)_45%,transparent)] bg-[var(--accent-muted)] text-[var(--accent)]'
+                    : 'border-[var(--border)] bg-[var(--surface-elevated)] text-[var(--text-muted)]'
                 )}
-                style={
-                  prefersReducedMotion || pullToRefresh.refreshing
-                    ? undefined
-                    : { transform: `rotate(${pullToRefresh.pull * 3}deg)` }
-                }
-              />
+              >
+                <RefreshCw
+                  className={cn('h-4 w-4', pullToRefresh.refreshing && 'animate-spin')}
+                  style={
+                    prefersReducedMotion || pullToRefresh.refreshing
+                      ? undefined
+                      : { transform: `rotate(${pullToRefresh.pull * 3}deg)` }
+                  }
+                />
+              </span>
             </div>
           ) : null}
           {visibleItems.length === 0 ? (

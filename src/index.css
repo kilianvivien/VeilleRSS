@@ -412,6 +412,20 @@ a,
   }
 }
 
+/* Le bump à 16 px ci-dessus ne vise que `input` : un déclencheur de liste
+   Radix est un `button`, il reste à 14 px et se retrouve plus court que le
+   champ qu'il jouxte. Cette classe réaligne les deux contrôles d'une même
+   rangée, sur exactement le même critère de pointeur. */
+.field-row-control {
+  height: 2.375rem;
+}
+
+@media (pointer: coarse) {
+  .field-row-control {
+    height: 2.5rem;
+  }
+}
+
 /* Retour visuel à l'appui.
    `-webkit-tap-highlight-color: transparent` ci-dessus supprime le seul
    retour natif ; seul le composant `Button` compensait, via `active:scale`.

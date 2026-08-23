@@ -20,7 +20,10 @@ interface SelectProps {
   label?: string
   error?: string
   disabled?: boolean
+  /** Classes de l'enveloppe (largeur, marges…). */
   className?: string
+  /** Classes du déclencheur lui-même — hauteur, alignement sur un champ voisin. */
+  triggerClassName?: string
 }
 
 /**
@@ -39,6 +42,7 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
       error,
       disabled,
       className,
+      triggerClassName,
     },
     ref
   ) => {
@@ -72,7 +76,8 @@ export const Select = forwardRef<HTMLButtonElement, SelectProps>(
                   !error,
                 'border-accent-red focus:border-accent-red focus:ring-accent-red/20':
                   error,
-              }
+              },
+              triggerClassName
             )}
           >
             <SelectPrimitive.Value placeholder={placeholder} />
