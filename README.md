@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kilianvivien/VeilleRSS/releases"><img src="https://img.shields.io/github/v/release/kilianvivien/VeilleRSS?label=version&style=flat-square" alt="Dernière version"></a>
+  <a href="https://github.com/kilianvivien/VeilleRSS/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/version-v0.1.0-2563eb?style=flat-square" alt="Version v0.1.0"></a>
   <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
   <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
   <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
