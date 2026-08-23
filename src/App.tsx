@@ -1,12 +1,19 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { RssFeeds } from '@/views/RssFeeds'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useRssRefreshScheduler } from '@/lib/hooks/useRssRefreshScheduler'
 import { PwaPrompts } from '@/components/pwa/PwaPrompts'
 
+/** Chargé à la demande : la plupart des lancements ne l'affichent jamais. */
+const OnboardingTour = lazy(() =>
+  import('@/components/onboarding/OnboardingTour').then((m) => ({ default: m.OnboardingTour }))
+)
+
 export default function App() {
   const theme = useSettingsStore((state) => state.theme)
+  const onboardingCompleted = useSettingsStore((state) => state.onboardingCompleted)
+  const updateSettings = useSettingsStore((state) => state.updateSettings)
   useRssRefreshScheduler()
 
   // Le thème est appliqué via la classe `.dark` (cf. index.css et le script
@@ -49,7 +56,15 @@ export default function App() {
   return (
     <div className="h-full min-h-0 bg-[var(--bg-primary)]">
       <RssFeeds />
-      <PwaPrompts />
+      {/* Le tutoriel garde le premier lancement pour lui : deux sollicitations
+          superposées, c'est une de trop. */}
+      {onboardingCompleted ? (
+        <PwaPrompts />
+      ) : (
+        <Suspense fallback={null}>
+          <OnboardingTour onFinish={() => updateSettings({ onboardingCompleted: true })} />
+        </Suspense>
+      )}
       <Analytics />
     </div>
   )

@@ -10,14 +10,15 @@ import {
   useState,
 } from 'react'
 import {
+  ArrowUp,
   Check,
   CheckCheck,
   Download,
   FileDown,
   Inbox,
-  Info,
   Library,
   Menu,
+  Moon,
   Network,
   Newspaper,
   Plus,
@@ -27,6 +28,7 @@ import {
   Rows3,
   ScrollText,
   Settings,
+  Sun,
   Upload,
   WifiOff,
   X,
@@ -50,6 +52,7 @@ import { cn } from '@/lib/utils/cn'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { exportFeedsToOpml, parseOpml } from '@/lib/rss/opml'
 import { computeTrends, filterItemsByTerm } from '@/lib/rss/trendAnalysis'
+import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
 import { applyStoredTrendSelection } from '@/lib/rss/trendSelection'
 import { foldForMatching } from '@/lib/rss/textAnalysis'
 import type { CatalogFeed } from '@/lib/rss/feedCatalog'
@@ -96,16 +99,6 @@ const lazyPanelFallback = (
   </div>
 )
 
-const REFRESH_OFF = 'off'
-const REFRESH_OPTIONS = [
-  { value: REFRESH_OFF, label: 'Désactivée' },
-  { value: '15', label: '15 minutes' },
-  { value: '30', label: '30 minutes' },
-  { value: '60', label: '1 heure' },
-  { value: '180', label: '3 heures' },
-  { value: '360', label: '6 heures' },
-]
-
 const SORT_OPTIONS = [
   { value: 'recent', label: 'Plus récents' },
   { value: 'oldest', label: 'Plus anciens' },
@@ -114,6 +107,12 @@ const SORT_OPTIONS = [
 
 const UNCATEGORIZED = 'Sources'
 const ARTICLE_BATCH_SIZE = 80
+
+/** Défilement, en px, au-delà duquel le bouton « Haut de page » apparaît. */
+const BACK_TO_TOP_SCROLL_THRESHOLD = 700
+
+/** Durée d'affichage d'un bandeau d'information avant effacement automatique. */
+const BANNER_AUTO_DISMISS_MS = 30_000
 const EMPTY_RSS_ITEMS: RssItem[] = []
 
 /** Volets du panneau de droite ; « map » ouvre la cartographie en plein écran. */
@@ -162,6 +161,8 @@ export function RssFeeds() {
   const setTrendBriefing = useRssStore((state) => state.setTrendBriefing)
   const clearTrendBriefing = useRssStore((state) => state.clearTrendBriefing)
   const aiSettings = useSettingsStore()
+  const updateAiSettings = useSettingsStore((state) => state.updateSettings)
+  const isDarkTheme = aiSettings.theme === 'dark'
   const translationProvider = getEffectiveProvider(
     aiSettings.translationAiProvider,
     aiSettings.aiProvider
@@ -179,8 +180,38 @@ export function RssFeeds() {
   const [sortMode, setSortMode] = useState<RssSortMode>('recent')
   const [activeTerm, setActiveTerm] = useState<{ key: string; label: string } | null>(null)
   const [openItemId, setOpenItemId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setErrorState] = useState<string | null>(null)
+  const [notice, setNoticeState] = useState<string | null>(null)
+  /**
+   * Relancé à chaque message affiché. Sans lui, réexporter deux fois d'affilée
+   * réafficherait le même texte sans relancer le compte à rebours : le bandeau
+   * disparaîtrait aussitôt, 30 s après le premier passage.
+   */
+  const [bannerNonce, setBannerNonce] = useState(0)
+
+  const setError = useCallback((message: string | null) => {
+    setErrorState(message)
+    if (message) setBannerNonce((current) => current + 1)
+  }, [])
+
+  const setNotice = useCallback((message: string | null) => {
+    setNoticeState(message)
+    if (message) setBannerNonce((current) => current + 1)
+  }, [])
+
+  /**
+   * Les bandeaux s'effacent seuls : ils accusent réception d'une action déjà
+   * terminée et n'ont pas à occuper la barre jusqu'au prochain clic. La croix
+   * reste là pour les congédier plus tôt.
+   */
+  useEffect(() => {
+    if (!error && !notice) return
+    const timeout = window.setTimeout(() => {
+      setErrorState(null)
+      setNoticeState(null)
+    }, BANNER_AUTO_DISMISS_MS)
+    return () => window.clearTimeout(timeout)
+  }, [error, notice, bannerNonce])
   const [isAddingFeed, setIsAddingFeed] = useState(false)
   const [showAddFeedModal, setShowAddFeedModal] = useState(false)
   const [addFeedError, setAddFeedError] = useState<string | null>(null)
@@ -189,8 +220,8 @@ export function RssFeeds() {
   const [editUrl, setEditUrl] = useState('')
   const [editCategory, setEditCategory] = useState('')
   const [editRefreshInterval, setEditRefreshInterval] = useState<number | null>(null)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [showCreditsModal, setShowCreditsModal] = useState(false)
   const [showCatalog, setShowCatalog] = useState(false)
   /**
    * Les modales paresseuses restent montées une fois ouvertes : Radix a besoin
@@ -1101,8 +1132,41 @@ export function RssFeeds() {
     onRefresh: refreshAllFeeds,
   })
 
+  /**
+   * Bouton « Haut de page » : la liste mobile se déroule sur des centaines
+   * d'articles, et le geste de remontée au pouce y est long. Réattaché à
+   * chaque (re)montage du volet — le conteneur défilant disparaît du DOM dès
+   * qu'un autre onglet ou le lecteur prend la place.
+   */
+  useEffect(() => {
+    if (isDesktop) {
+      setShowBackToTop(false)
+      return
+    }
+    const scroller = articleListRef.current
+    if (!scroller) return
+
+    // React ignore un `setState` de valeur identique : inutile d'amortir
+    // l'écouteur, seuls les passages de seuil provoquent un rendu.
+    const onScroll = () => setShowBackToTop(scroller.scrollTop > BACK_TO_TOP_SCROLL_THRESHOLD)
+
+    onScroll()
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [isDesktop, rightPane, openItemId])
+
+  const scrollListToTop = useCallback(() => {
+    articleListRef.current?.scrollTo({
+      top: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  }, [prefersReducedMotion])
+
+  /** La barre d'actions occupe le bas du volet : le bouton flottant la dégage. */
+  const showListActionBar = isDesktop || selectedCount > 0
+
   const articleListSection = (
-    <section className="flex h-full min-h-0 flex-col" aria-label="Articles">
+    <section className="relative flex h-full min-h-0 flex-col" aria-label="Articles">
         <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
           <div className="flex min-w-0 items-center gap-2">
             <h2
@@ -1172,6 +1236,7 @@ export function RssFeeds() {
 
         <div
           ref={articleListRef}
+          data-testid="article-scroller"
           className={cn(
             'min-h-0 flex-1 overflow-auto overscroll-contain',
             pullToRefresh.pull > 0 && 'touch-pan-y'
@@ -1256,7 +1321,7 @@ export function RssFeeds() {
 
         {/* Sur mobile, cette barre est contextuelle : elle n'apparaît qu'après
             la sélection d'au moins un article. Le bureau la garde toujours. */}
-        {isDesktop || selectedCount > 0 ? (
+        {showListActionBar ? (
           <div className="flex flex-shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
             <Button
               variant="ghost"
@@ -1295,6 +1360,26 @@ export function RssFeeds() {
               </span>
             </Button>
           </div>
+        ) : null}
+
+        {/* Haut de page — mobile seulement : au bureau, la molette et la
+            barre de défilement rendent le raccourci superflu. */}
+        {!isDesktop && showBackToTop ? (
+          <button
+            type="button"
+            onClick={scrollListToTop}
+            aria-label="Revenir en haut de la liste"
+            className={cn(
+              'absolute right-4 z-10 flex h-11 w-11 items-center justify-center rounded-full',
+              'glass-surface-strong border border-[var(--glass-border)] text-[var(--text-primary)]',
+              'shadow-[0_10px_28px_rgba(15,23,42,0.24)] transition-transform duration-150 active:scale-95',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]',
+              showListActionBar ? 'bottom-16' : 'bottom-4',
+              !prefersReducedMotion && 'animate-lift-in'
+            )}
+          >
+            <ArrowUp className="h-5 w-5" aria-hidden="true" />
+          </button>
         ) : null}
       </section>
   )
@@ -1433,17 +1518,32 @@ export function RssFeeds() {
     <div className="relative flex h-full flex-col overflow-hidden bg-[var(--bg-primary)]">
       {isDesktop ? (
         /* En-tête flottant, transparent au repos comme les barres d'action des autres vues. */
-        <header className="relative z-20 flex flex-shrink-0 flex-wrap items-start gap-x-4 gap-y-4 bg-transparent px-8 pt-[calc(env(safe-area-inset-top)+2rem)] pb-6">
-          <div className="min-w-0">
-            <h1 className="text-4xl font-bold text-[var(--text-primary)]">Outil de veille RSS</h1>
-            <p className="mt-2 text-[var(--text-secondary)]">
-              {feeds.length === 0
-                ? 'Aucune source suivie'
-                : `Veille de ${feeds.length} source${feeds.length > 1 ? 's' : ''} · ${totals.unread} article${totals.unread > 1 ? 's' : ''} non lu${totals.unread > 1 ? 's' : ''}`}
-            </p>
+        <header className="relative z-20 flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b border-[var(--border)] bg-transparent px-8 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3">
+          {/* Titre calibré sur la hauteur de la barre d'actions : chaque
+              pixel repris ici va aux volets d'articles. */}
+          <div className="flex min-w-0 items-center gap-2.5">
+            {/* 44 px : exactement la hauteur du titre et de sa légende empilés. */}
+            <img
+              src="/favicon-64.png"
+              alt=""
+              width={44}
+              height={44}
+              decoding="async"
+              className="h-11 w-11 shrink-0 rounded-[12px] shadow-[0_5px_14px_rgba(47,111,228,0.28)]"
+            />
+            <div className="min-w-0 leading-tight">
+              <h1 className="truncate text-xl font-bold text-[var(--text-primary)]">
+                Outil de veille RSS
+              </h1>
+              <p className="truncate text-xs text-[var(--text-secondary)]">
+                {feeds.length === 0
+                  ? 'Aucune source suivie'
+                  : `Veille de ${feeds.length} source${feeds.length > 1 ? 's' : ''} · ${totals.unread} article${totals.unread > 1 ? 's' : ''} non lu${totals.unread > 1 ? 's' : ''}`}
+              </p>
+            </div>
           </div>
 
-          <div className="ml-auto flex flex-wrap items-center gap-1.5 pt-1">
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
             <Button
               size="sm"
               variant="ghost"
@@ -1459,15 +1559,21 @@ export function RssFeeds() {
               <Library className="h-4 w-4" aria-hidden="true" />
               Sources
             </Button>
+            {/* Bascule de thème : l'icône annonce la destination, pas l'état. */}
             <Button
               size="sm"
               variant="ghost"
               className="h-9 w-9 p-0"
-              title="À propos"
-              aria-label="À propos de l’application"
-              onClick={() => setShowCreditsModal(true)}
+              title={isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              aria-label={isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'}
+              aria-pressed={isDarkTheme}
+              onClick={() => updateAiSettings({ theme: isDarkTheme ? 'light' : 'dark' })}
             >
-              <Info className="h-4 w-4" aria-hidden="true" />
+              {isDarkTheme ? (
+                <Sun className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Moon className="h-4 w-4" aria-hidden="true" />
+              )}
             </Button>
             <Button
               size="sm"
@@ -1525,16 +1631,6 @@ export function RssFeeds() {
             onClick={() => setShowCatalog(true)}
           >
             <Library className="h-5 w-5" aria-hidden="true" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
-            title="À propos"
-            aria-label="À propos de l’application"
-            onClick={() => setShowCreditsModal(true)}
-          >
-            <Info className="h-5 w-5" aria-hidden="true" />
           </Button>
           <Button
             size="sm"
@@ -1736,7 +1832,7 @@ export function RssFeeds() {
             onValueChange={(value) =>
               setEditRefreshInterval(value === REFRESH_OFF ? null : Number(value))
             }
-            options={REFRESH_OPTIONS}
+            options={REFRESH_INTERVAL_OPTIONS}
           />
         </div>
       </Modal>
@@ -1746,25 +1842,6 @@ export function RssFeeds() {
           <SettingsModal open={showSettingsModal} onOpenChange={setShowSettingsModal} />
         </Suspense>
       ) : null}
-
-      <Modal
-        open={showCreditsModal}
-        onOpenChange={setShowCreditsModal}
-        title="À propos"
-        description="Outil de veille RSS"
-        size="sm"
-      >
-        <div className="space-y-3 text-sm leading-6 text-[var(--text-secondary)]">
-          <p>
-            Ce logiciel est distribué sous licence MIT et fourni « en l’état », sans garantie
-            d’aucune sorte.
-          </p>
-          <p>
-            Conception et développement :{' '}
-            <strong className="font-semibold text-[var(--text-primary)]">Kilian Vivien</strong>.
-          </p>
-        </div>
-      </Modal>
 
       {/* Cartographie : recouvre la vue principale avec une transition douce. */}
       {isTrendMapMounted ? (

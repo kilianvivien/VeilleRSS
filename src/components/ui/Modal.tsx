@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 
 interface ModalProps {
   open: boolean
@@ -35,6 +36,25 @@ export function Modal({
   hideCloseButton = false,
   disableDismiss = false,
 }: ModalProps) {
+  /** Même seuil que les classes `sm:` ci-dessous : en dessous, c'est une feuille. */
+  const isSheet = !useMediaQuery('(min-width: 640px)')
+
+  /**
+   * Feuille mobile : la bande laissée libre au-dessus ferme la modale.
+   *
+   * Radix impose `pointer-events: auto` en ligne sur le conteneur (pour
+   * contrer le `body { pointer-events: none }` du mode modal), ce qui écrase
+   * notre classe et fait de cette bande une zone *intérieure* à la boîte de
+   * dialogue : sans ce gestionnaire, la tapoter ne produit rien.
+   */
+  const handleSheetBackdropClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!isSheet || disableDismiss) return
+    // Un clic parti de la carte remonte ici par bouillonnement : on ne ferme
+    // que si la cible est bien le conteneur lui-même.
+    if (event.target !== event.currentTarget) return
+    onOpenChange(false)
+  }
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -62,6 +82,7 @@ export function Modal({
               event.preventDefault()
             }
           }}
+          onClick={handleSheetBackdropClick}
           className={cn(
             'fixed inset-0 z-50 grid justify-items-center pointer-events-none modal-content-root',
             'items-end sm:items-center',
@@ -89,6 +110,14 @@ export function Modal({
               className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(120%_140%_at_0%_0%,rgba(255,255,255,0.16),transparent_56%)]"
             />
 
+            {/* Poignée : signale que la feuille se referme d'une tape au-dessus. */}
+            <div
+              aria-hidden="true"
+              className="relative z-10 flex justify-center pt-2 sm:hidden"
+            >
+              <span className="h-1 w-9 rounded-full bg-[var(--text-muted)] opacity-40" />
+            </div>
+
             {/* Hidden description for accessibility - required by Radix UI */}
             {!title && (
               <Dialog.Title className="sr-only">
@@ -101,7 +130,7 @@ export function Modal({
 
             {/* Header */}
             {(title || description) && (
-              <div className="relative z-10 px-6 pt-6 pb-4 pr-14">
+              <div className="relative z-10 px-6 pt-3 pr-14 pb-4 sm:pt-6">
                 {title && (
                   <Dialog.Title className="text-[17px] font-semibold text-[var(--text-primary)] leading-snug">
                     {title}
@@ -136,6 +165,9 @@ export function Modal({
                 className={cn(
                   'relative z-10 px-6 pb-4',
                   !(title || description) && 'pt-6',
+                  /* Sans pied de page, la marge basse qu'il portait — et qui
+                     dégageait la barre de geste iOS — revient au corps. */
+                  !footer && 'pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6',
                   bodyClassName
                 )}
               >

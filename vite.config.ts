@@ -188,8 +188,19 @@ function serviceWorkerPlugin(): Plugin {
   }
 }
 
+/**
+ * Version affichée dans « À propos ». Lue depuis package.json pour qu'un
+ * `npm version` suffise : aucune constante à re-synchroniser à la main.
+ */
+const APP_VERSION = JSON.parse(
+  readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')
+).version as string
+
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+  },
   plugins: [react(), rssDevProxyPlugin(), serviceWorkerPlugin()],
   resolve: {
     alias: {

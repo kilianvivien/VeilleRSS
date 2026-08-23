@@ -17,6 +17,7 @@ export const defaultSettings = {
   headerLogo: null,
   footerDisclaimer: 'Cet document est confidentiel',
   theme: 'light' as const,
+  onboardingCompleted: false, // Le tutoriel s'ouvre au premier lancement
   nativeNotificationsEnabled: true,
   notifyAiSuccess: true,
   notifyErrors: true,

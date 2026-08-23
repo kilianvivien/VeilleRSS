@@ -14,6 +14,7 @@
   /* Animations utilitaires de la composition mobile */
   --animate-fade-in: fade-in 200ms ease-out;
   --animate-drawer-in: drawer-in 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-lift-in: lift-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes fade-in {
@@ -22,6 +23,60 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+/* Boutons flottants (« Haut de page ») : montée discrète à l'apparition. */
+@keyframes lift-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Tutoriel — halo de l'icône : les anneaux s'écartent comme les ondes du
+   logo, puis s'effacent. Trois exemplaires décalés donnent une onde continue. */
+@keyframes tour-ripple {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: scale(1.28);
+    opacity: 0;
+  }
+}
+
+@keyframes tour-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+.tour-ripple {
+  animation: tour-ripple 3.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.tour-breathe {
+  animation: tour-breathe 3.4s ease-in-out infinite;
+}
+
+/* Décoratif seulement : on le coupe net dès que le système le demande. */
+@media (prefers-reduced-motion: reduce) {
+  .tour-ripple,
+  .tour-breathe {
+    animation: none;
   }
 }
 
@@ -201,7 +256,12 @@
 
 .modal-glass-shell {
   isolation: isolate;
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
+  /* NE PAS réintroduire `-webkit-mask-image: -webkit-radial-gradient(...)`.
+     Ce vieux correctif de découpe Safari applique un masque RECTANGULAIRE :
+     il rogne l'ombre portée au ras de la boîte au lieu de la laisser se
+     diffuser, ce qui repeint les angles arrondis en carrés gris nets.
+     `overflow: hidden` suffit à découper les enfants sur les navigateurs
+     visés. */
 }
 
 /* Dark mode: give modals the same frosted density as the filter panel */

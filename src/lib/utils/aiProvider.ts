@@ -94,7 +94,7 @@ export function getModelLabel(provider: AiProvider, settings: Settings): string 
       return model
     }
     case 'mistral': {
-      const model = settings.mistralModel || 'mistral-small-latest'
+      const model = settings.mistralModel || 'mistral-medium-latest'
       if (model === 'mistral-small-latest') return 'Small'
       if (model === 'mistral-medium-latest') return 'Medium'
       if (model === 'mistral-large-latest') return 'Large'

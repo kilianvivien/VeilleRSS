@@ -36,7 +36,7 @@ function extractMistralContent(data: unknown): string {
  * @param apiKey - Clé API Mistral
  * @param customPrompt - Instruction système optionnelle fournie par l'utilisateur
  * @param maxOutputTokens - Max output tokens (default: 16384)
- * @param mistralModel - Mistral model to use (default: 'mistral-small-latest')
+ * @param mistralModel - Mistral model to use (default: 'mistral-medium-latest')
  * @returns Le résumé généré en HTML
  */
 export async function generateMistralSummary(
@@ -44,7 +44,7 @@ export async function generateMistralSummary(
   apiKey: string,
   customPrompt?: string,
   maxOutputTokens: number = 16384,
-  mistralModel: string = 'mistral-small-latest',
+  mistralModel: string = 'mistral-medium-latest',
   requestOptions: RequestControlOptions = {},
   generationOptions?: { temperature?: number }
 ): Promise<string> {
@@ -137,7 +137,7 @@ export async function generateMistralSummary(
  * @param apiKey - Clé API Mistral
  * @param systemPrompt - Le prompt système pour guider la génération
  * @param maxOutputTokens - Max output tokens (default: 16384)
- * @param mistralModel - Mistral model to use (default: 'mistral-small-latest')
+ * @param mistralModel - Mistral model to use (default: 'mistral-medium-latest')
  * @returns Le JSON généré sous forme de string
  */
 export async function generateMistralJSON(
@@ -145,7 +145,7 @@ export async function generateMistralJSON(
   apiKey: string,
   systemPrompt: string,
   maxOutputTokens: number = 16384,
-  mistralModel: string = 'mistral-small-latest',
+  mistralModel: string = 'mistral-medium-latest',
   requestOptions: RequestControlOptions = {},
   generationOptions?: { temperature?: number }
 ): Promise<string> {

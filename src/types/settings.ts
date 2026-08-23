@@ -101,6 +101,8 @@ export interface Settings {
   headerLogo: string | null // Base64 encoded image or URL
   footerDisclaimer: string
   theme: 'light' | 'dark' | 'system'
+  /** Le tutoriel de démarrage a été vu (terminé ou passé). Rejouable depuis les paramètres. */
+  onboardingCompleted?: boolean
   nativeNotificationsEnabled: boolean
   notifyAiSuccess: boolean
   notifyErrors: boolean

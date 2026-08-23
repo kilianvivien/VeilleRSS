@@ -17,6 +17,7 @@ import { fetchRssFeedXml } from '@/lib/rss/rssFetchService'
 import { isDatedRssItem, parseRssFeed } from '@/lib/rss/rssParser'
 import { mergeRssItems } from '@/lib/rss/rssDeduplication'
 import { formatRssItemsForMagicReview } from '@/lib/rss/rssImportFormatter'
+import { RECOMMENDED_REFRESH_MINUTES } from '@/lib/rss/refreshIntervals'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { isOnline } from '@/lib/hooks/useOnlineStatus'
 import type { OpmlFeedEntry } from '@/lib/rss/opml'
@@ -117,7 +118,7 @@ function sortItems(items: RssItem[]): RssItem[] {
 }
 
 export const defaultRssSettings: RssSettings = {
-  defaultRefreshIntervalMinutes: 60,
+  defaultRefreshIntervalMinutes: RECOMMENDED_REFRESH_MINUTES,
   itemsPerFeedLimit: 200,
   refreshImportedFeeds: true,
   translationTargetLanguage: 'fr',

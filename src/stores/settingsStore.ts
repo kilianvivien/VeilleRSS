@@ -34,7 +34,20 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'veille-web-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 1,
+      version: 2,
+      /**
+       * v2 : le modèle Mistral par défaut passe de `small` à `medium`.
+       * Les réglages persistés contiennent toujours une valeur explicite —
+       * `defaultSettings` l'y écrit dès la première visite. On ne remplace
+       * donc que l'ancien défaut, jamais un modèle réellement choisi.
+       */
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<Settings> | undefined
+        if (state && version < 2 && state.mistralModel === 'mistral-small-latest') {
+          return { ...state, mistralModel: defaultSettings.mistralModel } as SettingsState
+        }
+        return state as SettingsState
+      },
     }
   )
 )

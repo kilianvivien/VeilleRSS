@@ -63,17 +63,17 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
     settingsApiKeyField: 'mistralApiKey',
     settingsModelField: 'mistralModel',
     translationModelField: 'translationMistralModel',
-    defaultModel: 'mistral-small-latest',
+    defaultModel: 'mistral-medium-latest',
     recommendedModels: [
-      {
-        id: 'mistral-small-latest',
-        label: 'Mistral Small',
-        note: 'Rapide, adapté aux tâches simples.',
-      },
       {
         id: 'mistral-medium-latest',
         label: 'Mistral Medium',
         note: 'Équilibre performance et rapidité.',
+      },
+      {
+        id: 'mistral-small-latest',
+        label: 'Mistral Small',
+        note: 'Rapide, adapté aux tâches simples.',
       },
       {
         id: 'mistral-large-latest',
@@ -255,6 +255,16 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
     fallbackPriority: null,
   },
 }
+
+/**
+ * Fournisseurs proposés dans les paramètres sur mobile.
+ *
+ * Le panneau mobile n'a pas la place — ni l'usage — des huit fournisseurs :
+ * on garde ceux qui marchent depuis un téléphone (clé API, endpoint public).
+ * Vertex, CLIProxyAPI, NVIDIA, Albert et l'IA locale restent accessibles sur
+ * bureau, et une clé déjà saisie là-bas continue de fonctionner sur mobile.
+ */
+export const MOBILE_VISIBLE_PROVIDERS: readonly AiProvider[] = ['gemini', 'mistral', 'openrouter']
 
 // ─── Remote catalog injection (set by modelCatalog.ts, never imported here) ──
 

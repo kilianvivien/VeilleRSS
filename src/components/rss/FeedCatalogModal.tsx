@@ -60,7 +60,6 @@ export function FeedCatalogModal({
       title="Ajouter des sources"
       description={`${CATALOG_FEED_COUNT} sources vérifiées, regroupées en bouquets prêts à l’emploi.`}
       size="xl"
-      footer={<Button onClick={() => onOpenChange(false)}>Fermer</Button>}
     >
       <div className="min-w-0 space-y-4 overflow-x-hidden">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

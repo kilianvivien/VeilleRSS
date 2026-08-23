@@ -1,16 +1,19 @@
-import { useState } from 'react'
-import { ChevronDown, Eye, EyeOff, Sparkles } from 'lucide-react'
-import { Button, Input, Modal, Select } from '@/components/ui'
+import { useMemo, useState } from 'react'
+import { ChevronDown, Eye, EyeOff, GraduationCap, Moon, Sparkles } from 'lucide-react'
+import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { AiProvider, Settings } from '@/types/settings'
-import { PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
+import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
 import { TREND_WINDOW_OPTIONS } from '@/lib/rss/trendAnalysis'
+import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
 import { SUPPORTED_LANGUAGES } from '@/lib/ai/languages'
 import { cn } from '@/lib/utils/cn'
+import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { InstallAppSection } from '@/components/pwa/InstallAppSection'
+import { AboutContent } from '@/components/about/AboutContent'
 
 /**
  * Paramètres de l'outil de veille — un seul panneau pour les flux RSS et
@@ -18,16 +21,6 @@ import { InstallAppSection } from '@/components/pwa/InstallAppSection'
  * restent dans le localStorage du navigateur et chaque fournisseur est
  * repliable pour garder le panneau court.
  */
-
-const REFRESH_OFF = 'off'
-const REFRESH_OPTIONS = [
-  { value: REFRESH_OFF, label: 'Désactivée' },
-  { value: '15', label: '15 minutes' },
-  { value: '30', label: '30 minutes' },
-  { value: '60', label: '1 heure' },
-  { value: '180', label: '3 heures' },
-  { value: '360', label: '6 heures' },
-]
 
 const ITEMS_LIMIT_OPTIONS = [
   { value: '50', label: '50 articles' },
@@ -108,11 +101,50 @@ export function SettingsModal({
   const aiSettings = useSettingsStore()
   const updateAiSettings = useSettingsStore((state) => state.updateSettings)
 
+  /** Même seuil que la vue de veille : en dessous, on est en composition mobile. */
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+
   const [showKeys, setShowKeys] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
   const [notificationNotice, setNotificationNotice] = useState<string | null>(null)
 
   const hasWatchedKeywords = (rssSettings.watchedKeywords?.length ?? 0) > 0
+
+  /**
+   * Sur mobile on n'expose que les fournisseurs utilisables depuis un
+   * téléphone (cf. `MOBILE_VISIBLE_PROVIDERS`) : les autres restent
+   * configurés et actifs, simplement masqués de ce panneau.
+   */
+  const visibleKeyProviders = useMemo(
+    () =>
+      isDesktop
+        ? KEY_PROVIDERS
+        : KEY_PROVIDERS.filter((descriptor) => MOBILE_VISIBLE_PROVIDERS.includes(descriptor.id)),
+    [isDesktop]
+  )
+
+  const selectableProviders = useMemo(
+    () =>
+      isDesktop
+        ? SELECTABLE_PROVIDERS
+        : SELECTABLE_PROVIDERS.filter((option) =>
+            MOBILE_VISIBLE_PROVIDERS.includes(option.value as AiProvider)
+          ),
+    [isDesktop]
+  )
+
+  /**
+   * Options d'un slot d'affectation. Un fournisseur choisi sur bureau mais
+   * masqué ici reste listé : sans lui, Radix afficherait un menu vide et le
+   * moindre changement effacerait silencieusement le réglage.
+   */
+  const optionsForSlot = (current: AiProvider | undefined) => {
+    const options = [{ value: '', label: 'Par défaut' }, ...selectableProviders]
+    if (current && !options.some((option) => option.value === current)) {
+      options.push({ value: current, label: PROVIDER_REGISTRY[current].label })
+    }
+    return options
+  }
 
   /**
    * Active les alertes de mots-clés.
@@ -168,9 +200,33 @@ export function SettingsModal({
       description="Réglages des flux RSS et des fournisseurs IA. Les données restent dans ce navigateur."
       size="lg"
       bodyClassName="sm:max-h-[calc(100dvh-12rem)] sm:overflow-y-auto sm:overscroll-contain"
-      footer={<Button onClick={() => onOpenChange(false)}>Fermer</Button>}
     >
       <div className="space-y-6">
+        {/* ── Apparence ────────────────────────────────────────────────
+            Mobile uniquement : sur bureau, la bascule vit dans la barre
+            d'outils, à portée immédiate. */}
+        {!isDesktop ? (
+          <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <Moon
+                className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]"
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Mode sombre</p>
+                <p className="text-[11px] leading-4 text-[var(--text-muted)]">
+                  Appliqué immédiatement, mémorisé pour les prochaines visites.
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={aiSettings.theme === 'dark'}
+              onChange={(checked) => updateAiSettings({ theme: checked ? 'dark' : 'light' })}
+              label="Mode sombre"
+            />
+          </section>
+        ) : null}
+
         {/* ── Flux RSS ─────────────────────────────────────────────── */}
         <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">FLUX RSS</h3>
@@ -189,7 +245,7 @@ export function SettingsModal({
                     defaultRefreshIntervalMinutes: value === REFRESH_OFF ? null : Number(value),
                   })
                 }
-                options={REFRESH_OPTIONS}
+                options={REFRESH_INTERVAL_OPTIONS}
               />
               <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">
                 Pour les nouveaux flux, le catalogue et les imports OPML.
@@ -307,7 +363,7 @@ export function SettingsModal({
                 onValueChange={(value) =>
                   updateAiSettings({ [slot.field]: value || undefined } as Partial<Settings>)
                 }
-                options={[{ value: '', label: 'Par défaut' }, ...SELECTABLE_PROVIDERS]}
+                options={optionsForSlot(aiSettings[slot.field])}
               />
             ))}
           </div>
@@ -334,7 +390,7 @@ export function SettingsModal({
           </div>
 
           <div className="space-y-1.5">
-            {KEY_PROVIDERS.map((descriptor) => {
+            {visibleKeyProviders.map((descriptor) => {
               const keyField = descriptor.settingsApiKeyField as keyof Settings
               const modelField = descriptor.settingsModelField as keyof Settings | undefined
               const currentKey = (aiSettings[keyField] as string | undefined) ?? ''
@@ -410,32 +466,36 @@ export function SettingsModal({
               )
             })}
 
-            {/* IA locale : endpoint + délai d'attente, pas de clé */}
-            <Collapsible
-              id="local"
-              title={PROVIDER_REGISTRY.local.label}
-              configured={Boolean(aiSettings.localAiEndpoint?.trim())}
-              open={openSections.has('local')}
-              onToggle={() => toggleSection('local')}
-            >
-              <Input
-                label="Endpoint (Ollama, LM Studio…)"
-                value={aiSettings.localAiEndpoint ?? ''}
-                onChange={(event) => updateAiSettings({ localAiEndpoint: event.target.value })}
-                placeholder="http://localhost:11434"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <Select
-                size="sm"
-                label="Délai d’attente"
-                value={String(normalizeLocalAiTimeoutSeconds(aiSettings.localAiTimeoutSeconds))}
-                onValueChange={(value) =>
-                  updateAiSettings({ localAiTimeoutSeconds: Number(value) })
-                }
-                options={LOCAL_TIMEOUT_OPTIONS}
-              />
-            </Collapsible>
+            {/* IA locale : endpoint + délai d'attente, pas de clé.
+                Masquée sur mobile — un téléphone n'atteint pas un serveur
+                qui tourne sur la machine de bureau. */}
+            {isDesktop ? (
+              <Collapsible
+                id="local"
+                title={PROVIDER_REGISTRY.local.label}
+                configured={Boolean(aiSettings.localAiEndpoint?.trim())}
+                open={openSections.has('local')}
+                onToggle={() => toggleSection('local')}
+              >
+                <Input
+                  label="Endpoint (Ollama, LM Studio…)"
+                  value={aiSettings.localAiEndpoint ?? ''}
+                  onChange={(event) => updateAiSettings({ localAiEndpoint: event.target.value })}
+                  placeholder="http://localhost:11434"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <Select
+                  size="sm"
+                  label="Délai d’attente"
+                  value={String(normalizeLocalAiTimeoutSeconds(aiSettings.localAiTimeoutSeconds))}
+                  onValueChange={(value) =>
+                    updateAiSettings({ localAiTimeoutSeconds: Number(value) })
+                  }
+                  options={LOCAL_TIMEOUT_OPTIONS}
+                />
+              </Collapsible>
+            ) : null}
           </div>
 
           {/* Rappel de l'affectation effective */}
@@ -451,23 +511,40 @@ export function SettingsModal({
           </p>
         </section>
 
-        {/* ── Apparence ────────────────────────────────────────────── */}
-        <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] px-3 py-2">
-          <div>
-            <p className="text-sm font-medium text-[var(--text-primary)]">Thème</p>
-            <p className="text-[11px] leading-4 text-[var(--text-muted)]">
-              Appliqué immédiatement, mémorisé pour les prochaines visites.
-            </p>
+        {/* ── Tutoriel ─────────────────────────────────────────────── */}
+        <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
+          <div className="flex min-w-0 items-start gap-2.5">
+            <GraduationCap
+              className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]"
+              aria-hidden="true"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-[var(--text-primary)]">Tutoriel de démarrage</p>
+              <p className="text-[11px] leading-4 text-[var(--text-muted)]">
+                Revoir la présentation des fonctions clés.
+              </p>
+            </div>
           </div>
-          <Select
+          <Button
             size="sm"
-            value={aiSettings.theme === 'dark' ? 'dark' : 'light'}
-            onValueChange={(value) => updateAiSettings({ theme: value as 'light' | 'dark' })}
-            options={[
-              { value: 'light', label: 'Clair' },
-              { value: 'dark', label: 'Sombre' },
-            ]}
-          />
+            variant="secondary"
+            onClick={() => {
+              // Fermer d'abord : le tutoriel s'affiche par-dessus l'application,
+              // pas par-dessus le panneau qui vient de le lancer.
+              onOpenChange(false)
+              updateAiSettings({ onboardingCompleted: false })
+            }}
+          >
+            Revoir
+          </Button>
+        </section>
+
+        {/* ── À propos ─────────────────────────────────────────────────
+            Plus d'icône « i » dans les barres d'outils : les mentions
+            atterrissent ici, sur mobile comme sur bureau. */}
+        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+          <h3 className="rss-section-label text-[var(--text-secondary)]">À PROPOS</h3>
+          <AboutContent />
         </section>
       </div>
     </Modal>

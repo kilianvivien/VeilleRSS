@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RssFeed, RssItem } from '@/types/rss'
 import { defaultRssSettings, useRssStore } from '@/stores/rssStore'
@@ -12,6 +12,11 @@ vi.mock('@/lib/hooks/useMediaQuery', () => ({
     query.includes('min-width') ? isDesktopViewport : false,
 }))
 
+vi.mock('@/lib/platform/fileService', () => ({
+  saveFile: vi.fn(async () => {}),
+  openFileDialog: vi.fn(async () => null),
+}))
+
 vi.mock('@/components/rss', () => ({
   FeedRail: () => <div />,
   RssReadingPane: () => <div />,
@@ -21,6 +26,8 @@ vi.mock('@/components/rss', () => ({
     <li data-testid="article-row">{item.title}</li>
   ),
 }))
+
+const BACK_TO_TOP_LABEL = 'Revenir en haut de la liste'
 
 const now = Date.now()
 const feed: RssFeed = {
@@ -150,5 +157,87 @@ describe('RssFeeds mobile composition', () => {
 
     // Le volet unique a changé : la liste n'est plus montée.
     expect(screen.queryAllByTestId('article-row')).toHaveLength(0)
+  })
+
+  it('reveals the back-to-top button past the scroll threshold and scrolls back up', () => {
+    render(<RssFeeds />)
+
+    const scroller = screen.getByTestId('article-scroller')
+    // jsdom ne fournit pas `scrollTo` : on l'espionne pour vérifier l'appel.
+    const scrollTo = vi.fn()
+    scroller.scrollTo = scrollTo as unknown as Element['scrollTo']
+
+    expect(screen.queryByRole('button', { name: BACK_TO_TOP_LABEL })).not.toBeInTheDocument()
+
+    // Sous le seuil : toujours rien.
+    scroller.scrollTop = 200
+    fireEvent.scroll(scroller)
+    expect(screen.queryByRole('button', { name: BACK_TO_TOP_LABEL })).not.toBeInTheDocument()
+
+    scroller.scrollTop = 1200
+    fireEvent.scroll(scroller)
+    fireEvent.click(screen.getByRole('button', { name: BACK_TO_TOP_LABEL }))
+    expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'smooth' })
+
+    // De retour en haut, le bouton disparaît.
+    scroller.scrollTop = 0
+    fireEvent.scroll(scroller)
+    expect(screen.queryByRole('button', { name: BACK_TO_TOP_LABEL })).not.toBeInTheDocument()
+  })
+})
+
+describe('RssFeeds desktop composition', () => {
+  beforeEach(() => {
+    isDesktopViewport = true
+    useRssStore.setState({
+      feeds: [feed],
+      items: makeItems(10),
+      selectedItemIds: [],
+      isRefreshing: false,
+      refreshingFeedIds: [],
+      settings: { ...defaultRssSettings, showTrendsByDefault: false },
+      aiTrendSelection: null,
+      trendBriefing: null,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    useRssStore.setState({ feeds: [], items: [], selectedItemIds: [] })
+  })
+
+  it('never shows the back-to-top button, whatever the scroll position', () => {
+    render(<RssFeeds />)
+
+    const scroller = screen.getByTestId('article-scroller')
+    scroller.scrollTop = 4000
+    fireEvent.scroll(scroller)
+
+    expect(screen.queryByRole('button', { name: BACK_TO_TOP_LABEL })).not.toBeInTheDocument()
+  })
+
+  it('clears the information banner on its own after the dismiss delay', async () => {
+    vi.useFakeTimers()
+    try {
+      render(<RssFeeds />)
+
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Exporter en OPML' }))
+      })
+
+      expect(screen.getByText('1 flux exporté en OPML.')).toBeInTheDocument()
+
+      await act(async () => {
+        vi.advanceTimersByTime(29_000)
+      })
+      expect(screen.getByText('1 flux exporté en OPML.')).toBeInTheDocument()
+
+      await act(async () => {
+        vi.advanceTimersByTime(2_000)
+      })
+      expect(screen.queryByText('1 flux exporté en OPML.')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
