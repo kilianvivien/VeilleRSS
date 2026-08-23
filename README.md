@@ -1,66 +1,230 @@
-# Outil de veille · Flux RSS (veille-web)
+# Veille RSS
 
-Version **web autonome** de la vue « Flux RSS » de DiploRevue : lecteur de flux,
-catalogue de sources, import/export OPML, tendances locales, cartographie,
-mots-clés suivis, traduction d'articles et Briefing IA — sans Tauri, sans
-compte, tout reste dans le navigateur.
+Une application de veille de presse personnelle pour centraliser ses sources RSS, lire et classer les articles, repérer les sujets qui montent et produire des briefings assistés par IA.
 
-## Lancer
+Elle fonctionne directement dans le navigateur, sans compte utilisateur. Les flux, articles, états de lecture et préférences restent enregistrés sur l'appareil. L'application peut aussi être installée comme une application mobile ou de bureau (PWA).
 
-```bash
-npm install
-npm run dev        # http://localhost:5174
-```
+[![Version](https://img.shields.io/github/v/release/kilianvivien/VeilleRSS?label=version)](https://github.com/kilianvivien/VeilleRSS/releases)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![Déployer sur Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkilianvivien%2FVeilleRSS)
 
-Le serveur de développement embarque un **proxy RSS** (`/__rss-proxy`) : la
-plupart des flux refusent les requêtes CORS directes du navigateur, le proxy
-Vite rapatrie donc le XML côté Node. C'est le mode recommandé.
+> **Déploiement recommandé : Vercel.** Le dépôt contient également une image Docker autonome pour les personnes qui souhaitent auto-héberger l'application.
 
-`npm run build` produit un site statique dans `dist/` ; hébergé tel quel, les
-flux qui bloquent CORS afficheront une erreur explicite (aucun proxy distant
-n'est imposé).
+## Aperçu
+
+### Tableau de veille sur ordinateur
+
+![Tableau de veille RSS sur ordinateur, avec les sources, la liste d'articles et les tendances](public/screenshots/ordinateur@0.5x.png)
+
+### Une interface pensée pour le mobile
+
+<p align="center">
+  <img src="public/screenshots/iphone@0.5x.png" width="300" alt="Liste d'articles de Veille RSS sur iPhone">
+  &nbsp;&nbsp;
+  <img src="public/screenshots/android@0.5x.png" width="270" alt="Cartographie des tendances de Veille RSS sur Android">
+</p>
+
+## À quoi sert l'application ?
+
+Veille RSS s'adresse aux journalistes, chercheurs, analystes, communicants et à toute personne qui consulte régulièrement plusieurs médias. Elle remplace l'ouverture manuelle de nombreux sites par un espace unique : les nouvelles publications arrivent dans une liste, les contenus importants peuvent être sauvegardés et les tendances sont calculées à partir de l'ensemble des articles reçus.
+
+L'intelligence artificielle est facultative. Sans clé API, la lecture, la recherche, le classement et l'analyse locale des tendances restent pleinement utilisables.
 
 ## Fonctionnalités
 
-- Ajout de flux RSS/Atom, catalogue intégré (presse turque, agences,
-  internationales), import/export OPML.
-- Lu / non lu / sauvegardés, recherche, tri, densité d'affichage,
-  rafraîchissement automatique par flux (`useRssRefreshScheduler`).
-- Tendances locales (fenêtre 6 h → 7 j), mots-clés suivis, cartographie.
-- Traduction des articles, tri IA des tendances, Briefing IA.
-- Export de la sélection d'articles en Markdown (remplace l'envoi vers la
-  Revue Magique de DiploRevue).
+### Sources et collecte
 
-## Paramètres IA
+- ajout de n'importe quel flux RSS ou Atom à partir de son URL ;
+- détection automatique du flux lorsqu'une page web compatible est collée ;
+- catalogue de sources prêt à l'emploi, notamment pour la presse turque, les agences et les médias internationaux ;
+- classement des sources par catégories ;
+- import et export OPML pour migrer facilement depuis ou vers un autre lecteur RSS ;
+- actualisation manuelle ou automatique, avec une fréquence réglable par source ;
+- indicateur de santé des flux et déduplication des articles.
 
-Contrairement à DiploRevue, l'outil n'a pas de paramètres partagés : le bouton
-**✨ (Paramètres IA)** de l'en-tête ouvre un panneau dédié où configurer :
+### Lecture et organisation
 
-- le fournisseur par défaut, celui de la traduction et celui de la veille
-  (tendances + briefing) — Gemini, Mistral, Vertex AI, OpenRouter, NVIDIA,
-  Albert, CLIProxyAPI, IA locale (Ollama/LM Studio) ;
-- les clés API et modèles de chaque fournisseur ;
-- l'endpoint IA local et son délai d'attente ;
-- le thème clair/sombre.
+- vues **Tous les articles**, **Non lus** et **Sauvegardés** ;
+- recherche instantanée dans les titres, extraits, auteurs et noms de sources ;
+- tri par date ou par source et choix de la densité d'affichage ;
+- marquage lu/non lu, sauvegarde et sélection multiple ;
+- lecteur intégré avec taille de texte réglable et lien vers l'article original ;
+- navigation tactile : tirer pour actualiser, balayer un article pour le classer et passer au précédent ou au suivant dans le lecteur ;
+- export d'une sélection d'articles en Markdown.
 
-Les réglages sont stockés dans le `localStorage` du navigateur (les clés API
-ne quittent la machine que vers le fournisseur choisi). Le cache des flux
-(lu/sauvegardé/articles) est stocké dans IndexedDB.
+### Tendances et suivi
 
-## Architecture
+- analyse locale sur une fenêtre de 6 heures, 24 heures, 3 jours ou 7 jours ;
+- comparaison avec la période précédente, volumes, évolutions et mini-graphiques ;
+- détection des termes en progression à partir des articles déjà collectés ;
+- suivi de mots-clés et filtrage immédiat des articles correspondants ;
+- notifications locales pour les nouveaux résultats lorsque l'application tourne en arrière-plan ;
+- cartographie interactive des sujets et de leurs termes associés.
 
-Extrait de DiploRevue (`../DiploRevue/src`) :
+### Fonctions d'intelligence artificielle
 
-- `src/views/RssFeeds.tsx` + `src/components/rss/*` — interface complète ;
-- `src/lib/rss/*` — parsing, déduplication, OPML, catalogue, analyse de
-  tendances, briefing ;
-- `src/lib/ai/*` — services fournisseurs + routeur (le mode « heuristic » de
-  la Revue Magique est neutralisé) ;
-- `src/stores/rssStore.ts` — état persistant (zustand + IndexedDB) ;
-- shims web : `lib/storage/indexedDBStorage.ts`, `lib/platform/*`
-  (fichiers/dialogues/presse-papiers), `stores/settingsStore.ts`.
+- traduction d'un article vers la langue choisie ;
+- affinage des tendances afin d'écarter les termes trop génériques ;
+- génération d'un briefing éditorial, avec conclusions, statistiques et graphiques ;
+- fournisseur différent possible pour la traduction et pour la veille ;
+- prise en charge de Gemini, Mistral, Vertex AI, OpenRouter, NVIDIA NIM, Albert, CLIProxyAPI et d'un modèle local compatible (Ollama ou LM Studio).
 
-Différences volontaires avec DiploRevue : pas de fenêtre détachée, pas
-d'envoi vers la Revue Magique (export Markdown à la place), dialogues natifs
-remplacés par `window.confirm/alert`, clés API en `localStorage` au lieu du
-trousseau système.
+Les appels IA sont envoyés directement depuis le navigateur au fournisseur configuré. Les clés API sont stockées dans le `localStorage` de l'appareil : utilisez de préférence des clés dédiées, limitées en quota, et évitez les appareils partagés.
+
+### Application installable et hors connexion
+
+- installation sur ordinateur, Android, iPhone et iPad depuis le navigateur ;
+- interface responsive adaptée aux écrans tactiles ;
+- thème clair ou sombre ;
+- démarrage et consultation hors connexion des articles déjà chargés ;
+- détection des nouvelles versions avec proposition de mise à jour ;
+- raccourcis PWA et partage d'une URL vers l'application sur les plateformes compatibles ;
+- tutoriel de prise en main au premier lancement.
+
+> La récupération de nouveaux flux, la traduction et la génération IA nécessitent une connexion. Les notifications sont locales : sans serveur de notification, elles ne peuvent pas réveiller une application complètement fermée. Sur iPhone, elles nécessitent l'installation de la PWA.
+
+## Démarrage rapide
+
+### Utiliser le déploiement Vercel
+
+Vercel est la cible principale du projet. Le bouton ci-dessous crée un projet avec le site statique, la fonction sécurisée de proxy RSS et les en-têtes nécessaires à la PWA :
+
+[![Déployer sur Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fkilianvivien%2FVeilleRSS)
+
+Aucune variable d'environnement n'est requise. Les clés des fournisseurs IA sont saisies ensuite dans **Paramètres → Intelligence artificielle** et restent propres à chaque navigateur.
+
+### Installer l'application sur son appareil
+
+1. Ouvrez le site dans Chrome, Edge ou Safari.
+2. Utilisez le bouton **Installer l'application** proposé dans les paramètres.
+3. Sur iPhone ou iPad, choisissez **Partager → Sur l'écran d'accueil**.
+
+Le tutoriel intégré guide ensuite l'ajout des premières sources.
+
+## Auto-hébergement avec Docker
+
+La release `v0.1.0` fournit un déploiement Docker secondaire et autonome. Le conteneur compile l'interface, sert les fichiers statiques et expose le proxy RSS sur le même domaine.
+
+### Avec Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+Ouvrez ensuite [http://localhost:8080](http://localhost:8080). Pour arrêter le service :
+
+```bash
+docker compose down
+```
+
+### Avec Docker seul
+
+```bash
+docker build -t veille-rss:0.1.0 .
+docker run --name veille-rss -p 8080:8080 --restart unless-stopped veille-rss:0.1.0
+```
+
+Le port interne peut être changé avec `PORT`. En production, placez idéalement le conteneur derrière un reverse proxy HTTPS :
+
+```bash
+docker run -p 3000:3000 -e PORT=3000 veille-rss:0.1.0
+```
+
+Un point de contrôle est disponible sur `/healthz`. Aucune persistance Docker n'est nécessaire, car les données utilisateur sont stockées dans le navigateur et non dans le conteneur.
+
+## Développement local
+
+### Prérequis
+
+- Node.js 20 ou supérieur ;
+- npm 10 ou supérieur recommandé.
+
+```bash
+git clone https://github.com/kilianvivien/VeilleRSS.git
+cd VeilleRSS
+npm ci
+npm run dev
+```
+
+L'application est alors accessible sur [http://localhost:5174](http://localhost:5174). Le serveur Vite fournit automatiquement `/__rss-proxy`, car la plupart des éditeurs n'autorisent pas un navigateur à télécharger directement leurs flux (CORS).
+
+### Commandes utiles
+
+| Commande | Rôle |
+| --- | --- |
+| `npm run dev` | Lance le serveur de développement sur le port 5174 |
+| `npm run build` | Vérifie TypeScript et produit le build dans `dist/` |
+| `npm run preview` | Prévisualise le build avec un proxy RSS local |
+| `npm run typecheck` | Vérifie les types sans produire de fichiers |
+| `npm test` | Exécute la suite de tests Vitest |
+| `docker compose up -d --build` | Construit et lance le package Docker |
+
+## Architecture technique
+
+Veille RSS est une application web monopage en React 19 et TypeScript, construite avec Vite 7. L'état est géré avec Zustand et l'interface utilise Tailwind CSS 4, Radix UI et Lucide.
+
+```text
+src/
+├── components/       Interface, lecteur, tendances, carte, paramètres et PWA
+├── lib/ai/           Connecteurs et routage des fournisseurs IA
+├── lib/rss/          Collecte, parsing, OPML, déduplication et analyse locale
+├── lib/pwa/          Installation, mises à jour et notifications
+├── stores/           État persistant Zustand
+└── views/            Vue principale de veille
+api/rss-proxy.ts      Fonction de proxy RSS pour Vercel
+docker/server.mjs     Serveur statique et proxy RSS de l'image Docker
+public/               Manifeste, icônes et captures
+```
+
+### Stockage des données
+
+- **IndexedDB** : sources, articles, statuts lu/sauvegardé, sélections et résultats de veille ;
+- **localStorage** : préférences d'interface, configuration IA et clés API ;
+- **aucune base de données serveur** et aucun compte utilisateur.
+
+Le navigateur peut effacer ces données si l'utilisateur supprime les données du site. L'export OPML permet de sauvegarder la liste des sources, mais ne constitue pas une sauvegarde complète des articles ou des préférences.
+
+### Pourquoi un proxy RSS ?
+
+De nombreux flux bloquent les requêtes venant directement d'une page web. L'application passe donc par une route du même domaine :
+
+- `/__rss-proxy` avec le serveur Vite en développement ;
+- `/api/rss-proxy` avec une Function sur Vercel ;
+- `/api/rss-proxy` avec le serveur Node intégré à l'image Docker.
+
+Les proxys de production limitent les protocoles, refusent les destinations locales ou privées, revalident les redirections et plafonnent la durée et la taille des réponses afin de réduire les risques SSRF et les abus.
+
+### PWA et cache
+
+Le service worker est généré au moment du build avec un identifiant déterministe basé sur les fichiers produits. Il précache le cœur de l'application, met les vues secondaires en cache à l'usage et conserve les articles déjà enregistrés dans IndexedDB. Les en-têtes Vercel existants restent la configuration de référence ; Docker reproduit les règles de cache nécessaires aux ressources et au service worker.
+
+## Vie privée et sécurité
+
+- Les données de veille ne sont pas synchronisées vers un serveur du projet.
+- Les fournisseurs IA ne reçoivent du contenu que lorsqu'une action IA est lancée.
+- Chaque fournisseur applique ses propres conditions de conservation et de traitement.
+- Les clés API présentes dans le navigateur sont accessibles au code exécuté sur cette origine : déployez uniquement une version de confiance et protégez l'accès à l'appareil.
+- L'application assainit le HTML des flux avant affichage, mais un flux ou un article externe reste une source tierce.
+
+## Limites connues
+
+- Certains éditeurs protègent ou désactivent leur flux et peuvent refuser le proxy.
+- Les données ne sont pas synchronisées automatiquement entre plusieurs appareils.
+- Le mode hors connexion porte sur l'application et les éléments déjà chargés, pas sur la récupération de nouvelles actualités.
+- Les fonctions IA peuvent engendrer des coûts auprès du fournisseur choisi.
+
+## Contribuer
+
+Les issues et pull requests sont les bienvenues. Avant de proposer un changement :
+
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+Merci de ne jamais committer de clé API ou de donnée privée. Les changements concernant le proxy RSS doivent conserver les protections contre les réseaux privés, les redirections non contrôlées, les réponses trop volumineuses et les requêtes trop longues.
+
+## Licence
+
+Ce projet est distribué sous licence [MIT](LICENSE). © 2026 Kilian Vivien.

@@ -41,32 +41,25 @@
   ],
   "screenshots": [
     {
-      "src": "/captures/capturearticle.png",
-      "sizes": "1206x2622",
+      "src": "/screenshots/ordinateur@0.5x.png",
+      "sizes": "1549x995",
       "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Articles et recherche dans les flux RSS"
+      "form_factor": "wide",
+      "label": "Tableau de veille, articles et tendances sur ordinateur"
     },
     {
-      "src": "/captures/capturetendances.png",
-      "sizes": "1206x2622",
+      "src": "/screenshots/iphone@0.5x.png",
+      "sizes": "603x1311",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Tendances détectées dans les sources suivies"
+      "label": "Lecture et recherche dans les flux RSS sur mobile"
     },
     {
-      "src": "/captures/capturebriefing.png",
-      "sizes": "1206x2622",
+      "src": "/screenshots/android@0.5x.png",
+      "sizes": "540x1200",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Briefing de veille généré à partir des articles"
-    },
-    {
-      "src": "/captures/capturecarte.png",
-      "sizes": "1206x2622",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Carte des sujets et de leurs relations"
+      "label": "Cartographie interactive des tendances sur mobile"
     }
   ],
   "shortcuts": [

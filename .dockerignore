@@ -1,0 +1,14 @@
+.git
+.github
+.DS_Store
+node_modules
+dist
+coverage
+*.log
+.env
+.env.*
+!.env.example
+design-qa.md
+design-qa-comparison.jpg
+implementation-mobile-carte.jpg
+implementation-mobile-carte-expanded.jpg
