@@ -388,11 +388,16 @@ body {
 /* ── Ergonomie mobile / tactile ─────────────────────────────────────────── */
 
 /* L'app possède son propre rafraîchissement : on évite le pull-to-refresh
-   accidentel qui recharge la page entière sur mobile. */
+   accidentel qui recharge la page entière sur mobile.
+
+   Les deux axes, pas seulement Y : sur l'axe X, Chrome Android transforme un
+   balayage horizontal en navigation « retour / suivant » et annule au passage
+   le geste de l'application. Nos balayages d'article vivaient donc au bon
+   vouloir du navigateur sur Android, là où WebKit les laissait passer. */
 html,
 body {
   overflow: hidden;
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
 }
 
 button,

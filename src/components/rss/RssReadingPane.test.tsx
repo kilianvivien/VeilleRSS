@@ -192,6 +192,45 @@ describe('RssReadingPane article navigation', () => {
   })
 })
 
+/**
+ * Le CSS (`touch-action: pan-y`) suffit à WebKit, pas à Chrome Android : sans
+ * `preventDefault`, celui-ci convertit le balayage en navigation par geste et
+ * annule la séquence de pointeurs. D'où ce contrat, vérifié ici plutôt que sur
+ * l'appareil : une fois la direction décidée, le geste nous appartient.
+ */
+describe('RssReadingPane gesture claim', () => {
+  function touchMove(element: Element) {
+    const event = new Event('touchmove', { bubbles: true, cancelable: true })
+    element.dispatchEvent(event)
+    return event
+  }
+
+  it('leaves scrolling alone until the drag is locked horizontally', () => {
+    renderPane()
+    const pane = screen.getByRole('article')
+
+    fireEvent(pane, pointerEvent('pointerdown', { clientX: 200, clientY: 300 }, 0))
+    expect(touchMove(pane).defaultPrevented).toBe(false)
+
+    // Verrouillé à la verticale : le défilement doit rester au navigateur.
+    fireEvent(pane, pointerEvent('pointermove', { clientX: 202, clientY: 380 }, 50))
+    expect(touchMove(pane).defaultPrevented).toBe(false)
+  })
+
+  it('claims the gesture once the drag is locked horizontally', () => {
+    renderPane()
+    const pane = screen.getByRole('article')
+
+    fireEvent(pane, pointerEvent('pointerdown', { clientX: 200, clientY: 300 }, 0))
+    fireEvent(pane, pointerEvent('pointermove', { clientX: 140, clientY: 305 }, 50))
+    expect(touchMove(pane).defaultPrevented).toBe(true)
+
+    // Relâché : le geste est rendu, le défilement redevient possible.
+    fireEvent(pane, pointerEvent('pointerup', { clientX: 140, clientY: 305 }, 60))
+    expect(touchMove(pane).defaultPrevented).toBe(false)
+  })
+})
+
 describe('RssReadingPane text size', () => {
   it('keeps the current size when no preference is stored', () => {
     renderPane()

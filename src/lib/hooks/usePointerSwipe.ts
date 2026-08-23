@@ -30,11 +30,17 @@ export interface UsePointerSwipeOptions {
  *
  * Points sensibles, tous volontaires :
  *
- * - **Pas de `preventDefault`.** Sur `pointermove` il n'arrêterait pas le
- *   défilement de toute façon : l'arbitrage se fait en CSS. L'élément écouté
- *   doit porter `touch-action: pan-y`, qui laisse le défilement vertical au
- *   compositeur et nous réserve l'horizontale — c'est ce qui rend le geste
- *   fluide plutôt que saccadé.
+ * - **`touch-action: pan-y` sur l'élément écouté**, qui laisse le défilement
+ *   vertical au compositeur et nous réserve l'horizontale — c'est ce qui rend
+ *   le geste fluide plutôt que saccadé.
+ * - **`preventDefault()` sur `touchmove`, une fois le geste verrouillé à
+ *   l'horizontale.** Le CSS seul suffit à WebKit, pas à Chrome Android :
+ *   celui-ci peut encore convertir un balayage horizontal en navigation
+ *   « retour » ou en défilement, et il annule alors la séquence de pointeurs
+ *   (`pointercancel`) — le geste mourait sans un seul rappel déclenché. Le
+ *   `preventDefault` réclame explicitement le geste ; il n'arrive qu'après le
+ *   verrouillage, donc le défilement vertical reste intact. Il lui faut un
+ *   écouteur NON passif, d'où l'attachement natif plutôt que React.
  * - **Écouteurs natifs sur une ref**, pas les gestionnaires synthétiques de
  *   React : ceux-ci sont enregistrés en passif à la racine.
  * - **Capture du pointeur APRÈS le verrouillage seulement.** Capturer dès le
@@ -94,7 +100,14 @@ export function usePointerSwipe<T extends HTMLElement>(
           return
         }
         lock = 'horizontal'
-        element.setPointerCapture(event.pointerId)
+        // Le tactile est déjà capturé implicitement : cette capture explicite
+        // n'est qu'un confort, et elle lève si le navigateur vient de retirer
+        // le pointeur. Le geste ne doit pas mourir pour ça.
+        try {
+          element.setPointerCapture(event.pointerId)
+        } catch {
+          // Pointeur déjà relâché ou annulé : rien à capturer.
+        }
       }
 
       onMove?.({ dx, active: true })
@@ -130,16 +143,31 @@ export function usePointerSwipe<T extends HTMLElement>(
       reset()
     }
 
+    /**
+     * Réclame le geste au navigateur. Chrome Android n'accorde le balayage
+     * horizontal qu'à qui l'exige : sans ce `preventDefault`, il garde la
+     * main pour sa navigation par balayage et annule nos évènements en cours
+     * de route. Il faut donc un écouteur non passif — mais on ne bloque rien
+     * tant que la direction n'est pas décidée, sous peine de casser le
+     * défilement vertical.
+     */
+    const onTouchMove = (event: TouchEvent) => {
+      if (lock !== 'horizontal' || !event.cancelable) return
+      event.preventDefault()
+    }
+
     element.addEventListener('pointerdown', onPointerDown)
     element.addEventListener('pointermove', onPointerMove)
     element.addEventListener('pointerup', onPointerUp)
     element.addEventListener('pointercancel', onPointerCancel)
+    element.addEventListener('touchmove', onTouchMove, { passive: false })
 
     return () => {
       element.removeEventListener('pointerdown', onPointerDown)
       element.removeEventListener('pointermove', onPointerMove)
       element.removeEventListener('pointerup', onPointerUp)
       element.removeEventListener('pointercancel', onPointerCancel)
+      element.removeEventListener('touchmove', onTouchMove)
     }
   }, [ref, enabled])
 }
