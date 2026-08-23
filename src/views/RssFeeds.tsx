@@ -1540,6 +1540,7 @@ export function RssFeeds() {
       isTranslating={translatingId === openItem?.id}
       translationError={openItem ? translationErrors[openItem.id] : undefined}
       showOriginal={openItem ? showOriginalIds.has(openItem.id) : false}
+      textSize={settings.readerTextSize}
       onBack={isDesktop ? undefined : closeReader}
       // Navigation d'article en article : mobile uniquement, comme le retour.
       // Aux extrémités de la liste, le rappel est absent — le volet en déduit

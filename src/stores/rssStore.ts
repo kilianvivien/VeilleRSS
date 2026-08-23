@@ -18,6 +18,7 @@ import { isDatedRssItem, parseRssFeed } from '@/lib/rss/rssParser'
 import { mergeRssItems } from '@/lib/rss/rssDeduplication'
 import { formatRssItemsForMagicReview } from '@/lib/rss/rssImportFormatter'
 import { RECOMMENDED_REFRESH_MINUTES } from '@/lib/rss/refreshIntervals'
+import { DEFAULT_READER_TEXT_SIZE } from '@/lib/rss/readerTextSize'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { isOnline } from '@/lib/hooks/useOnlineStatus'
 import type { OpmlFeedEntry } from '@/lib/rss/opml'
@@ -125,6 +126,7 @@ export const defaultRssSettings: RssSettings = {
   savedKeywordSearches: [],
   watchedKeywords: [],
   density: 'comfortable',
+  readerTextSize: DEFAULT_READER_TEXT_SIZE,
   trendWindowHours: 24,
   showTrendsByDefault: true,
   markReadOnOpen: true,

@@ -191,3 +191,24 @@ describe('RssReadingPane article navigation', () => {
     expect(screen.queryByText('Suivant')).not.toBeInTheDocument()
   })
 })
+
+describe('RssReadingPane text size', () => {
+  it('keeps the current size when no preference is stored', () => {
+    renderPane()
+
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-sm', 'leading-6')
+  })
+
+  it('applies the chosen size to the article body and title', () => {
+    renderPane({ textSize: 'xlarge' })
+
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-lg', 'leading-8')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('text-2xl')
+  })
+
+  it('shrinks the body one step below the default', () => {
+    renderPane({ textSize: 'small' })
+
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[13px]', 'leading-5')
+  })
+})

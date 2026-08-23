@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { ChevronDown, Eye, EyeOff, GraduationCap, Moon, Sparkles } from 'lucide-react'
 import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
+import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { AiProvider, Settings } from '@/types/settings'
 import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
@@ -9,6 +10,10 @@ import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
 import { TREND_WINDOW_OPTIONS } from '@/lib/rss/trendAnalysis'
 import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
+import {
+  normalizeReaderTextSize,
+  READER_TEXT_SIZE_OPTIONS,
+} from '@/lib/rss/readerTextSize'
 import { SUPPORTED_LANGUAGES } from '@/lib/ai/languages'
 import { cn } from '@/lib/utils/cn'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
@@ -279,6 +284,21 @@ export function SettingsModal({
               />
               <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">
                 Comparée à la période précédente de même durée.
+              </p>
+            </div>
+
+            <div>
+              <Select
+                size="sm"
+                label="Taille du texte des articles"
+                value={normalizeReaderTextSize(rssSettings.readerTextSize)}
+                onValueChange={(value) =>
+                  updateRssSettings({ readerTextSize: value as RssReaderTextSize })
+                }
+                options={READER_TEXT_SIZE_OPTIONS}
+              />
+              <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">
+                Corps du texte dans le volet de lecture, sur mobile comme sur ordinateur.
               </p>
             </div>
 

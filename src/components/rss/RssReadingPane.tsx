@@ -16,7 +16,8 @@ import { Alert, Button } from '@/components/ui'
 import { usePointerSwipe, type SwipeState } from '@/lib/hooks/usePointerSwipe'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { cn } from '@/lib/utils/cn'
-import type { RssFeed, RssItem } from '@/types/rss'
+import type { RssFeed, RssItem, RssReaderTextSize } from '@/types/rss'
+import { normalizeReaderTextSize, READER_TEXT_SIZE_STYLES } from '@/lib/rss/readerTextSize'
 import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/lib/ai/languages'
 import { formatAbsoluteDate, formatRelativeDate } from './rssFormatting'
 
@@ -27,6 +28,8 @@ interface RssReadingPaneProps {
   isTranslating: boolean
   translationError?: string
   showOriginal: boolean
+  /** Taille du texte de l’article, réglable dans les paramètres. */
+  textSize?: RssReaderTextSize
   /** Affiché en lecture plein écran mobile : bouton retour vers la liste. */
   onBack?: () => void
   /** Article précédent de la liste. Absent sur le premier. Mobile uniquement. */
@@ -74,6 +77,7 @@ export function RssReadingPane({
   isTranslating,
   translationError,
   showOriginal,
+  textSize,
   onBack,
   onPreviousItem,
   onNextItem,
@@ -83,6 +87,7 @@ export function RssReadingPane({
   onToggleSaved,
   onOpenOriginal,
 }: RssReadingPaneProps) {
+  const textStyle = READER_TEXT_SIZE_STYLES[normalizeReaderTextSize(textSize)]
   const rootRef = useRef<HTMLElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
@@ -282,7 +287,14 @@ export function RssReadingPane({
               </>
             ) : null}
           </p>
-          <h2 className="mt-1.5 text-lg font-semibold leading-6 text-[var(--text-primary)]">{title}</h2>
+          <h2
+            className={cn(
+              'mt-1.5 font-semibold text-[var(--text-primary)]',
+              textStyle.title
+            )}
+          >
+            {title}
+          </h2>
           <p className="mt-1 text-[11px] text-[var(--text-muted)]">
             Publié le {formatAbsoluteDate(item.publishedAt)}
           </p>
@@ -364,9 +376,14 @@ export function RssReadingPane({
           ) : null}
 
           {summary ? (
-            <p className="whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{summary}</p>
+            <p
+              data-testid="reading-pane-summary"
+              className={cn('whitespace-pre-line text-[var(--text-secondary)]', textStyle.body)}
+            >
+              {summary}
+            </p>
           ) : (
-            <p className="text-sm italic text-[var(--text-muted)]">
+            <p className={cn('italic text-[var(--text-muted)]', textStyle.body)}>
               Ce flux ne fournit pas de résumé pour cet article.
             </p>
           )}

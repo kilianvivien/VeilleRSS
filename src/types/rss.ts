@@ -106,6 +106,9 @@ export interface RssWatchedKeyword {
 
 export type RssDensity = 'compact' | 'comfortable'
 
+/** Taille du texte de l'article dans le volet de lecture. */
+export type RssReaderTextSize = 'small' | 'normal' | 'large' | 'xlarge'
+
 export type RssSortMode = 'recent' | 'oldest' | 'source'
 
 export interface RssSettings {
@@ -118,6 +121,8 @@ export interface RssSettings {
   watchedKeywords: RssWatchedKeyword[]
   /** Densité de la liste d’articles. */
   density: RssDensity
+  /** Taille du texte de l’article dans le volet de lecture. */
+  readerTextSize: RssReaderTextSize
   /** Fenêtre d’analyse des tendances, en heures. */
   trendWindowHours: number
   /** Ouvre le panneau Tendances au chargement de la vue. */
