@@ -108,6 +108,11 @@ const SORT_OPTIONS = [
 const UNCATEGORIZED = 'Sources'
 const ARTICLE_BATCH_SIZE = 80
 
+/** Échappe une valeur pour un sélecteur d'attribut entre guillemets. */
+function escapeAttributeValue(value: string): string {
+  return value.replace(/["\\]/g, '\\$&')
+}
+
 /** Défilement, en px, au-delà duquel le bouton « Haut de page » apparaît. */
 const BACK_TO_TOP_SCROLL_THRESHOLD = 700
 
@@ -271,6 +276,12 @@ export function RssFeeds() {
     setArticleListNode(node)
   }, [])
   const listScrollTopRef = useRef(0)
+  /**
+   * Dernier article atteint en balayant d'un article à l'autre. La position
+   * mémorisée à l'ouverture ne dit plus rien après dix articles parcourus :
+   * au retour, on recentre la liste sur celui que l'on vient de lire.
+   */
+  const readerNavigatedIdRef = useRef<string | null>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const loadMoreSentinelRef = useRef<HTMLDivElement>(null)
 
@@ -640,6 +651,7 @@ export function RssFeeds() {
       // Sur mobile la liste est démontée pendant la lecture : on garde la
       // position pour ne pas renvoyer l'utilisateur en haut au retour.
       listScrollTopRef.current = articleListRef.current?.scrollTop ?? 0
+      readerNavigatedIdRef.current = null
       setOpenItemId(item.id)
       setRightPane('article')
       if (settings.markReadOnOpen !== false && !item.readAt) {
@@ -647,6 +659,42 @@ export function RssFeeds() {
       }
     },
     [markRead, settings.markReadOnOpen]
+  )
+
+  /**
+   * Rang de l'article ouvert dans la liste filtrée — la même que celle que
+   * l'on vient de quitter, filtres et tri compris. Naviguer depuis le lecteur
+   * suit donc exactement l'ordre affiché à l'écran.
+   */
+  const openItemIndex = useMemo(
+    () => (openItemId ? visibleItems.findIndex((item) => item.id === openItemId) : -1),
+    [openItemId, visibleItems]
+  )
+
+  /**
+   * Article précédent (-1) ou suivant (+1) depuis le lecteur.
+   *
+   * À la différence de `handleOpenItem`, on ne touche PAS à la position
+   * mémorisée de la liste : sur mobile elle est démontée, son `scrollTop`
+   * vaut zéro, et la lire ici ramènerait l'utilisateur en haut au retour.
+   */
+  const goToAdjacentItem = useCallback(
+    (offset: 1 | -1) => {
+      if (openItemIndex < 0) return
+      const targetIndex = openItemIndex + offset
+      const target = visibleItems[targetIndex]
+      if (!target) return
+
+      // La liste ne peint qu'un lot à la fois : au-delà, la ligne n'existerait
+      // pas au retour et le recentrage tomberait à côté.
+      setRenderedItemCount((count) => Math.max(count, targetIndex + 1))
+      readerNavigatedIdRef.current = target.id
+      setOpenItemId(target.id)
+      if (settings.markReadOnOpen !== false && !target.readAt) {
+        markRead([target.id])
+      }
+    },
+    [markRead, openItemIndex, settings.markReadOnOpen, visibleItems]
   )
 
   const handleAddFeed = async () => {
@@ -761,8 +809,25 @@ export function RssFeeds() {
   useLayoutEffect(() => {
     if (isDesktop || openItemId) return
     const scroller = articleListRef.current
+    if (!scroller) return
+
+    // Sortie après avoir balayé d'un article à l'autre : on se cale sur le
+    // dernier lu plutôt que sur le point de départ, devenu sans rapport.
+    const navigatedId = readerNavigatedIdRef.current
+    readerNavigatedIdRef.current = null
+    if (navigatedId) {
+      const selector = `[data-item-id="${escapeAttributeValue(navigatedId)}"]`
+      const row = scroller.querySelector(selector)
+      if (row) {
+        const align = () => row.scrollIntoView({ block: 'center' })
+        align()
+        const frame = requestAnimationFrame(align)
+        return () => cancelAnimationFrame(frame)
+      }
+    }
+
     const target = listScrollTopRef.current
-    if (!scroller || target === 0) return
+    if (target === 0) return
 
     scroller.scrollTop = target
     const frame = requestAnimationFrame(() => {
@@ -1476,6 +1541,22 @@ export function RssFeeds() {
       translationError={openItem ? translationErrors[openItem.id] : undefined}
       showOriginal={openItem ? showOriginalIds.has(openItem.id) : false}
       onBack={isDesktop ? undefined : closeReader}
+      // Navigation d'article en article : mobile uniquement, comme le retour.
+      // Aux extrémités de la liste, le rappel est absent — le volet en déduit
+      // seul quoi désactiver et jusqu'où résister au balayage.
+      onPreviousItem={
+        !isDesktop && openItemIndex > 0 ? () => goToAdjacentItem(-1) : undefined
+      }
+      onNextItem={
+        !isDesktop && openItemIndex >= 0 && openItemIndex < visibleItems.length - 1
+          ? () => goToAdjacentItem(1)
+          : undefined
+      }
+      position={
+        !isDesktop && openItemIndex >= 0
+          ? { index: openItemIndex, total: visibleItems.length }
+          : undefined
+      }
       onTranslate={() => {
         if (openItem) void handleTranslateItem(openItem)
       }}

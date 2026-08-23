@@ -17,13 +17,48 @@ vi.mock('@/lib/platform/fileService', () => ({
   openFileDialog: vi.fn(async () => null),
 }))
 
+/**
+ * Les doublures exposent juste ce que la vue leur passe : c'est ce câblage —
+ * quel article est ouvert, à quel rang, et jusqu'où on peut aller — que ces
+ * cas vérifient. Le geste lui-même est couvert par `RssReadingPane.test.tsx`.
+ */
 vi.mock('@/components/rss', () => ({
   FeedRail: () => <div />,
-  RssReadingPane: () => <div />,
+  RssReadingPane: ({
+    item,
+    position,
+    onPreviousItem,
+    onNextItem,
+  }: {
+    item: RssItem | null
+    position?: { index: number; total: number }
+    onPreviousItem?: () => void
+    onNextItem?: () => void
+  }) =>
+    item ? (
+      <div data-testid="reading-pane">
+        <span data-testid="reader-title">{item.title}</span>
+        <span data-testid="reader-position">
+          {position ? `${position.index + 1}/${position.total}` : ''}
+        </span>
+        <button type="button" onClick={onPreviousItem} disabled={!onPreviousItem}>
+          reader-prev
+        </button>
+        <button type="button" onClick={onNextItem} disabled={!onNextItem}>
+          reader-next
+        </button>
+      </div>
+    ) : (
+      <div />
+    ),
   TrendPanel: () => <div />,
   formatRefreshInterval: () => '',
-  RssArticleRow: ({ item }: { item: RssItem }) => (
-    <li data-testid="article-row">{item.title}</li>
+  RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: () => void }) => (
+    <li data-testid="article-row">
+      <button type="button" onClick={onOpen}>
+        Ouvrir {item.title}
+      </button>
+    </li>
   ),
 }))
 
@@ -157,6 +192,45 @@ describe('RssFeeds mobile composition', () => {
 
     // Le volet unique a changé : la liste n'est plus montée.
     expect(screen.queryAllByTestId('article-row')).toHaveLength(0)
+  })
+
+  /**
+   * Naviguer d'un article à l'autre depuis le lecteur suit la liste affichée,
+   * filtres et tri compris — pas l'ordre brut du cache.
+   */
+  it('walks to the next article from the reader and tracks the position', () => {
+    render(<RssFeeds />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir Synthetic article 0' }))
+    expect(screen.getByTestId('reader-title')).toHaveTextContent('Synthetic article 0')
+    expect(screen.getByTestId('reader-position')).toHaveTextContent('1/10')
+    // Rien avant le premier : la vue ne fournit pas de rappel « précédent ».
+    expect(screen.getByRole('button', { name: 'reader-prev' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'reader-next' }))
+    expect(screen.getByTestId('reader-title')).toHaveTextContent('Synthetic article 1')
+    expect(screen.getByTestId('reader-position')).toHaveTextContent('2/10')
+
+    fireEvent.click(screen.getByRole('button', { name: 'reader-prev' }))
+    expect(screen.getByTestId('reader-title')).toHaveTextContent('Synthetic article 0')
+  })
+
+  it('marks the article reached by navigation as read', () => {
+    render(<RssFeeds />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir Synthetic article 0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'reader-next' }))
+
+    const reached = useRssStore.getState().items.find((item) => item.id === 'item-1')
+    expect(reached?.readAt).toEqual(expect.any(Number))
+  })
+
+  it('stops at the last article of the list', () => {
+    render(<RssFeeds />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir Synthetic article 9' }))
+    expect(screen.getByTestId('reader-position')).toHaveTextContent('10/10')
+    expect(screen.getByRole('button', { name: 'reader-next' })).toBeDisabled()
   })
 
   /**

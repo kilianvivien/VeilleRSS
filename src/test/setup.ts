@@ -18,3 +18,16 @@ Object.defineProperty(globalThis, 'IntersectionObserver', {
   writable: true,
   value: PassiveIntersectionObserver,
 })
+
+/**
+ * jsdom n'implémente ni la mise en page ni la capture de pointeur : les appels
+ * y sont absents du prototype et lèveraient une `TypeError`. Des bouchons
+ * inertes suffisent — ce qui compte sous test, ce sont les gestes déclenchés,
+ * pas les pixels parcourus.
+ */
+Element.prototype.scrollIntoView ??= function scrollIntoView() {}
+Element.prototype.setPointerCapture ??= function setPointerCapture() {}
+Element.prototype.releasePointerCapture ??= function releasePointerCapture() {}
+Element.prototype.hasPointerCapture ??= function hasPointerCapture() {
+  return false
+}

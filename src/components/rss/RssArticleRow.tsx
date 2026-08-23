@@ -75,6 +75,9 @@ export function RssArticleRow({
   return (
     <li
       ref={rowRef}
+      // Repère du recentrage quand on sort du lecteur après avoir balayé
+      // d'un article à l'autre : la liste doit rouvrir sur le dernier lu.
+      data-item-id={item.id}
       className={cn(
         'group relative overflow-hidden border-b border-[var(--border)] transition-colors',
         active ? 'bg-[var(--accent-muted)]' : 'pointer-fine:hover:bg-[var(--hover)]',

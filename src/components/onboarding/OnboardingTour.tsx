@@ -66,6 +66,7 @@ const STEPS: OnboardingStep[] = [
     body: 'Les articles arrivent dans une liste unique. Ouvrez, marquez, mettez de côté ce qui mérite un second regard.',
     bullets: [
       'Sur mobile, balayez une ligne pour la marquer lue ou la sauvegarder.',
+      'Dans un article, balayez pour passer au suivant ou au précédent.',
       'La recherche et les filtres réduisent la liste instantanément.',
     ],
     visual: <ReadingVisual />,
