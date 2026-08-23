@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { selectBriefingArticles } from './trendBriefingService'
+import { needsFrenchRewrite, selectBriefingArticles } from './trendBriefingService'
 import type { TrendReport } from './trendAnalysis'
 import type { RssFeed, RssItem } from '@/types/rss'
 
@@ -72,5 +72,27 @@ describe('selectBriefingArticles', () => {
     expect(selected.excerpt).toContain('Le ministère annonce une mesure précise.')
     expect(selected.excerpt.length).toBeLessThanOrEqual(1_001)
     expect(selected.excerpt.endsWith('…')).toBe(true)
+  })
+})
+
+describe('needsFrenchRewrite', () => {
+  it('detects a Turkish briefing even when its opening line is already French', () => {
+    expect(
+      needsFrenchRewrite([
+        'Le sujet progresse de 4 à 12 mentions par rapport à la période précédente.',
+        "Adana Cumhuriyet Başsavcılığı tarafından yürütülen soruşturmada şüpheliler tutuklanarak cezaevine gönderildi.",
+        "Kulüp oyuncunun tomografisinin temiz çıktığını ve durumunun iyi olduğunu açıkladı.",
+      ])
+    ).toBe(true)
+  })
+
+  it('accepts a detailed briefing written in French', () => {
+    expect(
+      needsFrenchRewrite([
+        'Le dossier passe de quatre à douze mentions, tandis que le second sujet recule légèrement.',
+        'Le parquet a annoncé plusieurs arrestations dans le cadre de son enquête. Les personnes concernées ont été placées en détention provisoire selon la source.',
+        'Le club indique que les examens médicaux du joueur sont rassurants et que son état ne suscite plus d’inquiétude immédiate.',
+      ])
+    ).toBe(false)
   })
 })
