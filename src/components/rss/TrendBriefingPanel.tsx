@@ -163,8 +163,8 @@ export function TrendBriefingPanel({
             <p className="mt-1 text-xs text-[var(--text-muted)]">
               {available
                 ? trimmedTopic
-                  ? `${providerLabel} produira 5 à 8 conclusions sur ce que les ${formatWindow(windowHours)} écoulées disent de « ${trimmedTopic} ». Les articles sont d’abord filtrés localement.`
-                  : `${providerLabel} produira 5 à 8 conclusions sur les tendances des ${formatWindow(windowHours)} écoulées. Une sélection locale et bornée sera extraite des ${currentItemCount} article${currentItemCount > 1 ? 's' : ''} collecté${currentItemCount > 1 ? 's' : ''}.`
+                  ? `${providerLabel} rédigera une synthèse factuelle de « ${trimmedTopic} » à partir des extraits RSS des ${formatWindow(windowHours)} écoulées. Les articles sont d’abord filtrés localement.`
+                  : `${providerLabel} rédigera une synthèse détaillée des événements à partir d’une sélection locale d’extraits parmi les ${currentItemCount} article${currentItemCount > 1 ? 's' : ''} collecté${currentItemCount > 1 ? 's' : ''} sur ${formatWindow(windowHours)}.`
                 : 'Choisissez un fournisseur dans Paramètres → IA, section « Fournisseurs par fonctionnalité », ligne « Veille presse ».'}
             </p>
           </div>
@@ -225,7 +225,7 @@ export function TrendBriefingPanel({
 
             <section aria-label="Briefing rédigé par l’IA">
               <h3 className="rss-section-label mb-2 text-[var(--text-muted)] uppercase">
-                Conclusions
+                Synthèse éditoriale
               </h3>
               <ol className="space-y-2">
                 {briefing.lines.map((line, index) => (
