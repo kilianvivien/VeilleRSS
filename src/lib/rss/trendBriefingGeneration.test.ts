@@ -61,4 +61,33 @@ describe('generateTrendBriefing language fallback', () => {
     })
     expect(firstPayload).not.toHaveProperty('volumePrecedent')
   })
+
+  it('does not reject a French translation that preserves Turkish proper names', async () => {
+    providerMocks.generateWithProvider
+      .mockReset()
+      .mockResolvedValueOnce(JSON.stringify({ lines: [item.summary] }))
+      .mockResolvedValueOnce(JSON.stringify({ lines: [
+        'Le parquet d’Ankara a placé Alparslan Kuytul en détention après une enquête à laquelle Özgür Özel a réagi. Fenerbahçe suit également l’affaire en Türkiye.',
+      ] }))
+
+    const result = await generateTrendBriefing({
+      report, items: [item], feeds: [feed], provider: 'gemini', settings: {} as Settings, now: NOW,
+    })
+
+    expect(providerMocks.generateWithProvider).toHaveBeenCalledTimes(2)
+    expect(result.lines[0]).toContain('Le parquet d’Ankara')
+  })
+
+  it('returns the best valid briefing instead of failing after two unsuccessful rewrites', async () => {
+    providerMocks.generateWithProvider
+      .mockReset()
+      .mockResolvedValue(JSON.stringify({ lines: [item.summary] }))
+
+    const result = await generateTrendBriefing({
+      report, items: [item], feeds: [feed], provider: 'gemini', settings: {} as Settings, now: NOW,
+    })
+
+    expect(providerMocks.generateWithProvider).toHaveBeenCalledTimes(3)
+    expect(result.lines).toEqual([item.summary])
+  })
 })

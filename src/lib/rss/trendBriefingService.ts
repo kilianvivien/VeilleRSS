@@ -20,6 +20,7 @@ const MAX_EXCERPT_LENGTH = 1_000
 const TARGET_LINES = 9
 const MAX_LINES = 10
 const MAX_LINE_LENGTH = 900
+const MAX_FRENCH_REWRITE_ATTEMPTS = 2
 const HOUR_MS = 3_600_000
 
 const FRENCH_REWRITE_PROMPT = `Tu es traducteur-réviseur professionnel.
@@ -392,20 +393,55 @@ const FRENCH_FUNCTION_WORDS = new Set([
   'cette', 'ces', 'son', 'sa', 'ses', 'leur', 'leurs', 'mais', 'après', 'avant', 'selon',
 ])
 
+const TURKISH_FUNCTION_WORDS = new Set([
+  've', 'ile', 'için', 'bir', 'bu', 'şu', 'da', 'de', 'olarak', 'göre', 'sonra', 'önce',
+  'ancak', 'tarafından', 'olduğunu', 'olduğu', 'olan', 'arasında', 'kapsamında', 'ilişkin',
+  'karşı', 'kadar', 'daha', 'yeni', 'etti', 'edildi', 'açıkladı', 'söyledi',
+])
+
+const ENGLISH_FUNCTION_WORDS = new Set([
+  'the', 'and', 'of', 'to', 'in', 'for', 'with', 'from', 'that', 'which', 'was', 'were',
+  'has', 'have', 'had', 'after', 'before', 'according', 'said', 'says', 'over', 'between',
+])
+
 /** Détecte une réponse manifestement étrangère afin de déclencher une traduction de secours. */
 export function needsFrenchRewrite(lines: string[]): boolean {
-  const text = lines.join(' ')
-  const turkishLetters = text.match(/[çğıİöşü]/g)?.length ?? 0
-  if (turkishLetters >= 4) return true
-
-  const tokens = text
+  const tokenise = (value: string) => value
     .toLocaleLowerCase('fr-FR')
     .replace(/[’']/g, ' ')
-    .match(/\p{L}+/gu)
-  if (!tokens || tokens.length < 30) return false
+    .match(/\p{L}+/gu) ?? []
+
+  for (const line of lines) {
+    const lineTokens = tokenise(line)
+    const frenchMarkers = lineTokens.filter((token) => FRENCH_FUNCTION_WORDS.has(token)).length
+    const turkishMarkers = lineTokens.filter((token) => TURKISH_FUNCTION_WORDS.has(token)).length
+    const englishMarkers = lineTokens.filter((token) => ENGLISH_FUNCTION_WORDS.has(token)).length
+    const turkishLetters = line.match(/[çğıİöşü]/g)?.length ?? 0
+
+    if (turkishMarkers >= 2 && turkishMarkers > frenchMarkers) return true
+    if (englishMarkers >= 3 && englishMarkers > frenchMarkers) return true
+    if (turkishLetters >= 2 && frenchMarkers === 0) return true
+  }
+
+  const tokens = tokenise(lines
+    .join(' ')
+  )
+  if (tokens.length === 0) return false
 
   const frenchMarkers = tokens.filter((token) => FRENCH_FUNCTION_WORDS.has(token)).length
-  return frenchMarkers / tokens.length < 0.09
+  const turkishMarkers = tokens.filter((token) => TURKISH_FUNCTION_WORDS.has(token)).length
+  const englishMarkers = tokens.filter((token) => ENGLISH_FUNCTION_WORDS.has(token)).length
+  const strongestForeignScore = Math.max(turkishMarkers, englishMarkers)
+
+  // Les caractères turcs sont fréquents dans les noms propres que la traduction
+  // doit justement conserver. Seuls des mots grammaticaux étrangers répétés
+  // constituent donc un signal suffisamment fiable pour relancer la traduction.
+  if (tokens.length < 12) return strongestForeignScore >= 2 && frenchMarkers === 0
+  if (strongestForeignScore >= 3 && strongestForeignScore > frenchMarkers) return true
+
+  // Une longue réponse sans le moindre marqueur français est manifestement à
+  // reprendre, y compris quand sa langue n'est ni le turc ni l'anglais.
+  return tokens.length >= 30 && frenchMarkers === 0
 }
 
 export async function generateTrendBriefing({
@@ -497,19 +533,43 @@ export async function generateTrendBriefing({
     )
     let lines = parseBriefingLines(response)
 
-    if (needsFrenchRewrite(lines)) {
-      logger.info('Briefing output is not in French; requesting a translation pass', { provider })
-      const rewritten = await generateWithProvider(
+    for (
+      let attempt = 1;
+      needsFrenchRewrite(lines) && attempt <= MAX_FRENCH_REWRITE_ATTEMPTS;
+      attempt += 1
+    ) {
+      logger.info('Briefing output is not in French; requesting a translation pass', {
         provider,
-        FRENCH_REWRITE_PROMPT,
-        JSON.stringify({ langueCible: 'fr-FR', lines }),
-        () => undefined,
-        requestControl.signal
-      )
-      lines = parseBriefingLines(rewritten)
-      if (needsFrenchRewrite(lines)) {
-        throw new Error("L'IA n'a pas produit le briefing en français. Régénérez-le.")
+        attempt,
+      })
+      try {
+        const rewritten = await generateWithProvider(
+          provider,
+          FRENCH_REWRITE_PROMPT,
+          JSON.stringify({
+            langueSourceProbable: 'turc ou autre langue étrangère',
+            langueCible: 'fr-FR',
+            tentative: attempt,
+            lines,
+          }),
+          () => undefined,
+          requestControl.signal
+        )
+        lines = parseBriefingLines(rewritten)
+      } catch (rewriteError) {
+        // Une traduction de secours mal formée ne doit jamais supprimer un
+        // briefing initial pourtant exploitable. Une seconde tentative reste
+        // possible ; à défaut, l'interface reçoit le meilleur résultat valide.
+        logger.warn('French briefing rewrite attempt failed', {
+          provider,
+          attempt,
+          error: rewriteError,
+        })
       }
+    }
+
+    if (needsFrenchRewrite(lines)) {
+      logger.warn('Returning the best valid briefing after French rewrite attempts', { provider })
     }
 
     return {

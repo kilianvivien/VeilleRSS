@@ -95,4 +95,14 @@ describe('needsFrenchRewrite', () => {
       ])
     ).toBe(false)
   })
+
+  it('accepts French prose containing Turkish names and spellings', () => {
+    expect(
+      needsFrenchRewrite([
+        'Le parquet d’Ankara a ordonné la détention d’Alparslan Kuytul et de plusieurs suspects après une enquête menée à Adana.',
+        'Le club de Fenerbahçe a annoncé que Kerem Aktürkoğlu avait passé des examens rassurants en Türkiye.',
+        'Özgür Özel a déclaré que son parti suivrait le dossier et demanderait des explications au gouvernement.',
+      ])
+    ).toBe(false)
+  })
 })
