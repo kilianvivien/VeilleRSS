@@ -68,6 +68,7 @@ const STEPS: OnboardingStep[] = [
       'Sur mobile, balayez une ligne pour la marquer lue ou la sauvegarder.',
       'Dans un article, balayez pour passer au suivant ou au précédent.',
       'La recherche et les filtres réduisent la liste instantanément.',
+      'Partagez un article en un geste, dans sa version originale ou traduite.',
     ],
     visual: <ReadingVisual />,
   },

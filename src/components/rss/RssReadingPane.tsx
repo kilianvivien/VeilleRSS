@@ -11,7 +11,7 @@ import {
   Languages,
   Loader2,
   Newspaper,
-  Share2,
+  Send,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button } from '@/components/ui'
@@ -219,6 +219,7 @@ export function RssReadingPane({
   }
 
   const savedLabel = item.savedAt ? 'Sauvé' : 'Sauver'
+  const savedActionLabel = item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'
   const readLabel = item.readAt ? 'Non lu' : 'Lu'
   const readActionLabel = item.readAt ? 'Marquer non lu' : 'Marquer lu'
   const mobileActionClass =
@@ -385,29 +386,11 @@ export function RssReadingPane({
               disabled={!item.link}
             >
               <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-              <span className="min-[360px]:hidden">Original</span>
+              {/* « Original » sous 360 px désignait la même chose que la
+                  bascule de traduction juste à côté : deux boutons, un seul
+                  mot, deux sens. */}
+              <span className="min-[360px]:hidden">Source</span>
               <span className="hidden min-[360px]:inline">Ouvrir l’original</span>
-            </Button>
-            {/* Libellé masqué sous `sm` : la rangée est en `flex-nowrap` et
-                quatre boutons y tiennent déjà tout juste sur un petit écran. */}
-            <Button
-              size="sm"
-              variant="ghost"
-              // Sans libellé sous `sm`, l'icône n'a pas besoin d'autant de
-              // flancs : ces quelques pixels sont ce qui fait tenir la rangée
-              // entière sur un écran de 320 px.
-              className={cn(mobileActionClass, 'px-1')}
-              onClick={() => void handleShare()}
-              disabled={!shareLink}
-              title={shareLabel}
-              aria-label={shareLabel}
-            >
-              {shareSucceeded ? (
-                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-              ) : (
-                <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-              )}
-              <span className="hidden sm:inline">Partager</span>
             </Button>
             <Button
               size="sm"
@@ -430,14 +413,17 @@ export function RssReadingPane({
               variant="ghost"
               className={mobileActionClass}
               onClick={onToggleSaved}
-              title={item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'}
+              title={savedActionLabel}
+              // Le libellé disparaît sous `sm` : sans ce nom explicite, le
+              // bouton n'en aurait plus aucun pour un lecteur d'écran.
+              aria-label={savedActionLabel}
             >
               {item.savedAt ? (
                 <BookmarkCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               ) : (
                 <Bookmark className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               )}
-              {savedLabel}
+              <span className="hidden sm:inline">{savedLabel}</span>
             </Button>
             <Button
               size="sm"
@@ -452,7 +438,29 @@ export function RssReadingPane({
               ) : (
                 <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               )}
-              {readLabel}
+              <span className="hidden sm:inline">{readLabel}</span>
+            </Button>
+
+            {/* Détaché du bloc des bascules par `ml-auto` : ouvrir et partager
+                agissent hors de l'application, marquer et sauvegarder n'y
+                touchent qu'ici. L'avion en papier dit « envoyer à quelqu'un »
+                sans se confondre avec la flèche d'ouverture ni avec le graphe
+                de l'onglet Carte. */}
+            <Button
+              size="sm"
+              variant="secondary"
+              className={cn(mobileActionClass, 'ml-auto')}
+              onClick={() => void handleShare()}
+              disabled={!shareLink}
+              title={shareLabel}
+              aria-label={shareLabel}
+            >
+              {shareSucceeded ? (
+                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              ) : (
+                <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              )}
+              Partager
             </Button>
           </div>
         </header>

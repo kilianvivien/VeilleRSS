@@ -393,6 +393,27 @@ describe('RssReadingPane sharing', () => {
     }
   })
 
+  /**
+   * Le mot avait été sacrifié une première fois pour tenir dans les 320 px, et
+   * l'icône seule ne se laissait pas deviner. Ces deux garde-fous figent ce que
+   * la reprise a établi : un libellé visible, et une place à part.
+   */
+  it('keeps the label visible at every width', () => {
+    renderPane()
+
+    const share = screen.getByRole('button', { name: 'Partager l’article' })
+    expect(share).toHaveTextContent('Partager')
+    expect(share.querySelector('.hidden')).toBeNull()
+  })
+
+  it('sits apart at the end of the action row', () => {
+    renderPane()
+
+    const share = screen.getByRole('button', { name: 'Partager l’article' })
+    expect(share.parentElement?.lastElementChild).toBe(share)
+    expect(share).toHaveClass('ml-auto')
+  })
+
   it('disables sharing when neither the article nor its source has a link', () => {
     renderPane({ item: { ...item, link: '' }, feed: { ...feed, siteUrl: undefined } })
 
