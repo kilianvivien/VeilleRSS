@@ -88,6 +88,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - tri par date ou par source et choix de la densité d'affichage ;
 - marquage lu/non lu, sauvegarde et sélection multiple ;
 - lecteur intégré avec taille de texte réglable et lien vers l'article original ;
+- partage d'un article en un geste, vers la carte de partage du système ou le presse-papiers, dans sa version originale ou traduite ;
 - navigation tactile : tirer pour actualiser, balayer un article pour le classer et passer au précédent ou au suivant dans le lecteur ;
 - export d'une sélection d'articles en Markdown.
 

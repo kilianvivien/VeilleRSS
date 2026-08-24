@@ -1,10 +1,22 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { RssFeed, RssItem } from '@/types/rss'
+import type { RssFeed, RssItem, RssItemTranslation } from '@/types/rss'
+import { buildArticleShareContent } from '@/lib/rss/articleSharing'
 import { RssReadingPane } from './RssReadingPane'
 
 // `false` partout : composition tactile, sans « animations réduites ».
 vi.mock('@/lib/hooks/useMediaQuery', () => ({ useMediaQuery: () => false }))
+
+/**
+ * jsdom n'expose ni `navigator.clipboard` ni `document.execCommand` : le repli
+ * du service échouerait pour une raison sans rapport avec ce qu'on vérifie ici,
+ * à savoir le câblage du bouton de partage.
+ */
+const { copyToClipboardMock } = vi.hoisted(() => ({ copyToClipboardMock: vi.fn() }))
+vi.mock('@/lib/platform/clipboardService', () => ({
+  copyToClipboard: copyToClipboardMock,
+  readFromClipboard: vi.fn(),
+}))
 
 const now = Date.now()
 
@@ -105,7 +117,26 @@ function renderPane(overrides: Partial<Parameters<typeof RssReadingPane>[0]> = {
   return props
 }
 
-afterEach(cleanup)
+const translation: RssItemTranslation = {
+  title: 'Article synthétique 3',
+  summary: 'Résumé 3',
+  targetLanguage: 'fr',
+  translatedAt: now,
+}
+
+/** Installe une carte de partage système là où jsdom n'en propose aucune. */
+function stubNativeShare(implementation: (data: ShareData) => Promise<void>) {
+  const share = vi.fn(implementation)
+  Object.defineProperty(navigator, 'share', { configurable: true, value: share })
+  return share
+}
+
+afterEach(() => {
+  cleanup()
+  copyToClipboardMock.mockReset()
+  copyToClipboardMock.mockResolvedValue(undefined)
+  Reflect.deleteProperty(navigator, 'share')
+})
 
 describe('RssReadingPane article navigation', () => {
   it('shows the position and wires both chevrons', () => {
@@ -249,5 +280,143 @@ describe('RssReadingPane text size', () => {
     renderPane({ textSize: 'small' })
 
     expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[13px]', 'leading-5')
+  })
+})
+
+describe('RssReadingPane sharing', () => {
+  const COPIED_MESSAGE = 'Article copié dans le presse papier'
+
+  it('copies the formatted article when the platform has no share card', async () => {
+    renderPane()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    expect(await screen.findByText(COPIED_MESSAGE)).toBeInTheDocument()
+    expect(copyToClipboardMock).toHaveBeenCalledWith(
+      buildArticleShareContent(item, feed, null).text
+    )
+  })
+
+  it('hands the article to the system share card when there is one', async () => {
+    const share = stubNativeShare(async () => {})
+    renderPane()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    await act(async () => {})
+    expect(share).toHaveBeenCalledWith({
+      title: 'Synthetic article 3',
+      text: buildArticleShareContent(item, feed, null).text,
+    })
+    // La carte système est son propre accusé de réception.
+    expect(copyToClipboardMock).not.toHaveBeenCalled()
+    expect(screen.queryByText(COPIED_MESSAGE)).not.toBeInTheDocument()
+  })
+
+  /** Fermer la carte est un choix : rien à confirmer, rien à rattraper. */
+  it('stays silent when the share card is dismissed', async () => {
+    stubNativeShare(async () => {
+      throw Object.assign(new Error('dismissed'), { name: 'AbortError' })
+    })
+    renderPane()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    await act(async () => {})
+    expect(copyToClipboardMock).not.toHaveBeenCalled()
+    expect(screen.queryByText(COPIED_MESSAGE)).not.toBeInTheDocument()
+  })
+
+  it('falls back to the clipboard when the share card refuses', async () => {
+    stubNativeShare(async () => {
+      throw Object.assign(new Error('nope'), { name: 'NotAllowedError' })
+    })
+    renderPane()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    expect(await screen.findByText(COPIED_MESSAGE)).toBeInTheDocument()
+    expect(copyToClipboardMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('says so when nothing could be copied', async () => {
+    copyToClipboardMock.mockRejectedValue(new Error('clipboard blocked'))
+    renderPane()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    expect(await screen.findByText('Impossible de copier l’article.')).toBeInTheDocument()
+  })
+
+  it('shares the translation while it is the version on screen', async () => {
+    renderPane({ item: { ...item, translation } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager la traduction' }))
+
+    await screen.findByText(COPIED_MESSAGE)
+    const shared = copyToClipboardMock.mock.calls[0][0] as string
+    expect(shared).toContain('« Article synthétique 3 »')
+    expect(shared).toContain('Résumé 3')
+    expect(shared).toContain('(titre original : Synthetic article 3)')
+  })
+
+  it('shares the original again once the reader switches back to it', async () => {
+    renderPane({ item: { ...item, translation }, showOriginal: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+    await screen.findByText(COPIED_MESSAGE)
+    const shared = copyToClipboardMock.mock.calls[0][0] as string
+    expect(shared).toContain('« Synthetic article 3 »')
+    expect(shared).not.toContain('titre original')
+  })
+
+  it('clears the confirmation on its own', async () => {
+    vi.useFakeTimers()
+    try {
+      renderPane()
+      fireEvent.click(screen.getByRole('button', { name: 'Partager l’article' }))
+
+      // Le partage passe par une promesse : laisser la file s'écouler avant
+      // de juger de l'affichage.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(screen.getByText(COPIED_MESSAGE)).toBeInTheDocument()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2500)
+      })
+      expect(screen.queryByText(COPIED_MESSAGE)).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  /**
+   * Le mot avait été sacrifié une première fois pour tenir dans les 320 px, et
+   * l'icône seule ne se laissait pas deviner. Ces deux garde-fous figent ce que
+   * la reprise a établi : un libellé visible, et une place à part.
+   */
+  it('keeps the label visible at every width', () => {
+    renderPane()
+
+    const share = screen.getByRole('button', { name: 'Partager l’article' })
+    expect(share).toHaveTextContent('Partager')
+    expect(share.querySelector('.hidden')).toBeNull()
+  })
+
+  it('sits apart at the end of the action row', () => {
+    renderPane()
+
+    const share = screen.getByRole('button', { name: 'Partager l’article' })
+    expect(share.parentElement?.lastElementChild).toBe(share)
+    expect(share).toHaveClass('ml-auto')
+  })
+
+  it('disables sharing when neither the article nor its source has a link', () => {
+    renderPane({ item: { ...item, link: '' }, feed: { ...feed, siteUrl: undefined } })
+
+    expect(screen.getByRole('button', { name: 'Partager l’article' })).toBeDisabled()
   })
 })

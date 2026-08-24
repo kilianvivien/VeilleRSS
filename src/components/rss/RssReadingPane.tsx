@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   Bookmark,
   BookmarkCheck,
+  Check,
   ChevronLeft,
   ChevronRight,
   ExternalLink,
@@ -10,11 +11,14 @@ import {
   Languages,
   Loader2,
   Newspaper,
+  Send,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button } from '@/components/ui'
 import { usePointerSwipe, type SwipeState } from '@/lib/hooks/usePointerSwipe'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
+import { shareOrCopy } from '@/lib/platform/shareService'
+import { buildArticleShareContent } from '@/lib/rss/articleSharing'
 import { cn } from '@/lib/utils/cn'
 import type { RssFeed, RssItem, RssReaderTextSize } from '@/types/rss'
 import { normalizeReaderTextSize, READER_TEXT_SIZE_STYLES } from '@/lib/rss/readerTextSize'
@@ -61,6 +65,14 @@ const FOLLOW_RATIO = 0.45
 const DEAD_END_RATIO = 0.12
 
 /**
+ * Durée d'affichage de la pastille de confirmation du partage.
+ *
+ * Elle accuse réception d'une action déjà terminée : assez longue pour être
+ * lue sans effort, assez courte pour ne pas rester en travers du texte.
+ */
+const SHARE_FEEDBACK_MS = 2500
+
+/**
  * Volet de lecture. Les flux RSS ne fournissent qu’un résumé : le volet l’affiche
  * en entier et met l’ouverture de l’article original en action principale, plutôt
  * que de laisser croire au texte complet.
@@ -92,6 +104,10 @@ export function RssReadingPane({
   const contentRef = useRef<HTMLDivElement>(null)
   const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [swipe, setSwipe] = useState<SwipeState>({ dx: 0, active: false })
+  const [shareFeedback, setShareFeedback] = useState<{
+    kind: 'success' | 'error'
+    message: string
+  } | null>(null)
 
   // Les gestes ne sont câblés qu'en composition mobile — `onBack` en est le
   // marqueur. Au bureau la liste est visible en permanence à côté, et un
@@ -121,7 +137,18 @@ export function RssReadingPane({
   useEffect(() => {
     const content = contentRef.current
     if (content) content.scrollTop = 0
+    // Même raison : sans cela, la confirmation d'un partage suivrait le
+    // lecteur jusque sur l'article suivant.
+    setShareFeedback(null)
   }, [item?.id])
+
+  // Chaque partage produit un objet neuf : réafficher le même message relance
+  // bien le compte à rebours au lieu de laisser filer celui d'avant.
+  useEffect(() => {
+    if (!shareFeedback) return
+    const timeout = window.setTimeout(() => setShareFeedback(null), SHARE_FEEDBACK_MS)
+    return () => window.clearTimeout(timeout)
+  }, [shareFeedback])
 
   if (!item) {
     return (
@@ -162,7 +189,37 @@ export function RssReadingPane({
         ? 'Original'
         : targetLanguageLabel
       : 'Traduire'
+  const shareLabel = showTranslated ? 'Partager la traduction' : 'Partager l’article'
+  const shareLink = item.link || feed?.siteUrl || ''
+  const shareSucceeded = shareFeedback?.kind === 'success'
+
+  /**
+   * Un seul geste, deux issues selon la plateforme : la carte de partage du
+   * système là où elle existe, le presse-papiers ailleurs. Le contenu est
+   * composé de façon synchrone — une attente ici consommerait le geste
+   * utilisateur dont dépend le partage natif.
+   */
+  // Capturé hors de la fermeture : le garde « aucun article ouvert » plus haut
+  // ne suit pas jusque dans un gestionnaire asynchrone.
+  const sharedItem = item
+
+  async function handleShare() {
+    const content = buildArticleShareContent(
+      sharedItem,
+      feed,
+      showTranslated ? cachedTranslation : null
+    )
+    const outcome = await shareOrCopy(content)
+    if (outcome === 'copied') {
+      setShareFeedback({ kind: 'success', message: 'Article copié dans le presse papier' })
+    } else if (outcome === 'failed') {
+      setShareFeedback({ kind: 'error', message: 'Impossible de copier l’article.' })
+    }
+    // `shared` et `cancelled` : la carte du système s'est chargée du retour.
+  }
+
   const savedLabel = item.savedAt ? 'Sauvé' : 'Sauver'
+  const savedActionLabel = item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'
   const readLabel = item.readAt ? 'Non lu' : 'Lu'
   const readActionLabel = item.readAt ? 'Marquer non lu' : 'Marquer lu'
   const mobileActionClass =
@@ -216,6 +273,25 @@ export function RssReadingPane({
           >
             <HintIcon className="h-3.5 w-3.5" />
             {hintLabel}
+          </span>
+        </div>
+      ) : null}
+
+      {/* Confirmation du partage : ancrée au volet, elle reste visible en
+          lecture plein écran mobile comme au bureau — le bandeau en tête
+          d'application, lui, serait hors du champ de vision du lecteur. */}
+      {shareFeedback ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
+          <span
+            role="status"
+            className={cn(
+              'animate-fade-in max-w-full truncate rounded-full px-3 py-1.5 text-xs font-medium shadow-lg',
+              shareFeedback.kind === 'error'
+                ? 'bg-red-600 text-white'
+                : 'bg-[var(--text-primary)] text-[var(--bg-primary)]'
+            )}
+          >
+            {shareFeedback.message}
           </span>
         </div>
       ) : null}
@@ -299,7 +375,9 @@ export function RssReadingPane({
             Publié le {formatAbsoluteDate(item.publishedAt)}
           </p>
 
-          <div className="mt-3 flex flex-nowrap items-center gap-0.5 sm:flex-wrap sm:gap-1">
+          {/* Sous 640 px la rangée ne se replie pas : elle défile plutôt que de
+              rogner un bouton ou de mordre sur la marge de l'en-tête. */}
+          <div className="mt-3 flex flex-nowrap items-center gap-0.5 overflow-x-auto [scrollbar-width:none] sm:flex-wrap sm:gap-1 sm:overflow-x-visible [&::-webkit-scrollbar]:hidden">
             <Button
               size="sm"
               variant="primary"
@@ -308,7 +386,10 @@ export function RssReadingPane({
               disabled={!item.link}
             >
               <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-              <span className="min-[360px]:hidden">Original</span>
+              {/* « Original » sous 360 px désignait la même chose que la
+                  bascule de traduction juste à côté : deux boutons, un seul
+                  mot, deux sens. */}
+              <span className="min-[360px]:hidden">Source</span>
               <span className="hidden min-[360px]:inline">Ouvrir l’original</span>
             </Button>
             <Button
@@ -332,14 +413,17 @@ export function RssReadingPane({
               variant="ghost"
               className={mobileActionClass}
               onClick={onToggleSaved}
-              title={item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'}
+              title={savedActionLabel}
+              // Le libellé disparaît sous `sm` : sans ce nom explicite, le
+              // bouton n'en aurait plus aucun pour un lecteur d'écran.
+              aria-label={savedActionLabel}
             >
               {item.savedAt ? (
                 <BookmarkCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               ) : (
                 <Bookmark className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               )}
-              {savedLabel}
+              <span className="hidden sm:inline">{savedLabel}</span>
             </Button>
             <Button
               size="sm"
@@ -354,7 +438,29 @@ export function RssReadingPane({
               ) : (
                 <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
               )}
-              {readLabel}
+              <span className="hidden sm:inline">{readLabel}</span>
+            </Button>
+
+            {/* Détaché du bloc des bascules par `ml-auto` : ouvrir et partager
+                agissent hors de l'application, marquer et sauvegarder n'y
+                touchent qu'ici. L'avion en papier dit « envoyer à quelqu'un »
+                sans se confondre avec la flèche d'ouverture ni avec le graphe
+                de l'onglet Carte. */}
+            <Button
+              size="sm"
+              variant="secondary"
+              className={cn(mobileActionClass, 'ml-auto')}
+              onClick={() => void handleShare()}
+              disabled={!shareLink}
+              title={shareLabel}
+              aria-label={shareLabel}
+            >
+              {shareSucceeded ? (
+                <Check className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              ) : (
+                <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              )}
+              Partager
             </Button>
           </div>
         </header>
