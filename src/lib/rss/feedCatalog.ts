@@ -9,7 +9,7 @@
 
 import { foldForMatching } from './textAnalysis'
 
-export type CatalogLanguage = 'tr' | 'en' | 'fr' | 'ar' | 'el'
+export type CatalogLanguage = 'tr' | 'en' | 'fr' | 'ar' | 'el' | 'de' | 'es' | 'pt'
 
 export interface CatalogFeed {
   /** Identifiant stable, utilisé pour retenir ce qui a déjà été ajouté. */
@@ -37,6 +37,9 @@ export const CATALOG_LANGUAGE_LABELS: Record<CatalogLanguage, string> = {
   fr: 'Français',
   ar: 'Arabe',
   el: 'Grec',
+  de: 'Allemand',
+  es: 'Espagnol',
+  pt: 'Portugais',
 }
 
 export const FEED_CATALOG: CatalogPack[] = [
@@ -673,7 +676,7 @@ export const FEED_CATALOG: CatalogPack[] = [
     id: 'intl-agencies',
     title: 'Agences et médias internationaux',
     description:
-      'Fils généralistes de référence pour situer un sujet turc dans le flux international du jour.',
+      'Fils généralistes et regards croisés sur l’actualité mondiale, la diplomatie et le développement.',
     region: 'International',
     feeds: [
       {
@@ -735,10 +738,26 @@ export const FEED_CATALOG: CatalogPack[] = [
       {
         id: 'intl-euronews-ar',
         title: 'Euronews العربية',
-        url: 'https://arabic.euronews.com/rss?format=mrss&level=theme&name=news',
+        url: 'https://arabic.euronews.com/rss',
         siteUrl: 'https://arabic.euronews.com',
         language: 'ar',
         kind: 'Média européen en arabe',
+      },
+      {
+        id: 'intl-ips',
+        title: 'Inter Press Service',
+        url: 'https://www.ipsnews.net/feed/',
+        siteUrl: 'https://www.ipsnews.net',
+        language: 'en',
+        kind: 'Agence internationale — développement',
+      },
+      {
+        id: 'intl-npr-world',
+        title: 'NPR — World',
+        url: 'https://feeds.npr.org/1004/rss.xml',
+        siteUrl: 'https://www.npr.org/sections/world/',
+        language: 'en',
+        kind: 'Radio américaine — international',
       },
     ],
   },
@@ -780,6 +799,219 @@ export const FEED_CATALOG: CatalogPack[] = [
         siteUrl: 'https://balkaninsight.com',
         language: 'en',
         kind: 'Média régional des Balkans',
+      },
+      {
+        id: 'reg-civil-georgia',
+        title: 'Civil Georgia',
+        url: 'https://civil.ge/feed',
+        siteUrl: 'https://civil.ge',
+        language: 'en',
+        kind: 'Média géorgien — politique et société',
+      },
+    ],
+  },
+  {
+    id: 'regional-europe',
+    title: 'Europe et espace postsoviétique',
+    description:
+      'Affaires européennes, actualité ukrainienne et russe, et regard allemand : plusieurs perspectives pour suivre le continent.',
+    region: 'Europe',
+    feeds: [
+      {
+        id: 'eu-politico',
+        title: 'POLITICO Europe',
+        url: 'https://www.politico.eu/feed/',
+        siteUrl: 'https://www.politico.eu',
+        language: 'en',
+        kind: 'Média spécialisé en politique européenne',
+      },
+      {
+        id: 'eu-euronews',
+        title: 'Euronews — English',
+        url: 'https://www.euronews.com/rss',
+        siteUrl: 'https://www.euronews.com',
+        language: 'en',
+        kind: 'Chaîne européenne d’information',
+      },
+      {
+        id: 'eu-kyiv-independent',
+        title: 'The Kyiv Independent',
+        url: 'https://kyivindependent.com/news-archive/rss/',
+        siteUrl: 'https://kyivindependent.com',
+        language: 'en',
+        kind: 'Média ukrainien indépendant',
+      },
+      {
+        id: 'eu-moscow-times',
+        title: 'The Moscow Times',
+        url: 'https://www.themoscowtimes.com/rss/news',
+        siteUrl: 'https://www.themoscowtimes.com',
+        language: 'en',
+        kind: 'Média indépendant sur la Russie',
+      },
+      {
+        id: 'eu-dw-de',
+        title: 'Deutsche Welle — Deutsch',
+        url: 'https://rss.dw.com/rdf/rss-de-all',
+        siteUrl: 'https://www.dw.com/de/',
+        language: 'de',
+        kind: 'Média public allemand',
+      },
+    ],
+  },
+  {
+    id: 'regional-middle-east',
+    title: 'Moyen-Orient et Afrique du Nord',
+    description:
+      'Actualité régionale en français, anglais et arabe. Croiser les rédactions et les langues pour suivre les conflits, la diplomatie et les sociétés.',
+    region: 'Moyen-Orient et Afrique du Nord',
+    feeds: [
+      {
+        id: 'mena-middle-east-eye',
+        title: 'Middle East Eye',
+        url: 'https://www.middleeasteye.net/rss',
+        siteUrl: 'https://www.middleeasteye.net',
+        language: 'en',
+        kind: 'Média spécialisé sur le Moyen-Orient',
+      },
+      {
+        id: 'mena-times-of-israel',
+        title: 'The Times of Israel',
+        url: 'https://www.timesofisrael.com/feed/',
+        siteUrl: 'https://www.timesofisrael.com',
+        language: 'en',
+        kind: 'Média israélien anglophone',
+      },
+      {
+        id: 'mena-aljazeera-ar',
+        title: 'Al Jazeera — العربية',
+        url: 'https://www.aljazeera.net/aljazeerarss/ar/all.xml',
+        siteUrl: 'https://www.aljazeera.net',
+        language: 'ar',
+        kind: 'Chaîne qatarie en arabe',
+      },
+      {
+        id: 'mena-france24',
+        title: 'France 24 — Moyen-Orient',
+        url: 'https://www.france24.com/fr/moyen-orient/rss',
+        siteUrl: 'https://www.france24.com/fr/moyen-orient/',
+        language: 'fr',
+        kind: 'Média public international — rubrique régionale',
+      },
+    ],
+  },
+  {
+    id: 'regional-africa',
+    title: 'Afrique : actualité continentale et régionale',
+    description:
+      'Couverture panafricaine, suivi francophone et presse sud-africaine pour élargir la veille politique, économique et sociale.',
+    region: 'Afrique',
+    feeds: [
+      {
+        id: 'af-africanews',
+        title: 'Africanews',
+        url: 'https://www.africanews.com/feed/rss',
+        siteUrl: 'https://www.africanews.com',
+        language: 'en',
+        kind: 'Chaîne panafricaine d’information',
+      },
+      {
+        id: 'af-rfi',
+        title: 'RFI — Afrique',
+        url: 'https://www.rfi.fr/fr/afrique/rss',
+        siteUrl: 'https://www.rfi.fr/fr/afrique/',
+        language: 'fr',
+        kind: 'Radio publique — rubrique Afrique',
+      },
+      {
+        id: 'af-daily-maverick',
+        title: 'Daily Maverick',
+        url: 'https://www.dailymaverick.co.za/dmrss/',
+        siteUrl: 'https://www.dailymaverick.co.za',
+        language: 'en',
+        kind: 'Média sud-africain — enquêtes et analyses',
+      },
+    ],
+  },
+  {
+    id: 'regional-asia-pacific',
+    title: 'Asie et Pacifique',
+    description:
+      'Regards depuis Singapour, le Pakistan, l’Australie et les îles du Pacifique sur les enjeux politiques et les évolutions régionales.',
+    region: 'Asie-Pacifique',
+    feeds: [
+      {
+        id: 'ap-cna',
+        title: 'CNA',
+        url: 'https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml',
+        siteUrl: 'https://www.channelnewsasia.com',
+        language: 'en',
+        kind: 'Chaîne d’information singapourienne',
+      },
+      {
+        id: 'ap-dawn',
+        title: 'Dawn',
+        url: 'https://www.dawn.com/feeds/home',
+        siteUrl: 'https://www.dawn.com',
+        language: 'en',
+        kind: 'Quotidien pakistanais',
+      },
+      {
+        id: 'ap-abc-australia',
+        title: 'ABC News — Australia',
+        url: 'https://www.abc.net.au/news/feed/51120/rss.xml',
+        siteUrl: 'https://www.abc.net.au/news',
+        language: 'en',
+        kind: 'Média public australien',
+      },
+      {
+        id: 'ap-rnz-pacific',
+        title: 'RNZ — Pacific',
+        url: 'https://www.rnz.co.nz/rss/pacific.xml',
+        siteUrl: 'https://www.rnz.co.nz/international',
+        language: 'en',
+        kind: 'Radio publique néo-zélandaise — Pacifique',
+      },
+    ],
+  },
+  {
+    id: 'regional-americas',
+    title: 'Amériques : du Canada au Cône Sud',
+    description:
+      'Sources canadiennes, latino-américaines et brésiliennes, en anglais, espagnol et portugais, pour suivre le continent au-delà de Washington.',
+    region: 'Amériques',
+    feeds: [
+      {
+        id: 'am-cbc-world',
+        title: 'CBC — World',
+        url: 'https://www.cbc.ca/webfeed/rss/rss-world',
+        siteUrl: 'https://www.cbc.ca/news/world',
+        language: 'en',
+        kind: 'Média public canadien — international',
+      },
+      {
+        id: 'am-elpais-america',
+        title: 'El País — América',
+        url: 'https://feeds.elpais.com/mrss-s/pages/ep/site/elpais.com/section/america/portada',
+        siteUrl: 'https://elpais.com/america/',
+        language: 'es',
+        kind: 'Quotidien espagnol — édition Amérique',
+      },
+      {
+        id: 'am-agencia-brasil',
+        title: 'Agência Brasil',
+        url: 'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml',
+        siteUrl: 'https://agenciabrasil.ebc.com.br',
+        language: 'pt',
+        kind: 'Agence publique brésilienne',
+      },
+      {
+        id: 'am-mercopress',
+        title: 'MercoPress',
+        url: 'https://en.mercopress.com/rss',
+        siteUrl: 'https://en.mercopress.com',
+        language: 'en',
+        kind: 'Agence régionale — Amérique du Sud',
       },
     ],
   },

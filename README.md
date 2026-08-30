@@ -75,7 +75,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 - ajout de n'importe quel flux RSS ou Atom à partir de son URL ;
 - détection automatique du flux lorsqu'une page web compatible est collée ;
-- catalogue de sources prêt à l'emploi, notamment pour la presse turque, les agences et les médias internationaux ;
+- catalogue de sources prêt à l'emploi : presse turque, médias internationaux, Europe, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique et Amériques ;
 - classement des sources par catégories ;
 - import et export OPML pour migrer facilement depuis ou vers un autre lecteur RSS ;
 - actualisation manuelle ou automatique, avec une fréquence réglable par source ;
@@ -203,7 +203,23 @@ L'application est alors accessible sur [http://localhost:5174](http://localhost:
 | `npm run preview` | Prévisualise le build avec un proxy RSS local |
 | `npm run typecheck` | Vérifie les types sans produire de fichiers |
 | `npm test` | Exécute la suite de tests Vitest |
+| `npm run check:feeds` | Vérifie les flux du catalogue en ligne avec le proxy de production et le parseur du lecteur |
 | `docker compose up -d --build` | Construit et lance le package Docker |
+
+### Vérifier les sources du catalogue
+
+Dans la fenêtre **Sources**, le bouton **Vérifier** de chaque bouquet lit ses flux et indique le nombre d’articles datés utilisables. La disponibilité peut varier selon l’éditeur et le réseau ; un contrôle réussi ne garantit pas la disponibilité future ni l’accès au texte intégral des articles.
+
+Pour les contributeurs, `npm run check:feeds` contrôle tout le catalogue. On peut aussi cibler un ou plusieurs identifiants de bouquets ou de sources, ou une URL HTTPS candidate :
+
+```bash
+npm run check:feeds -- regional-europe regional-africa
+npm run check:feeds -- ap-rnz-pacific
+```
+
+Ce contrôle utilise directement le code de la fonction Vercel (validation DNS et redirections, délai de 8 secondes, plafond de 5 Mio), puis le parseur de l’application. Il échoue si aucun article daté avec un lien HTTP(S) n’est lisible et affiche la date de l’article le plus récent pour repérer les flux abandonnés. Il nécessite un accès réseau et reste séparé de `npm test`. L’option `--json` produit un résultat structuré.
+
+Le [relevé de vérification de l’extension internationale](docs/feed-catalog-verification.md) précise les sources testées et les limites du contrôle.
 
 ## Architecture technique
 
