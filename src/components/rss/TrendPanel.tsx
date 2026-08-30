@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   BellPlus,
   BellRing,
+  BrushCleaning,
   ChevronDown,
   ChevronRight,
   Loader2,
@@ -16,6 +17,7 @@ import {
 import { Button, Input } from '@/components/ui'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { Sparkline } from './Sparkline'
+import { TrendFocusCard } from './TrendFocusCard'
 import { cn } from '@/lib/utils/cn'
 import {
   TREND_WINDOW_OPTIONS,
@@ -45,6 +47,8 @@ interface TrendPanelProps {
   onSelectTerm: (term: TrendTerm) => void
   onSelectWatched: (term: string) => void
   activeTermKey: string | null
+  onClearSelection: () => void
+  onViewArticles?: () => void
   aiRefinement: {
     available: boolean
     loading: boolean
@@ -103,6 +107,8 @@ export function TrendPanel({
   onSelectTerm,
   onSelectWatched,
   activeTermKey,
+  onClearSelection,
+  onViewArticles,
   aiRefinement,
   onRefineWithAi,
   onClearAiRefinement,
@@ -151,7 +157,7 @@ export function TrendPanel({
           {aiRefinement.loading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
-            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+            <BrushCleaning className="h-3.5 w-3.5" aria-hidden="true" />
           )}
           IA
         </Button>
@@ -188,6 +194,9 @@ export function TrendPanel({
       ) : null}
 
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3">
+        {report.focus ? (
+          <TrendFocusCard focus={report.focus} report={report} onClear={onClearSelection} onViewArticles={onViewArticles} />
+        ) : (
         <section aria-label="Volume de publication">
           <div className="rounded-card border border-[var(--border)] bg-[var(--surface-alt,var(--surface))] p-3">
             <div className="flex items-end justify-between gap-3">
@@ -222,6 +231,7 @@ export function TrendPanel({
             </div>
           </div>
         </section>
+        )}
 
         <section aria-label="Mots-clés suivis">
           <button
@@ -281,6 +291,7 @@ export function TrendPanel({
                     <WatchedRow
                       key={watched.term}
                       watched={watched}
+                      active={report.focus?.kind === 'keyword' && report.focus.label === watched.term}
                       onSelect={() => onSelectWatched(watched.term)}
                       onRemove={() => onUnwatchTerm(watched.term)}
                     />
@@ -315,6 +326,7 @@ export function TrendPanel({
                     <button
                       type="button"
                       onClick={() => onSelectTerm(term)}
+                      aria-pressed={activeTermKey === term.key}
                       className="min-w-0 flex-1 text-left"
                       title={`Filtrer les articles sur « ${term.label} »`}
                     >
@@ -365,16 +377,18 @@ export function TrendPanel({
 
 function WatchedRow({
   watched,
+  active,
   onSelect,
   onRemove,
 }: {
   watched: WatchedKeywordStat
+  active: boolean
   onSelect: () => void
   onRemove: () => void
 }) {
   return (
-    <li className="flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1.5">
-      <button type="button" onClick={onSelect} className="min-w-0 flex-1 text-left">
+    <li className={cn('flex items-center gap-2 rounded-lg border border-[var(--border)] px-2 py-1.5', active && 'bg-[var(--accent-muted)]')}>
+      <button type="button" onClick={onSelect} aria-pressed={active} className="min-w-0 flex-1 text-left">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm text-[var(--text-primary)]">{watched.term}</span>
           <span className="shrink-0 rounded-full bg-[var(--hover)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)] tabular-nums">

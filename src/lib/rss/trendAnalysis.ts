@@ -55,6 +55,24 @@ export interface WatchedKeywordStat {
   buckets: number[]
 }
 
+export interface TrendFocusSelection {
+  key: string
+  label: string
+  /** Les mots-clés suivis recherchent aussi dans les résumés. */
+  kind?: 'term' | 'keyword'
+}
+
+export interface TrendFocus extends TrendFocusSelection {
+  count: number
+  previousCount: number
+  sourceCount: number
+  previousSourceCount: number
+  unreadCount: number
+  latestPublishedAt: number | null
+  buckets: number[]
+  previousBuckets: number[]
+}
+
 export interface TrendReport {
   generatedAt: number
   windowHours: number
@@ -70,6 +88,8 @@ export interface TrendReport {
   volumeBuckets: number[]
   terms: TrendTerm[]
   watched: WatchedKeywordStat[]
+  /** Détail du sujet sélectionné, même s’il sort du classement ou devient vide. */
+  focus?: TrendFocus
 }
 
 export interface ComputeTrendsOptions {
@@ -80,6 +100,7 @@ export interface ComputeTrendsOptions {
   feedIds?: string[]
   termLimit?: number
   now?: number
+  focus?: TrendFocusSelection | null
 }
 
 export interface ComputeRelatedTrendTermsOptions {
@@ -195,6 +216,7 @@ export function computeTrends({
   feedIds,
   termLimit = DEFAULT_TERM_LIMIT,
   now = Date.now(),
+  focus,
 }: ComputeTrendsOptions): TrendReport {
   const windowMs = Math.max(1, windowHours) * HOUR_MS
   const windowStart = now - windowMs
@@ -313,7 +335,53 @@ export function computeTrends({
       windowStart,
       bucketMs,
     }),
+    focus: focus ? computeFocus({ focus, currentItems, previousItems, boilerplate, windowStart, bucketMs }) : undefined,
   }
+}
+
+/** Même corpus, mêmes bornes et mêmes exclusions que le classement global. */
+function computeFocus({ focus, currentItems, previousItems, boilerplate, windowStart, bucketMs }: {
+  focus: TrendFocusSelection
+  currentItems: RssItem[]
+  previousItems: RssItem[]
+  boilerplate: Map<string, Set<string>>
+  windowStart: number
+  bucketMs: number
+}): TrendFocus {
+  const matches = (item: RssItem) => focus.kind === 'keyword'
+    ? matchesKeyword(keywordText(item), focus.label)
+    : !boilerplate.get(item.feedId)?.has(focus.key)
+      && extractTerms(trendText(item)).some((term) => term.key === focus.key)
+  const current = currentItems.filter(matches)
+  const previous = previousItems.filter(matches)
+  const buckets = new Array<number>(SPARKLINE_BUCKETS).fill(0)
+  const previousBuckets = new Array<number>(SPARKLINE_BUCKETS).fill(0)
+  let latestPublishedAt: number | null = null
+  for (const item of current) {
+    const timestamp = itemTimestamp(item)
+    buckets[bucketIndex(timestamp, windowStart, bucketMs)] += 1
+    latestPublishedAt = Math.max(latestPublishedAt ?? timestamp, timestamp)
+  }
+  for (const item of previous) {
+    previousBuckets[bucketIndex(itemTimestamp(item), windowStart - bucketMs * SPARKLINE_BUCKETS, bucketMs)] += 1
+  }
+  return {
+    key: focus.key,
+    label: focus.label,
+    kind: focus.kind,
+    count: current.length,
+    previousCount: previous.length,
+    sourceCount: new Set(current.map((item) => item.feedId)).size,
+    previousSourceCount: new Set(previous.map((item) => item.feedId)).size,
+    unreadCount: current.filter((item) => !item.readAt).length,
+    latestPublishedAt,
+    buckets,
+    previousBuckets,
+  }
+}
+
+export function filterItemsByKeyword(items: RssItem[], keyword: string): RssItem[] {
+  return items.filter((item) => matchesKeyword(keywordText(item), keyword))
 }
 
 /**

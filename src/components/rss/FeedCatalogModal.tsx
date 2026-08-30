@@ -60,21 +60,20 @@ export function FeedCatalogModal({
       title="Ajouter des sources"
       description={`${CATALOG_FEED_COUNT} sources vérifiées, regroupées en bouquets prêts à l’emploi.`}
       size="xl"
+      className="sm:flex sm:max-h-[calc(100dvh-3rem)]! sm:flex-col"
+      bodyClassName="sm:flex sm:min-h-0 sm:flex-col"
     >
-      <div className="min-w-0 space-y-4 overflow-x-hidden">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search
-              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]"
-              aria-hidden="true"
-            />
+      <div className="flex min-h-0 min-w-0 flex-col gap-4">
+        <div className="min-w-0 shrink-0 space-y-3">
+          <div className="relative min-w-0">
             <Input
               ref={searchInputRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Rechercher une source (Cumhuriyet, agence, anglais…)"
+              placeholder="Rechercher une source…"
               aria-label="Rechercher dans le catalogue"
-              className={cn('pl-9', query && 'pr-10')}
+              leftIcon={<Search className="h-4 w-4" aria-hidden="true" />}
+              className="h-11 pr-11"
             />
             {query && (
               <button
@@ -85,13 +84,13 @@ export function FeedCatalogModal({
                   setQuery('')
                   searchInputRef.current?.focus()
                 }}
-                className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
+                className="absolute right-1 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex min-w-0 flex-wrap gap-1.5" role="group" aria-label="Filtrer par région">
             <RegionChip label="Toutes" active={region === ALL_REGIONS} onClick={() => setRegion(ALL_REGIONS)} />
             {CATALOG_REGIONS.map((candidate) => (
               <RegionChip
@@ -110,7 +109,7 @@ export function FeedCatalogModal({
             depuis la barre du lecteur.
           </p>
         ) : (
-          <div className="min-w-0 touch-pan-y space-y-4 overflow-x-hidden pr-1 sm:max-h-[58dvh] sm:overflow-y-auto sm:overscroll-contain">
+          <div className="min-w-0 touch-pan-y space-y-4 overflow-x-hidden pr-1 sm:min-h-0 sm:max-h-[58dvh] sm:overflow-y-auto sm:overscroll-contain">
             {packs.map((pack) => (
               <PackSection
                 key={pack.id}
@@ -228,7 +227,7 @@ function PackSection({
         </div>
       </div>
 
-      <ul className="mt-3 grid gap-1.5 sm:grid-cols-2">
+      <ul className="mt-3 grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {pack.feeds.map((feed) => {
           const subscribed = subscribedUrls.has(feed.url)
           return (

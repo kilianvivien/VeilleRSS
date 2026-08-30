@@ -51,7 +51,7 @@ import type { RssDensity, RssFeed, RssItem, RssItemTranslation, RssSortMode } fr
 import { cn } from '@/lib/utils/cn'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { exportFeedsToOpml, parseOpml } from '@/lib/rss/opml'
-import { computeTrends, filterItemsByTerm } from '@/lib/rss/trendAnalysis'
+import { computeTrends, filterItemsByKeyword, filterItemsByTerm, type TrendFocusSelection } from '@/lib/rss/trendAnalysis'
 import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
 import { applyStoredTrendSelection } from '@/lib/rss/trendSelection'
 import { foldForMatching } from '@/lib/rss/textAnalysis'
@@ -183,7 +183,7 @@ export function RssFeeds() {
   const [smartView, setSmartView] = useState<SmartView>('all')
   const [query, setQuery] = useState('')
   const [sortMode, setSortMode] = useState<RssSortMode>('recent')
-  const [activeTerm, setActiveTerm] = useState<{ key: string; label: string } | null>(null)
+  const [activeTerm, setActiveTerm] = useState<TrendFocusSelection | null>(null)
   const [openItemId, setOpenItemId] = useState<string | null>(null)
   const [error, setErrorState] = useState<string | null>(null)
   const [notice, setNoticeState] = useState<string | null>(null)
@@ -323,7 +323,7 @@ export function RssFeeds() {
     const onServiceWorkerMessage = (event: MessageEvent) => {
       const data = event.data as { type?: string; term?: string } | null
       if (data?.type !== 'NOTIFICATION_CLICK' || !data.term) return
-      setActiveTerm({ key: foldForMatching(data.term), label: data.term })
+      setActiveTerm({ key: foldForMatching(data.term), label: data.term, kind: 'keyword' })
       setQuery('')
       setRightPane('article')
       setOpenItemId(null)
@@ -426,7 +426,9 @@ export function RssFeeds() {
     })
 
     if (activeTerm) {
-      filtered = filterItemsByTerm(filtered, activeTerm.key)
+      filtered = activeTerm.kind === 'keyword'
+        ? filterItemsByKeyword(filtered, activeTerm.label)
+        : filterItemsByTerm(filtered, activeTerm.key)
     }
 
     return [...filtered].sort((a, b) => {
@@ -448,8 +450,9 @@ export function RssFeeds() {
         windowHours: trendWindowHours,
         watchedKeywords,
         feedIds: activeFeedId ? [activeFeedId] : undefined,
+        focus: activeTerm,
       }),
-    [activeFeedId, deferredTrendItems, trendWindowHours, watchedKeywords]
+    [activeFeedId, activeTerm, deferredTrendItems, trendWindowHours, watchedKeywords]
   )
 
   // Le tri IA est rejoué sur chaque rapport recalculé : il survit donc à
@@ -1103,14 +1106,13 @@ export function RssFeeds() {
     [openItemId, openTrendMap, rightPane]
   )
 
-  /** Sur mobile, filtrer sur une tendance bascule vers la liste filtrée. */
+  /** Rester sur les tendances permet de consulter immédiatement le détail du sujet. */
   const selectTerm = useCallback(
     (term: { key: string; label: string }) => {
-      setActiveTerm(term)
+      setActiveTerm({ key: term.key, label: term.label })
       setQuery('')
-      if (!isDesktop) setRightPane('article')
     },
-    [isDesktop]
+    []
   )
 
   // ── Blocs partagés entre la composition bureau et la composition mobile ──
@@ -1490,11 +1492,12 @@ export function RssFeeds() {
       }
       onSelectTerm={selectTerm}
       onSelectWatched={(term) => {
-        setActiveTerm(null)
-        setQuery(term)
-        if (!isDesktop) setRightPane('article')
+        setActiveTerm({ key: foldForMatching(term), label: term, kind: 'keyword' })
+        setQuery('')
       }}
-      activeTermKey={activeTerm?.key ?? null}
+      activeTermKey={activeTerm?.kind === 'keyword' ? null : activeTerm?.key ?? null}
+      onClearSelection={() => setActiveTerm(null)}
+      onViewArticles={!isDesktop ? () => { setOpenItemId(null); setRightPane('article') } : undefined}
       aiRefinement={{
         available: trendProviderReady,
         loading: isRefiningTrends,

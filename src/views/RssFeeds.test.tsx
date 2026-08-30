@@ -22,7 +22,7 @@ vi.mock('@/lib/platform/fileService', () => ({
  * quel article est ouvert, à quel rang, et jusqu'où on peut aller — que ces
  * cas vérifient. Le geste lui-même est couvert par `RssReadingPane.test.tsx`.
  */
-vi.mock('@/components/rss', () => ({
+vi.mock('@/components/rss', async () => ({
   FeedRail: () => <div />,
   RssReadingPane: ({
     item,
@@ -51,7 +51,7 @@ vi.mock('@/components/rss', () => ({
     ) : (
       <div />
     ),
-  TrendPanel: () => <div />,
+  TrendPanel: (await import('@/components/rss/TrendPanel')).TrendPanel,
   formatRefreshInterval: () => '',
   RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: () => void }) => (
     <li data-testid="article-row">
@@ -97,6 +97,99 @@ function makeItems(count: number): RssItem[] {
     fetchedAt: now,
   }))
 }
+
+describe('selected trend summary wiring', () => {
+  beforeEach(() => {
+    const samples = makeItems(6).map((item, index) => ({
+      ...item,
+      title: index < 3 ? 'Ankara' : 'London',
+      feedId: index === 1 ? 'feed-2' : feed.id,
+      publishedAt: now - [1, 8, 30, 2, 3, 4][index] * 3_600_000,
+    }))
+    useRssStore.setState({
+      feeds: [feed, { ...feed, id: 'feed-2', title: 'Second feed' }],
+      items: samples, selectedItemIds: [], isRefreshing: false, refreshingFeedIds: [],
+      settings: { ...defaultRssSettings, trendWindowHours: 24, showTrendsByDefault: true },
+      aiTrendSelection: null, trendBriefing: null,
+    })
+  })
+
+  afterEach(() => {
+    cleanup()
+    isDesktopViewport = true
+    useRssStore.setState({ feeds: [], items: [], selectedItemIds: [] })
+  })
+
+  it('switches the top card to the clicked topic, updates the window, and restores the global view', () => {
+    render(<RssFeeds />)
+    expect(screen.getByRole('region', { name: 'Volume de publication' })).toHaveTextContent('5')
+    const terms = screen.getByRole('region', { name: 'Termes en hausse' })
+    fireEvent.click(within(terms).getByRole('button', { name: /^Ankara/ }))
+    const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
+    expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('2')
+    expect(within(card).getByText('Sources').nextElementSibling).toHaveTextContent('2')
+    expect(card).toHaveTextContent('+100 %')
+    expect(card).toHaveTextContent('40 % des articles')
+    expect(screen.queryByRole('region', { name: 'Volume de publication' })).not.toBeInTheDocument()
+    expect(within(card).getByRole('group', { name: 'Évolution de Ankara' }).querySelectorAll('button')).toHaveLength(12)
+    const intervals = within(within(card).getByRole('group', { name: 'Évolution de Ankara' })).getAllByRole('button')
+    fireEvent.click(intervals[0])
+    expect(intervals[0]).toHaveAttribute('aria-pressed', 'true')
+    expect(intervals[11]).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(screen.getByRole('button', { name: '6 h' }))
+    expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('1')
+    expect(card).toHaveTextContent('contre 1 article sur les 6 h précédentes')
+    expect(card).toHaveTextContent('Stable')
+
+    fireEvent.click(within(card).getByRole('button', { name: 'Vue globale' }))
+    expect(screen.getByRole('region', { name: 'Volume de publication' })).toHaveTextContent('4')
+    expect(screen.queryByRole('region', { name: 'Détail du sujet : Ankara' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Filtré sur « Ankara »')).not.toBeInTheDocument()
+  })
+
+  it('keeps the topic detail on mobile and provides a separate route to its articles', () => {
+    isDesktopViewport = false
+    render(<RssFeeds />)
+    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
+    expect(card).toBeInTheDocument()
+    fireEvent.click(within(card).getByRole('button', { name: 'Voir les articles' }))
+    expect(screen.getAllByTestId('article-row')).toHaveLength(3)
+    expect(screen.getByText('Filtré sur « Ankara »')).toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByText('Tendances'))
+    expect(screen.getByRole('region', { name: 'Détail du sujet : Ankara' })).toBeInTheDocument()
+  })
+
+  it('refreshes the selected topic when a new article arrives', () => {
+    render(<RssFeeds />)
+    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    act(() => {
+      const fresh = { ...makeItems(1)[0], id: 'fresh', title: 'Ankara', publishedAt: Date.now() - 1000 }
+      useRssStore.setState({ items: [...useRssStore.getState().items, fresh] })
+    })
+    const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
+    expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
+    expect(card).toHaveTextContent('+200 %')
+    expect(card).toHaveTextContent('50 % des articles')
+  })
+
+  it('uses the watched keyword’s summary matches for the detail and article filter', () => {
+    const state = useRssStore.getState()
+    useRssStore.setState({
+      settings: { ...state.settings, watchedKeywords: [{ term: 'Ankara', createdAt: now }] },
+      items: state.items.map((item, index) => index === 3 ? { ...item, summary: 'Talks in Ankara' } : item),
+    })
+    render(<RssFeeds />)
+    fireEvent.click(within(screen.getByRole('region', { name: 'Mots-clés suivis' })).getByRole('button', { name: /^Ankara/ }))
+    const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
+    expect(card).toHaveTextContent('Mot-clé suivi')
+    expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
+    expect(screen.getAllByTestId('article-row')).toHaveLength(4)
+    fireEvent.click(screen.getByRole('button', { name: 'Retirer le filtre de tendance' }))
+    expect(screen.getByRole('region', { name: 'Volume de publication' })).toBeInTheDocument()
+  })
+})
 
 describe('RssFeeds progressive article rendering', () => {
   beforeEach(() => {

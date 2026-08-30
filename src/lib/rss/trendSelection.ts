@@ -33,5 +33,11 @@ export function applyStoredTrendSelection(
 
   const unreviewed = report.terms.filter((term) => !rank.has(term.key) && !rejected.has(term.key))
 
-  return { ...report, terms: [...kept, ...unreviewed] }
+  return {
+    ...report,
+    terms: [...kept, ...unreviewed],
+    focus: report.focus && report.focus.kind !== 'keyword'
+      ? { ...report.focus, label: selection.labels[report.focus.key] ?? report.focus.label }
+      : report.focus,
+  }
 }
