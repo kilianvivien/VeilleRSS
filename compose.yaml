@@ -3,7 +3,7 @@ services:
     build:
       context: .
       target: runtime
-    image: veille-rss:0.1.0
+    image: veille-rss:0.2.0
     ports:
       - "8080:8080"
     environment:

@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kilianvivien/VeilleRSS/releases/tag/v0.1.0"><img src="https://img.shields.io/badge/version-v0.1.0-2563eb?style=flat-square" alt="Version v0.1.0"></a>
+  <a href="https://github.com/kilianvivien/VeilleRSS/releases/tag/v0.2.0"><img src="https://img.shields.io/badge/version-v0.2.0-2563eb?style=flat-square" alt="Version v0.2.0"></a>
   <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
   <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
   <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
@@ -145,7 +145,14 @@ Le tutoriel intégré guide ensuite l'ajout des premières sources.
 
 ## Auto-hébergement avec Docker
 
-La release `v0.1.0` fournit un déploiement Docker secondaire et autonome. Le conteneur compile l'interface, sert les fichiers statiques et expose le proxy RSS sur le même domaine.
+La release `v0.2.0` fournit un déploiement Docker secondaire et autonome. Le conteneur compile l'interface, sert les fichiers statiques et expose le proxy RSS sur le même domaine.
+
+Téléchargez l'archive `veille-rss-0.2.0-docker.tar.gz` depuis la [release GitHub](https://github.com/kilianvivien/VeilleRSS/releases/tag/v0.2.0), puis décompressez-la et ouvrez un terminal dans le dossier obtenu. Docker avec Docker Compose doit être installé. L'image est construite sur votre machine ; une connexion Internet est nécessaire pour télécharger Node.js et les dépendances.
+
+```bash
+tar -xzf veille-rss-0.2.0-docker.tar.gz
+cd veille-rss-0.2.0
+```
 
 > **En bref :** aucune base de données, aucun volume et aucune variable secrète ne sont nécessaires. Les données restent dans le navigateur de chaque utilisateur.
 
@@ -164,14 +171,14 @@ docker compose down
 ### Avec Docker seul
 
 ```bash
-docker build -t veille-rss:0.1.0 .
-docker run --name veille-rss -p 8080:8080 --restart unless-stopped veille-rss:0.1.0
+docker build -t veille-rss:0.2.0 .
+docker run --name veille-rss -p 8080:8080 --restart unless-stopped veille-rss:0.2.0
 ```
 
 Le port interne peut être changé avec `PORT`. En production, placez idéalement le conteneur derrière un reverse proxy HTTPS :
 
 ```bash
-docker run -p 3000:3000 -e PORT=3000 veille-rss:0.1.0
+docker run -p 3000:3000 -e PORT=3000 veille-rss:0.2.0
 ```
 
 Un point de contrôle est disponible sur `/healthz`. Aucune persistance Docker n'est nécessaire, car les données utilisateur sont stockées dans le navigateur et non dans le conteneur.
