@@ -263,13 +263,14 @@ Le navigateur peut effacer ces données si l'utilisateur supprime les données d
 
 ### Pourquoi un proxy RSS ?
 
-De nombreux flux bloquent les requêtes venant directement d'une page web. L'application passe donc par une route du même domaine :
+L'application essaie d'abord de lire le flux depuis le navigateur de chaque utilisateur. Quand l'éditeur autorise ces requêtes (CORS), aucun appel à la fonction Vercel n'est nécessaire. Si l'accès direct échoue ou ne renvoie pas un flux lisible, l'application utilise une route du même domaine. Elle mémorise localement cet échec pendant une heure pour éviter les tentatives répétées :
 
 - `/__rss-proxy` avec le serveur Vite en développement ;
 - `/api/rss-proxy` avec une Function sur Vercel ;
 - `/api/rss-proxy` avec le serveur Node intégré à l'image Docker.
 
 Les proxys de production limitent les protocoles, refusent les destinations locales ou privées, revalident les redirections et plafonnent la durée et la taille des réponses afin de réduire les risques SSRF et les abus.
+Les flux qui bloquent CORS continuent donc à utiliser le proxy ; leur récupération ne peut pas être entièrement déplacée dans le navigateur sans perdre ces sources.
 
 ### PWA et cache
 
@@ -278,6 +279,7 @@ Le service worker est généré au moment du build avec un identifiant détermin
 ## Vie privée et sécurité
 
 - Les données de veille ne sont pas synchronisées vers un serveur du projet.
+- Les éditeurs des flux accessibles directement reçoivent les requêtes du navigateur et peuvent voir l'adresse IP de l'utilisateur.
 - Les fournisseurs IA ne reçoivent du contenu que lorsqu'une action IA est lancée.
 - Chaque fournisseur applique ses propres conditions de conservation et de traitement.
 - Les clés API présentes dans le navigateur sont accessibles au code exécuté sur cette origine : déployez uniquement une version de confiance et protégez l'accès à l'appareil.
