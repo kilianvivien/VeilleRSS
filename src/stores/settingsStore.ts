@@ -2,6 +2,18 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { Settings } from '@/types/settings'
 import { defaultSettings } from '@/lib/constants/settingsDefaults'
+import { RETIRED_PROVIDERS } from '@/lib/ai/providerRegistry'
+
+const PROVIDER_SELECTION_FIELDS = [
+  'aiProvider',
+  'summaryAiProvider',
+  'magicReviewAiProvider',
+  'magicReviewConversionAiProvider',
+  'rewriteAiProvider',
+  'proofReportAiProvider',
+  'translationAiProvider',
+  'rssAiProvider',
+] as const
 
 /**
  * Réglages de l'outil de veille — version web autonome.
@@ -34,19 +46,29 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'veille-web-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 2,
+      version: 3,
       /**
        * v2 : le modèle Mistral par défaut passe de `small` à `medium`.
        * Les réglages persistés contiennent toujours une valeur explicite —
        * `defaultSettings` l'y écrit dès la première visite. On ne remplace
        * donc que l'ancien défaut, jamais un modèle réellement choisi.
+       * v3 : les sélections Vertex AI et CLIProxyAPI reviennent au fournisseur
+       * par défaut ; les clés et modèles enregistrés restent intacts.
        */
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings> | undefined
-        if (state && version < 2 && state.mistralModel === 'mistral-small-latest') {
-          return { ...state, mistralModel: defaultSettings.mistralModel } as SettingsState
+        const migrated = { ...state }
+        if (version < 2 && migrated.mistralModel === 'mistral-small-latest') {
+          migrated.mistralModel = defaultSettings.mistralModel
         }
-        return state as SettingsState
+        if (version < 3) {
+          for (const field of PROVIDER_SELECTION_FIELDS) {
+            if (migrated[field] && RETIRED_PROVIDERS.includes(migrated[field])) {
+              migrated[field] = undefined
+            }
+          }
+        }
+        return migrated as SettingsState
       },
     }
   )

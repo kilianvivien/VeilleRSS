@@ -256,13 +256,15 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
   },
 }
 
+/** Providers no longer offered for selection or automatic fallback. */
+export const RETIRED_PROVIDERS: readonly AiProvider[] = ['vertex', 'cliproxy']
+
 /**
  * Fournisseurs proposés dans les paramètres sur mobile.
  *
- * Le panneau mobile n'a pas la place — ni l'usage — des huit fournisseurs :
+ * Le panneau mobile n'a pas la place — ni l'usage — de tous les fournisseurs :
  * on garde ceux qui marchent depuis un téléphone (clé API, endpoint public).
- * Vertex, CLIProxyAPI, NVIDIA, Albert et l'IA locale restent accessibles sur
- * bureau, et une clé déjà saisie là-bas continue de fonctionner sur mobile.
+ * NVIDIA, Albert et l'IA locale restent accessibles sur bureau.
  */
 export const MOBILE_VISIBLE_PROVIDERS: readonly AiProvider[] = ['gemini', 'mistral', 'openrouter']
 
@@ -340,12 +342,14 @@ export function isProviderConfiguredInRegistry(provider: AiProvider, settings: S
 
 /**
  * Configured providers eligible for automatic fallback, in registry
- * priority order. Matches the historical hard-coded order:
- * mistral → vertex → openrouter → CLIProxyAPI → nvidia → albert → local.
+ * priority order: mistral → openrouter → nvidia → albert → local.
  */
 export function getConfiguredFallbackProviders(settings: Settings): AiProvider[] {
   return (Object.values(PROVIDER_REGISTRY) as ProviderDescriptor[])
-    .filter((descriptor) => descriptor.fallbackPriority !== null)
+    .filter(
+      (descriptor) =>
+        descriptor.fallbackPriority !== null && !RETIRED_PROVIDERS.includes(descriptor.id)
+    )
     .sort((a, b) => (a.fallbackPriority as number) - (b.fallbackPriority as number))
     .filter((descriptor) => isProviderConfiguredInRegistry(descriptor.id, settings))
     .map((descriptor) => descriptor.id)

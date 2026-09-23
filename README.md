@@ -107,7 +107,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - affinage des tendances afin d'écarter les termes trop génériques ;
 - génération d'un briefing éditorial, avec conclusions, statistiques et graphiques ;
 - fournisseur différent possible pour la traduction et pour la veille ;
-- prise en charge de Gemini, Mistral, Vertex AI, OpenRouter, NVIDIA NIM, Albert, CLIProxyAPI et d'un modèle local compatible (Ollama ou LM Studio).
+- prise en charge de Gemini, Mistral, OpenRouter, NVIDIA NIM, Albert et d'un modèle local compatible (Ollama ou LM Studio).
 
 Les appels IA sont envoyés directement depuis le navigateur au fournisseur configuré. Les clés API sont stockées dans le `localStorage` de l'appareil : utilisez de préférence des clés dédiées, limitées en quota, et évitez les appareils partagés.
 

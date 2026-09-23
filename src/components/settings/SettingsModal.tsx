@@ -5,7 +5,11 @@ import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { AiProvider, Settings } from '@/types/settings'
-import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
+import {
+  MOBILE_VISIBLE_PROVIDERS,
+  PROVIDER_REGISTRY,
+  RETIRED_PROVIDERS,
+} from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
 import { TREND_WINDOW_OPTIONS } from '@/lib/rss/trendAnalysis'
@@ -76,7 +80,10 @@ interface ProviderDescriptorLike {
 
 /** Fournisseurs à clé — « heuristic » et « local » sont traités à part. */
 const KEY_PROVIDERS = (Object.values(PROVIDER_REGISTRY) as ProviderDescriptorLike[]).filter(
-  (descriptor) => descriptor.requiresApiKey && descriptor.settingsApiKeyField
+  (descriptor) =>
+    descriptor.requiresApiKey &&
+    descriptor.settingsApiKeyField &&
+    !RETIRED_PROVIDERS.includes(descriptor.id)
 )
 
 const SELECTABLE_PROVIDERS = [
@@ -145,7 +152,11 @@ export function SettingsModal({
    */
   const optionsForSlot = (current: AiProvider | undefined) => {
     const options = [{ value: '', label: 'Par défaut' }, ...selectableProviders]
-    if (current && !options.some((option) => option.value === current)) {
+    if (
+      current &&
+      !RETIRED_PROVIDERS.includes(current) &&
+      !options.some((option) => option.value === current)
+    ) {
       options.push({ value: current, label: PROVIDER_REGISTRY[current].label })
     }
     return options
@@ -417,10 +428,7 @@ export function SettingsModal({
               const currentModel = modelField
                 ? ((aiSettings[modelField] as string | undefined) ?? '')
                 : ''
-              const configured =
-                Boolean(currentKey.trim()) &&
-                (descriptor.id !== 'cliproxy' ||
-                  (Boolean(aiSettings.cliProxyBaseUrl?.trim()) && Boolean(currentModel.trim())))
+              const configured = Boolean(currentKey.trim())
 
               return (
                 <Collapsible
@@ -454,7 +462,7 @@ export function SettingsModal({
                       placeholder={
                         descriptor.defaultModel
                           ? `${descriptor.defaultModel} (par défaut)`
-                          : 'Modèle requis pour CLIProxyAPI'
+                          : 'Modèle'
                       }
                       autoComplete="off"
                       spellCheck={false}
@@ -469,18 +477,6 @@ export function SettingsModal({
                         </option>
                       ))}
                     </datalist>
-                  ) : null}
-                  {descriptor.id === 'cliproxy' ? (
-                    <Input
-                      label="Adresse CLIProxyAPI"
-                      value={aiSettings.cliProxyBaseUrl ?? ''}
-                      onChange={(event) =>
-                        updateAiSettings({ cliProxyBaseUrl: event.target.value })
-                      }
-                      placeholder="http://127.0.0.1:8317/v1"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
                   ) : null}
                 </Collapsible>
               )
@@ -677,9 +673,6 @@ function isConfigured(provider: AiProvider, settings: Settings): boolean {
   if (descriptor.settingsApiKeyField) {
     const key = settings[descriptor.settingsApiKeyField]
     if (typeof key !== 'string' || !key.trim()) return false
-    if (provider === 'cliproxy') {
-      return Boolean(settings.cliProxyBaseUrl?.trim()) && Boolean(settings.cliProxyModel?.trim())
-    }
     return true
   }
   if (provider === 'local') {
