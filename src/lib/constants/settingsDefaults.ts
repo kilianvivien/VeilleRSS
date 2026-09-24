@@ -1,6 +1,7 @@
 import { AUTO_SAVE_DELAY } from './storageConstants'
 import { defaultColorPalette } from './colorPresets'
 import { DEFAULT_LOCAL_AI_TIMEOUT_SECONDS } from '@/lib/ai/localAiTimeout'
+import { DEFAULT_APPLE_FM_BRIDGE_URL } from '@/lib/ai/appleFmService'
 import { PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import type {
   ThemePresetName,
@@ -50,9 +51,9 @@ export const defaultSettings = {
   mistralApiKey: undefined,
   openrouterApiKey: undefined,
   cliProxyApiKey: undefined,
-  nvidiaApiKey: undefined,
   albertApiKey: undefined,
   localAiEndpoint: 'http://localhost:1234/v1/chat/completions',
+  appleFmBridgeUrl: DEFAULT_APPLE_FM_BRIDGE_URL,
   cliProxyBaseUrl: 'http://127.0.0.1:8317/v1',
   aiSystemPrompt: undefined,
   // Advanced AI Settings defaults
@@ -64,14 +65,12 @@ export const defaultSettings = {
   mistralModel: PROVIDER_REGISTRY.mistral.defaultModel,
   openrouterModel: PROVIDER_REGISTRY.openrouter.defaultModel,
   cliProxyModel: PROVIDER_REGISTRY.cliproxy.defaultModel,
-  nvidiaModel: PROVIDER_REGISTRY.nvidia.defaultModel,
   albertModel: PROVIDER_REGISTRY.albert.defaultModel,
   translationGeminiModel: undefined, // Falls back to geminiModel
   translationVertexModel: undefined, // Falls back to vertexModel
   translationMistralModel: undefined, // Falls back to mistralModel
   translationOpenrouterModel: undefined, // Falls back to openrouterModel
   translationCliProxyModel: undefined, // Falls back to cliProxyModel
-  translationNvidiaModel: undefined, // Falls back to nvidiaModel
   translationAlbertModel: undefined, // Falls back to albertModel
   translationLocalModel: undefined, // Falls back to local provider default model
   minThemesPerSection: 3, // Default minimum themes per section (1-6)

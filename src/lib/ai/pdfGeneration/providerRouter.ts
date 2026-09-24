@@ -254,21 +254,12 @@ async function dispatchToProvider(
       )
     }
 
-    case 'nvidia': {
-      if (!settings.nvidiaApiKey) {
-        throw new Error(
-          'Clé API NVIDIA non configurée. Veuillez la configurer dans Paramètres → IA.'
-        )
-      }
-      const { generateNvidiaJSON } = await import('../nvidiaService')
-      return generateNvidiaJSON(
-        text,
-        settings.nvidiaApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        getEffectiveModel('nvidia', settings),
-        { signal }
-      )
+    case 'apple': {
+      const { generateAppleFmSummary } = await import('../appleFmService')
+      return generateAppleFmSummary(text, systemPrompt, maxOutputTokens, {
+        signal,
+        timeoutMs: getLocalAiTimeoutMs(settings),
+      }, settings.appleFmBridgeUrl)
     }
 
     case 'albert': {

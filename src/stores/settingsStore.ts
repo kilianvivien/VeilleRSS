@@ -46,7 +46,7 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'veille-web-settings',
       storage: createJSONStorage(() => localStorage),
-      version: 3,
+      version: 4,
       /**
        * v2 : le modèle Mistral par défaut passe de `small` à `medium`.
        * Les réglages persistés contiennent toujours une valeur explicite —
@@ -54,6 +54,7 @@ export const useSettingsStore = create<SettingsState>()(
        * donc que l'ancien défaut, jamais un modèle réellement choisi.
        * v3 : les sélections Vertex AI et CLIProxyAPI reviennent au fournisseur
        * par défaut ; les clés et modèles enregistrés restent intacts.
+       * v4 : NVIDIA est retiré. Ses sélections et ses secrets persistés sont effacés.
        */
       migrate: (persisted, version) => {
         const state = persisted as Partial<Settings> | undefined
@@ -67,6 +68,17 @@ export const useSettingsStore = create<SettingsState>()(
               migrated[field] = undefined
             }
           }
+        }
+        if (version < 4) {
+          for (const field of PROVIDER_SELECTION_FIELDS) {
+            if (migrated[field] && RETIRED_PROVIDERS.includes(migrated[field])) {
+              migrated[field] = undefined
+            }
+          }
+          const obsolete = migrated as Record<string, unknown>
+          delete obsolete.nvidiaApiKey
+          delete obsolete.nvidiaModel
+          delete obsolete.translationNvidiaModel
         }
         return migrated as SettingsState
       },

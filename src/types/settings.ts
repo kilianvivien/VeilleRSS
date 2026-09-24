@@ -6,7 +6,7 @@ export type AiProvider =
   | 'local'
   | 'openrouter'
   | 'cliproxy'
-  | 'nvidia'
+  | 'apple'
   | 'albert'
   | 'heuristic'
 
@@ -135,9 +135,9 @@ export interface Settings {
   mistralApiKey?: string
   openrouterApiKey?: string
   cliProxyApiKey?: string
-  nvidiaApiKey?: string
   albertApiKey?: string
   localAiEndpoint?: string
+  appleFmBridgeUrl?: string // Loopback bridge to fm serve, including /v1/chat/completions
   cliProxyBaseUrl?: string // CLIProxyAPI root or /v1 URL
   aiSystemPrompt?: string
   // Advanced AI Settings
@@ -148,7 +148,6 @@ export interface Settings {
   mistralModel?: string // Mistral model ID
   openrouterModel?: string // OpenRouter model ID
   cliProxyModel?: string // Model ID exposed by CLIProxyAPI
-  nvidiaModel?: string // NVIDIA NIM model ID
   albertModel?: string // Albert API model ID
   // Translation-specific model overrides (falls back to global model if undefined)
   translationGeminiModel?: string
@@ -156,7 +155,6 @@ export interface Settings {
   translationMistralModel?: string
   translationOpenrouterModel?: string
   translationCliProxyModel?: string
-  translationNvidiaModel?: string
   translationAlbertModel?: string
   translationLocalModel?: string // Default handled by local provider service (e.g. llama3)
   // PDF Review (Revue Magique IA) Configuration

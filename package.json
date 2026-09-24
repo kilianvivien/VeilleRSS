@@ -1,7 +1,7 @@
 {
   "name": "diplorevue-veille-web",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -10,6 +10,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "apple:bridge": "node scripts/apple-fm-bridge.mjs",
     "test": "vitest run",
     "check:feeds": "node scripts/check-feed-catalog.mjs",
     "typecheck": "tsc --noEmit"

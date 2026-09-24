@@ -1,5 +1,6 @@
 import type { AiProvider, Settings } from '@/types/settings'
 import { DEFAULT_GEMINI_MODEL } from '@/lib/ai/constants'
+import { isProviderConfiguredInRegistry } from '@/lib/ai/providerRegistry'
 
 /**
  * Get effective AI provider with fallback logic
@@ -32,8 +33,8 @@ export function isProviderConfigured(provider: AiProvider, settings: Settings): 
       return !!settings.openrouterApiKey
     case 'cliproxy':
       return !!settings.cliProxyApiKey && !!settings.cliProxyBaseUrl && !!settings.cliProxyModel
-    case 'nvidia':
-      return !!settings.nvidiaApiKey
+    case 'apple':
+      return isProviderConfiguredInRegistry(provider, settings)
     case 'albert':
       return !!settings.albertApiKey
     case 'local':
@@ -60,8 +61,8 @@ export function getProviderLabel(provider: AiProvider): string {
       return 'OpenRouter'
     case 'cliproxy':
       return 'CLIProxyAPI'
-    case 'nvidia':
-      return 'NVIDIA'
+    case 'apple':
+      return 'Apple Foundation Models'
     case 'albert':
       return 'Albert'
     case 'local':
@@ -117,14 +118,8 @@ export function getModelLabel(provider: AiProvider, settings: Settings): string 
     }
     case 'cliproxy':
       return settings.cliProxyModel || 'Non configuré'
-    case 'nvidia': {
-      const model = settings.nvidiaModel || 'deepseek-ai/deepseek-v4-flash'
-      if (model === 'deepseek-ai/deepseek-v4-flash') return 'DeepSeek V4 Flash'
-      if (model === 'moonshotai/kimi-k2.6') return 'Kimi K2.6'
-      if (model === 'z-ai/glm-5.2') return 'GLM 5.2'
-      if (model === 'minimaxai/minimax-m3') return 'MiniMax M3'
-      return model
-    }
+    case 'apple':
+      return 'System (sur le Mac)'
     case 'albert': {
       const model = settings.albertModel || 'albert-large'
       if (model === 'albert-large') return 'Large'

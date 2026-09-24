@@ -12,6 +12,7 @@ import {
 } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
+import { generateAppleFmSummary, isValidAppleFmBridgeUrl } from '@/lib/ai/appleFmService'
 import { TREND_WINDOW_OPTIONS } from '@/lib/rss/trendAnalysis'
 import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
 import {
@@ -92,6 +93,7 @@ const SELECTABLE_PROVIDERS = [
     label: descriptor.label,
   })),
   { value: 'local', label: PROVIDER_REGISTRY.local.label },
+  { value: 'apple', label: PROVIDER_REGISTRY.apple.label },
 ]
 
 const LOCAL_TIMEOUT_OPTIONS = [
@@ -119,6 +121,8 @@ export function SettingsModal({
   const [showKeys, setShowKeys] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set())
   const [notificationNotice, setNotificationNotice] = useState<string | null>(null)
+  const [appleTestBusy, setAppleTestBusy] = useState(false)
+  const [appleTestResult, setAppleTestResult] = useState<string | null>(null)
 
   const hasWatchedKeywords = (rssSettings.watchedKeywords?.length ?? 0) > 0
 
@@ -207,6 +211,21 @@ export function SettingsModal({
 
   const keyType = showKeys ? 'text' : 'password'
   const trendWindowHours = rssSettings.trendWindowHours ?? 24
+
+  const testAppleFm = async () => {
+    setAppleTestBusy(true)
+    setAppleTestResult(null)
+    try {
+      await generateAppleFmSummary('Réponds uniquement OK.', 'Réponds brièvement en français.', 32, {
+        timeoutMs: 30_000,
+      }, aiSettings.appleFmBridgeUrl)
+      setAppleTestResult('Connexion à Apple Foundation Models réussie.')
+    } catch (error) {
+      setAppleTestResult(error instanceof Error ? error.message : 'Échec de la connexion locale.')
+    } finally {
+      setAppleTestBusy(false)
+    }
+  }
 
   return (
     <Modal
@@ -512,6 +531,51 @@ export function SettingsModal({
                 />
               </Collapsible>
             ) : null}
+            {isDesktop ? (
+              <Collapsible
+                id="apple"
+                title={PROVIDER_REGISTRY.apple.label}
+                configured={isValidAppleFmBridgeUrl(aiSettings.appleFmBridgeUrl)}
+                open={openSections.has('apple')}
+                onToggle={() => toggleSection('apple')}
+              >
+                <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                  Modèle « system » embarqué sur un Mac compatible macOS 27. Aucune clé API.
+                  Dans le Terminal du Mac, lancez ces deux commandes :
+                </p>
+                <code className="block select-all rounded bg-[var(--hover)] px-2 py-1.5 text-xs">
+                  fm serve --host 127.0.0.1 --port 1976
+                </code>
+                <code className="block select-all rounded bg-[var(--hover)] px-2 py-1.5 text-xs">
+                  npm run apple:bridge
+                </code>
+                <p className="text-xs leading-5 text-[var(--text-secondary)]">
+                  Gardez la PWA ouverte sur https://veille-rss.vercel.app. Dans Safari, le relais
+                  doit utiliser HTTPS avec un certificat local approuvé. Dans Chrome ou Edge,
+                  autorisez l’accès au réseau local si demandé.{' '}
+                  <a
+                    href="https://github.com/kilianvivien/VeilleRSS#avec-safari-sur-le-mac"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[var(--accent)] underline"
+                  >
+                    Instructions Safari
+                  </a>
+                </p>
+                <Input
+                  label="Adresse du relais local"
+                  value={aiSettings.appleFmBridgeUrl ?? ''}
+                  onChange={(event) => updateAiSettings({ appleFmBridgeUrl: event.target.value })}
+                  placeholder="http://127.0.0.1:1977/v1/chat/completions"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+                <Button size="sm" variant="secondary" onClick={testAppleFm} disabled={appleTestBusy || !isValidAppleFmBridgeUrl(aiSettings.appleFmBridgeUrl)}>
+                  {appleTestBusy ? 'Connexion…' : 'Tester la connexion'}
+                </Button>
+                {appleTestResult ? <p role="status" className="text-xs text-[var(--text-secondary)]">{appleTestResult}</p> : null}
+              </Collapsible>
+            ) : null}
           </div>
 
           {/* Rappel de l'affectation effective */}
@@ -678,5 +742,6 @@ function isConfigured(provider: AiProvider, settings: Settings): boolean {
   if (provider === 'local') {
     return Boolean(settings.localAiEndpoint?.trim())
   }
+  if (provider === 'apple') return isValidAppleFmBridgeUrl(settings.appleFmBridgeUrl)
   return true
 }

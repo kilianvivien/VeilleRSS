@@ -21,7 +21,7 @@ const loadVertex = () => import('./vertexService')
 const loadMistral = () => import('./mistralService')
 const loadOpenRouter = () => import('./openrouterService')
 const loadCliProxy = () => import('./cliProxyService')
-const loadNvidia = () => import('./nvidiaService')
+const loadApple = () => import('./appleFmService')
 const loadAlbert = () => import('./albertService')
 const loadLocalAi = () => import('./localAiService')
 
@@ -30,7 +30,6 @@ export type GeminiModel = Exclude<Settings['geminiModel'], undefined>
 export type VertexModel = Exclude<Settings['vertexModel'], undefined>
 export type MistralModel = Exclude<Settings['mistralModel'], undefined>
 export type OpenRouterModel = Exclude<Settings['openrouterModel'], undefined>
-export type NvidiaModel = Exclude<Settings['nvidiaModel'], undefined>
 export type AlbertModel = Exclude<Settings['albertModel'], undefined>
 
 const logger = createLogger('ai:translation')
@@ -103,7 +102,6 @@ export const OPENROUTER_MODEL_OPTIONS = toLegacyOptions(
   PROVIDER_REGISTRY.openrouter.recommendedModels
 )
 
-export const NVIDIA_MODEL_OPTIONS = toLegacyOptions(PROVIDER_REGISTRY.nvidia.recommendedModels)
 
 export const ALBERT_MODEL_OPTIONS = toLegacyOptions(PROVIDER_REGISTRY.albert.recommendedModels)
 
@@ -129,10 +127,6 @@ function resolveOpenRouterModel(settings: Settings): string {
 
 function resolveCliProxyModel(settings: Settings): string {
   return getEffectiveModel('cliproxy', settings, 'translation')
-}
-
-function resolveNvidiaModel(settings: Settings): string {
-  return getEffectiveModel('nvidia', settings, 'translation')
 }
 
 function resolveAlbertModel(settings: Settings): string {
@@ -185,8 +179,8 @@ export function getTranslationModel(provider: AiProvider, settings: Settings): s
       return resolveOpenRouterModel(settings)
     case 'cliproxy':
       return resolveCliProxyModel(settings)
-    case 'nvidia':
-      return resolveNvidiaModel(settings)
+    case 'apple':
+      return 'system'
     case 'albert':
       return resolveAlbertModel(settings)
     case 'local':
@@ -290,16 +284,11 @@ async function generateTextWithProvider(
         resolveCliProxyModel(settings),
         { signal }
       )
-    case 'nvidia':
-      if (!settings.nvidiaApiKey) throw new Error('Clé API NVIDIA manquante.')
-      return (await loadNvidia()).generateNvidiaSummary(
-        payload,
-        settings.nvidiaApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        resolveNvidiaModel(settings),
-        { signal }
-      )
+    case 'apple':
+      return (await loadApple()).generateAppleFmSummary(payload, systemPrompt, maxOutputTokens, {
+        signal,
+        timeoutMs: getLocalAiTimeoutMs(settings),
+      }, settings.appleFmBridgeUrl)
     case 'albert':
       if (!settings.albertApiKey) throw new Error('Clé API Albert manquante.')
       return (await loadAlbert()).generateAlbertSummary(
@@ -391,16 +380,11 @@ async function generateJsonWithProvider(
         resolveCliProxyModel(settings),
         { signal }
       )
-    case 'nvidia':
-      if (!settings.nvidiaApiKey) throw new Error('Clé API NVIDIA manquante.')
-      return (await loadNvidia()).generateNvidiaJSON(
-        payload,
-        settings.nvidiaApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        resolveNvidiaModel(settings),
-        { signal }
-      )
+    case 'apple':
+      return (await loadApple()).generateAppleFmSummary(payload, systemPrompt, maxOutputTokens, {
+        signal,
+        timeoutMs: getLocalAiTimeoutMs(settings),
+      }, settings.appleFmBridgeUrl)
     case 'albert':
       if (!settings.albertApiKey) throw new Error('Clé API Albert manquante.')
       return (await loadAlbert()).generateAlbertJSON(

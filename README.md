@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/kilianvivien/VeilleRSS/releases/tag/v0.2.0"><img src="https://img.shields.io/badge/version-v0.2.0-2563eb?style=flat-square" alt="Version v0.2.0"></a>
+  <img src="https://img.shields.io/badge/version-v0.4.0-2563eb?style=flat-square" alt="Version v0.4.0">
   <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
   <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
   <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
@@ -107,9 +107,50 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - affinage des tendances afin d'écarter les termes trop génériques ;
 - génération d'un briefing éditorial, avec conclusions, statistiques et graphiques ;
 - fournisseur différent possible pour la traduction et pour la veille ;
-- prise en charge de Gemini, Mistral, OpenRouter, NVIDIA NIM, Albert et d'un modèle local compatible (Ollama ou LM Studio).
+- prise en charge de Gemini, Mistral, OpenRouter, Albert, Apple Foundation Models sur Mac et d'un modèle local compatible (Ollama ou LM Studio).
 
-Les appels IA sont envoyés directement depuis le navigateur au fournisseur configuré. Les clés API sont stockées dans le `localStorage` de l'appareil : utilisez de préférence des clés dédiées, limitées en quota, et évitez les appareils partagés.
+Les appels IA sont envoyés depuis le navigateur au fournisseur configuré. Apple Foundation Models passe par un relais limité à la boucle locale du Mac. Les clés API sont stockées dans le `localStorage` de l'appareil : utilisez de préférence des clés dédiées, limitées en quota, et évitez les appareils partagés.
+
+### Apple Foundation Models depuis la PWA Vercel
+
+Sur un Mac compatible avec Apple Intelligence et macOS 27, le fournisseur **Apple Foundation Models** utilise le modèle « system » présent sur l'appareil. Il ne demande pas de clé API. Ouvrez un terminal et lancez le serveur Apple :
+
+```bash
+fm serve --host 127.0.0.1 --port 1976
+```
+
+#### Avec Chrome ou Edge sur le Mac
+
+Dans un second terminal, depuis le dossier du projet, lancez le relais local :
+
+```bash
+npm run apple:bridge
+```
+
+Ouvrez [https://veille-rss.vercel.app](https://veille-rss.vercel.app) dans Chrome ou Edge sur ce Mac, puis choisissez **Apple Foundation Models** dans **Paramètres → Intelligence artificielle**. Autorisez l'accès au réseau local si le navigateur le demande et utilisez **Tester la connexion**. Gardez les deux terminaux ouverts pendant l'utilisation. Les données déjà enregistrées sur Vercel restent accessibles : l'adresse de la PWA ne change pas.
+
+`fm serve` refuse les requêtes de génération envoyées directement par un site web. Le relais écoute uniquement sur `127.0.0.1:1977`, accepte uniquement l'origine `https://veille-rss.vercel.app`, puis transmet les requêtes au modèle local sur `127.0.0.1:1976`. Les prompts ne transitent pas par Vercel. Pour un autre déploiement HTTPS, définissez `VEILLE_RSS_ORIGIN` avant de lancer le relais.
+
+#### Avec Safari sur le Mac
+
+Safari bloque les appels HTTP locaux depuis la PWA HTTPS. Installez [mkcert](https://github.com/FiloSottile/mkcert#installation), puis créez un certificat pour `127.0.0.1` depuis le dossier du projet :
+
+```bash
+brew install mkcert
+mkcert -install
+mkdir -p .local-certs
+mkcert -cert-file .local-certs/127.0.0.1.pem -key-file .local-certs/127.0.0.1-key.pem 127.0.0.1
+```
+
+`mkcert -install` ajoute une autorité de certification locale au trousseau macOS. Vérifiez cette demande système et gardez sa clé privée sur ce Mac. Le dossier `.local-certs/` est exclu de Git. Avec `fm serve` dans le premier terminal, lancez le relais HTTPS dans un second terminal :
+
+```bash
+APPLE_BRIDGE_TLS_CERT=.local-certs/127.0.0.1.pem \
+APPLE_BRIDGE_TLS_KEY=.local-certs/127.0.0.1-key.pem \
+npm run apple:bridge
+```
+
+Dans Safari, ouvrez la PWA Vercel, choisissez **Apple Foundation Models**, remplacez **Adresse du relais local** par `https://127.0.0.1:1977/v1/chat/completions`, puis cliquez sur **Tester la connexion**. Gardez les deux terminaux ouverts pendant l'utilisation. N'ignorez pas les alertes de certificat : si Safari en affiche une, vérifiez que `mkcert -install` a bien terminé et que l'adresse configurée est `127.0.0.1`.
 
 ### 📲 Application installable et hors connexion
 
@@ -208,6 +249,7 @@ L'application est alors accessible sur [http://localhost:5174](http://localhost:
 | `npm run dev` | Lance le serveur de développement sur le port 5174 |
 | `npm run build` | Vérifie TypeScript et produit le build dans `dist/` |
 | `npm run preview` | Prévisualise le build avec un proxy RSS local |
+| `npm run apple:bridge` | Relie la PWA Vercel au `fm serve` du même Mac |
 | `npm run typecheck` | Vérifie les types sans produire de fichiers |
 | `npm test` | Exécute la suite de tests Vitest |
 | `npm run check:feeds` | Vérifie les flux du catalogue en ligne avec le proxy de production et le parseur du lecteur |
@@ -249,6 +291,7 @@ src/
 ├── stores/           État persistant Zustand
 └── views/            Vue principale de veille
 api/rss-proxy.ts      Fonction de proxy RSS pour Vercel
+scripts/apple-fm-bridge.mjs  Relais Apple local, accessible depuis la PWA Vercel
 docker/server.mjs     Serveur statique et proxy RSS de l'image Docker
 public/               Manifeste, icônes et captures
 ```

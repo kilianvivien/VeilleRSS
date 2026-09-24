@@ -175,6 +175,7 @@ export function isProviderSwitchableError(category: AiErrorCategory): boolean {
  * UI catch blocks should call this instead of rendering raw `error.message`.
  */
 export function aiErrorToUserMessage(err: unknown, providerLabel?: string): string {
+  if (isAiProviderError(err) && err.provider === 'apple') return err.message
   const category = classifyAiError(err)
   const friendly = friendlyAiErrorMessage(category, providerLabel)
   if (friendly) {

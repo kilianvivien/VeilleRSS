@@ -520,7 +520,7 @@ export async function generateTrendBriefing({
 
   const requestControl = createRequestControlContext({
     signal,
-    timeoutMs: provider === 'local' ? getLocalAiTimeoutMs(settings) : 90_000,
+    timeoutMs: provider === 'local' || provider === 'apple' ? getLocalAiTimeoutMs(settings) : 90_000,
   })
 
   try {

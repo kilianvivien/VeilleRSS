@@ -1,4 +1,5 @@
 import type { AiProvider, Settings } from '@/types/settings'
+import { isValidAppleFmBridgeUrl } from './appleFmService'
 
 /**
  * Shipped source of truth for AI providers and their recommended models.
@@ -179,38 +180,14 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
     recommendedModels: [],
     fallbackPriority: 4,
   },
-  nvidia: {
-    id: 'nvidia',
-    label: 'NVIDIA',
-    transport: 'openai-chat',
-    requiresApiKey: true,
-    settingsApiKeyField: 'nvidiaApiKey',
-    settingsModelField: 'nvidiaModel',
-    translationModelField: 'translationNvidiaModel',
-    defaultModel: 'deepseek-ai/deepseek-v4-flash',
-    recommendedModels: [
-      {
-        id: 'deepseek-ai/deepseek-v4-flash',
-        label: 'DeepSeek V4 Flash',
-        note: 'Rapide pour génération, traduction et JSON structuré.',
-      },
-      {
-        id: 'moonshotai/kimi-k2.6',
-        label: 'Kimi K2.6',
-        note: 'Agentique et multimodal, utilisable ici en texte.',
-      },
-      {
-        id: 'z-ai/glm-5.2',
-        label: 'GLM 5.2',
-        note: 'Agentique et long contexte, solide en analyse.',
-      },
-      {
-        id: 'minimaxai/minimax-m3',
-        label: 'MiniMax M3',
-        note: 'Orienté tâches complexes et productivité.',
-      },
-    ],
-    fallbackPriority: 5,
+  apple: {
+    id: 'apple',
+    label: 'Apple Foundation Models',
+    transport: 'local',
+    requiresApiKey: false,
+    defaultModel: 'system',
+    recommendedModels: [{ id: 'system', label: 'Modèle embarqué sur le Mac' }],
+    fallbackPriority: null,
   },
   albert: {
     id: 'albert',
@@ -257,14 +234,14 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
 }
 
 /** Providers no longer offered for selection or automatic fallback. */
-export const RETIRED_PROVIDERS: readonly AiProvider[] = ['vertex', 'cliproxy']
+export const RETIRED_PROVIDERS: readonly string[] = ['vertex', 'cliproxy', 'nvidia']
 
 /**
  * Fournisseurs proposés dans les paramètres sur mobile.
  *
  * Le panneau mobile n'a pas la place — ni l'usage — de tous les fournisseurs :
  * on garde ceux qui marchent depuis un téléphone (clé API, endpoint public).
- * NVIDIA, Albert et l'IA locale restent accessibles sur bureau.
+ * Apple Foundation Models, Albert et l'IA locale restent accessibles sur bureau.
  */
 export const MOBILE_VISIBLE_PROVIDERS: readonly AiProvider[] = ['gemini', 'mistral', 'openrouter']
 
@@ -337,12 +314,15 @@ export function isProviderConfiguredInRegistry(provider: AiProvider, settings: S
   if (provider === 'local') {
     return Boolean(settings.localAiEndpoint?.trim())
   }
+  if (provider === 'apple') {
+    return isValidAppleFmBridgeUrl(settings.appleFmBridgeUrl)
+  }
   return true
 }
 
 /**
  * Configured providers eligible for automatic fallback, in registry
- * priority order: mistral → openrouter → nvidia → albert → local.
+ * priority order: mistral → openrouter → albert → local.
  */
 export function getConfiguredFallbackProviders(settings: Settings): AiProvider[] {
   return (Object.values(PROVIDER_REGISTRY) as ProviderDescriptor[])
