@@ -155,10 +155,6 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-export function sanitizePlainText(value: string): string {
-  return escapeHtml(value)
-}
-
 export function sanitizeRichHtml(value: string): string {
   if (!value) {
     return ''
@@ -166,12 +162,4 @@ export function sanitizeRichHtml(value: string): string {
 
   const sanitized = DOMPurify.sanitize(value, PURIFY_CONFIG) as string
   return normalizeAllowedInlineStyles(sanitized)
-}
-
-export function sanitizeUrl(value: string | null): string | null {
-  if (!value) {
-    return null
-  }
-
-  return SAFE_URL_PATTERN.test(value) ? value : null
 }

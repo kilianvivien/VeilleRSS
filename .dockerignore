@@ -8,7 +8,3 @@ coverage
 .env
 .env.*
 !.env.example
-design-qa.md
-design-qa-comparison.jpg
-implementation-mobile-carte.jpg
-implementation-mobile-carte-expanded.jpg

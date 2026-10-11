@@ -11,7 +11,6 @@ import { extractTerms, matchesKeyword } from './textAnalysis'
  */
 
 export const TREND_WINDOW_OPTIONS = [6, 24, 72, 168] as const
-export type TrendWindowHours = (typeof TREND_WINDOW_OPTIONS)[number]
 
 const DEFAULT_TERM_LIMIT = 24
 const SPARKLINE_BUCKETS = 12

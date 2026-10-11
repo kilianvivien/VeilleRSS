@@ -155,23 +155,6 @@ export function TrendMapView({
   const feedById = useMemo(() => new Map(feeds.map((feed) => [feed.id, feed])), [feeds])
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
 
-  const groupedFeeds = useMemo(() => {
-    const groups = new Map<string, RssFeed[]>()
-    for (const feed of feeds) {
-      const category = feed.category?.trim() || 'Sources'
-      groups.set(category, [...(groups.get(category) ?? []), feed])
-    }
-    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, 'fr'))
-  }, [feeds])
-
-  const unreadByFeed = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const item of items) {
-      if (!item.readAt) counts.set(item.feedId, (counts.get(item.feedId) ?? 0) + 1)
-    }
-    return counts
-  }, [items])
-
   const overviewRootLabel = useMemo(() => {
     if (activeFeedId) return titleCase(feedById.get(activeFeedId)?.category ?? '')
     const categoryCounts = new Map<string, number>()
@@ -706,50 +689,5 @@ function TrendDetails({
         </ul>
       </section>
     </>
-  )
-}
-
-function MapRailRow({
-  icon,
-  label,
-  count,
-  active,
-  emphasize,
-  onClick,
-}: {
-  icon: React.ReactNode
-  label: string
-  count: number
-  active: boolean
-  emphasize?: boolean
-  onClick: () => void
-}) {
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={onClick}
-        aria-current={active ? 'true' : undefined}
-        className={cn(
-          'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors',
-          active
-            ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]'
-            : 'text-[var(--text-secondary)] hover:bg-[var(--hover)]'
-        )}
-      >
-        <span className="text-[var(--accent)]">{icon}</span>
-        <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
-        {count > 0 ? (
-          <span
-            className={cn(
-              'rounded-full px-1.5 py-0.5 text-[11px] tabular-nums',
-              emphasize ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-muted)]'
-            )}
-          >
-            {count}
-          </span>
-        ) : null}
-      </button>
-    </li>
   )
 }

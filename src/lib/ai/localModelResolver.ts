@@ -47,14 +47,3 @@ export async function resolveActiveLocalModel(
 
   return resolvedModel || fallbackModel
 }
-
-export function clearLocalModelResolutionCache(endpoint?: string): void {
-  if (endpoint?.trim()) {
-    resolutionCache.delete(endpoint.trim())
-    inFlightResolutions.delete(endpoint.trim())
-    return
-  }
-
-  resolutionCache.clear()
-  inFlightResolutions.clear()
-}
