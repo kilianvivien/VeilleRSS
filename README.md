@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.4.0-2563eb?style=flat-square" alt="Version v0.4.0">
+  <img src="https://img.shields.io/badge/version-v0.5.0-2563eb?style=flat-square" alt="Version v0.5.0">
   <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
   <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
   <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
@@ -78,6 +78,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - catalogue de sources prêt à l'emploi : presse turque, médias internationaux, Europe, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique et Amériques ;
 - classement des sources par catégories ;
 - import et export OPML pour migrer facilement depuis ou vers un autre lecteur RSS ;
+- sauvegarde complète dans un fichier (sources, articles, mots-clés suivis, réglages) et restauration sur n'importe quel appareil ;
 - actualisation manuelle ou automatique, avec une fréquence réglable par source ;
 - indicateur de santé des flux et déduplication des articles.
 
@@ -230,7 +231,7 @@ Un point de contrôle est disponible sur `/healthz`. Aucune persistance Docker n
 
 ### Prérequis
 
-- Node.js 20 ou supérieur ;
+- Node.js 22 ou supérieur ;
 - npm 10 ou supérieur recommandé.
 
 ```bash
@@ -272,7 +273,7 @@ Le [relevé de vérification de l’extension internationale](docs/feed-catalog-
 
 ## Architecture technique
 
-Veille RSS est une application web monopage en React 19 et TypeScript, construite avec Vite 7. L'état est géré avec Zustand et l'interface utilise Tailwind CSS 4, Radix UI et Lucide.
+Veille RSS est une application web monopage en React 19 et TypeScript, construite avec Vite 8. L'état est géré avec Zustand et l'interface utilise Tailwind CSS 4, Radix UI et Lucide.
 
 | Couche | Technologies | Responsabilité |
 | --- | --- | --- |
@@ -298,11 +299,11 @@ public/               Manifeste, icônes et captures
 
 ### Stockage des données
 
-- **IndexedDB** : sources, articles, statuts lu/sauvegardé, sélections et résultats de veille ;
+- **IndexedDB** : sources, articles, statuts lu/sauvegardé, sélections et résultats de veille — un enregistrement par source et par article, pour ne réécrire que ce qui change ;
 - **localStorage** : préférences d'interface, configuration IA et clés API ;
 - **aucune base de données serveur** et aucun compte utilisateur.
 
-Le navigateur peut effacer ces données si l'utilisateur supprime les données du site. L'export OPML permet de sauvegarder la liste des sources, mais ne constitue pas une sauvegarde complète des articles ou des préférences.
+Le navigateur peut effacer ces données si l'utilisateur supprime les données du site. **Paramètres → Sauvegarde** exporte un fichier JSON complet (sources, articles, mots-clés suivis, réglages) et le restaure, sur cet appareil ou un autre. Ce fichier ne contient ni clé API ni adresse de relais IA. L'export OPML, lui, ne couvre que la liste des sources.
 
 ### Pourquoi un proxy RSS ?
 
