@@ -84,26 +84,6 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
     ],
     fallbackPriority: 1,
   },
-  vertex: {
-    id: 'vertex',
-    label: 'Vertex AI',
-    transport: 'openai-chat',
-    requiresApiKey: true,
-    settingsApiKeyField: 'vertexApiKey',
-    settingsModelField: 'vertexModel',
-    translationModelField: 'translationVertexModel',
-    defaultModel: 'gemini-3.5-flash-lite',
-    recommendedModels: [
-      {
-        id: 'gemini-3.5-flash-lite',
-        label: 'Gemini 3.5 Flash Lite',
-        note: 'Léger et rapide, optimisé coût et latence.',
-      },
-      { id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash', note: 'Équilibre qualité et vitesse.' },
-      { id: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro', note: 'Orienté qualité maximale.' },
-    ],
-    fallbackPriority: 2,
-  },
   openrouter: {
     id: 'openrouter',
     label: 'OpenRouter',
@@ -168,18 +148,6 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
     ],
     fallbackPriority: 3,
   },
-  cliproxy: {
-    id: 'cliproxy',
-    label: 'CLIProxyAPI',
-    transport: 'openai-chat',
-    requiresApiKey: true,
-    settingsApiKeyField: 'cliProxyApiKey',
-    settingsModelField: 'cliProxyModel',
-    translationModelField: 'translationCliProxyModel',
-    defaultModel: '',
-    recommendedModels: [],
-    fallbackPriority: 4,
-  },
   apple: {
     id: 'apple',
     label: 'Apple Foundation Models',
@@ -233,8 +201,10 @@ export const PROVIDER_REGISTRY: Record<AiProvider, ProviderDescriptor> = {
   },
 }
 
-/** Providers no longer offered for selection or automatic fallback. */
-export const RETIRED_PROVIDERS: readonly string[] = ['vertex', 'cliproxy', 'nvidia']
+/** True when a persisted provider id still exists in the registry. */
+export function isKnownProvider(value: unknown): value is AiProvider {
+  return typeof value === 'string' && Object.hasOwn(PROVIDER_REGISTRY, value)
+}
 
 /**
  * Fournisseurs proposés dans les paramètres sur mobile.
@@ -302,13 +272,6 @@ export function isProviderConfiguredInRegistry(provider: AiProvider, settings: S
   const descriptor = PROVIDER_REGISTRY[provider]
   if (descriptor.settingsApiKeyField) {
     const hasApiKey = Boolean(readSettingsString(settings, descriptor.settingsApiKeyField))
-    if (provider === 'cliproxy') {
-      return (
-        hasApiKey &&
-        Boolean(settings.cliProxyBaseUrl?.trim()) &&
-        Boolean(getEffectiveModel(provider, settings))
-      )
-    }
     return hasApiKey
   }
   if (provider === 'local') {
@@ -326,10 +289,7 @@ export function isProviderConfiguredInRegistry(provider: AiProvider, settings: S
  */
 export function getConfiguredFallbackProviders(settings: Settings): AiProvider[] {
   return (Object.values(PROVIDER_REGISTRY) as ProviderDescriptor[])
-    .filter(
-      (descriptor) =>
-        descriptor.fallbackPriority !== null && !RETIRED_PROVIDERS.includes(descriptor.id)
-    )
+    .filter((descriptor) => descriptor.fallbackPriority !== null)
     .sort((a, b) => (a.fallbackPriority as number) - (b.fallbackPriority as number))
     .filter((descriptor) => isProviderConfiguredInRegistry(descriptor.id, settings))
     .map((descriptor) => descriptor.id)

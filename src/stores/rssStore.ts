@@ -11,7 +11,7 @@ import type {
   RssWatchedKeyword,
 } from '@/types/rss'
 import { STORAGE_KEY } from '@/lib/constants/storageConstants'
-import { createIndexedDBStorage } from '@/lib/storage/indexedDBStorage'
+import { createRecordStorage } from '@/lib/storage/indexedDBStorage'
 import { generateId } from '@/lib/utils/id'
 import { fetchRssFeedXml } from '@/lib/rss/rssFetchService'
 import { isDatedRssItem, parseRssFeed } from '@/lib/rss/rssParser'
@@ -73,6 +73,8 @@ interface RssState {
   clearAiTrendSelection: () => void
   setTrendBriefing: (briefing: RssTrendBriefing) => void
   clearTrendBriefing: () => void
+  /** Remplace flux, articles et réglages — restauration d’une sauvegarde. */
+  replaceData: (data: { feeds: RssFeed[]; items: RssItem[]; settings: RssSettings }) => void
 }
 
 function createItems(feedId: string, xml: string, feedUrl: string): { feedUpdates: Partial<RssFeed>; items: RssItem[] } {
@@ -473,6 +475,18 @@ export const useRssStore = create<RssState>()(
 
       clearTrendBriefing: () => set({ trendBriefing: null }),
 
+      replaceData: ({ feeds, items, settings }) => {
+        set({
+          feeds,
+          items: sortItems(items),
+          settings,
+          selectedItemIds: [],
+          // Tri IA et briefing décrivent les articles remplacés.
+          aiTrendSelection: null,
+          trendBriefing: null,
+        })
+      },
+
       getSelectedItemsAsMagicReviewText: () => {
         const selected = new Set(get().selectedItemIds)
         const items = sortItems(get().items.filter((item) => selected.has(item.id)))
@@ -481,7 +495,7 @@ export const useRssStore = create<RssState>()(
     }),
     {
       name: `${STORAGE_KEY}-rss`,
-      storage: createIndexedDBStorage(`${STORAGE_KEY}-rss`),
+      storage: createRecordStorage(`${STORAGE_KEY}-rss`),
       version: 5,
       partialize: (state) => ({
         feeds: state.feeds,
@@ -493,6 +507,11 @@ export const useRssStore = create<RssState>()(
         aiTrendSelection: state.aiTrendSelection,
         trendBriefing: state.trendBriefing,
       }),
+      // Le stockage rend les articles par identifiant : l'ordre se refait ici.
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<RssState>
+        return { ...current, ...stored, items: sortItems(stored.items ?? current.items) }
+      },
       migrate: (state) => {
         const persisted = (state ?? {}) as Partial<RssState>
         const persistedSettings = (persisted.settings ?? {}) as Partial<RssSettings>

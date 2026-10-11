@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 /** Miroir du `define` de vite.config.ts : les composants qui affichent la
  *  version doivent pouvoir être rendus sous test. */
 const APP_VERSION = JSON.parse(
-  readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')
+  readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf8')
 ).version as string
 
 export default defineConfig({
@@ -16,7 +16,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   test: {

@@ -25,14 +25,10 @@ export function isProviderConfigured(provider: AiProvider, settings: Settings): 
   switch (provider) {
     case 'gemini':
       return !!settings.geminiApiKey
-    case 'vertex':
-      return !!settings.vertexApiKey
     case 'mistral':
       return !!settings.mistralApiKey
     case 'openrouter':
       return !!settings.openrouterApiKey
-    case 'cliproxy':
-      return !!settings.cliProxyApiKey && !!settings.cliProxyBaseUrl && !!settings.cliProxyModel
     case 'apple':
       return isProviderConfiguredInRegistry(provider, settings)
     case 'albert':
@@ -53,14 +49,10 @@ export function getProviderLabel(provider: AiProvider): string {
   switch (provider) {
     case 'gemini':
       return 'Gemini'
-    case 'vertex':
-      return 'Vertex AI'
     case 'mistral':
       return 'Mistral'
     case 'openrouter':
       return 'OpenRouter'
-    case 'cliproxy':
-      return 'CLIProxyAPI'
     case 'apple':
       return 'Apple Foundation Models'
     case 'albert':
@@ -87,13 +79,6 @@ export function getModelLabel(provider: AiProvider, settings: Settings): string 
       if (model === 'gemini-3.1-pro-preview') return '3.1 Pro'
       return model
     }
-    case 'vertex': {
-      const model = settings.vertexModel || DEFAULT_GEMINI_MODEL
-      if (model === 'gemini-3.7-flash') return '3.7 Flash'
-      if (model === 'gemini-3.1-pro-preview') return '3.1 Pro'
-      if (model === 'gemini-3.5-flash-lite') return '3.5 Flash Lite'
-      return model
-    }
     case 'mistral': {
       const model = settings.mistralModel || 'mistral-medium-latest'
       if (model === 'mistral-small-latest') return 'Small'
@@ -116,8 +101,6 @@ export function getModelLabel(provider: AiProvider, settings: Settings): string 
       if (model === 'mistralai/mistral-large-2512') return 'Mistral Large'
       return model
     }
-    case 'cliproxy':
-      return settings.cliProxyModel || 'Non configuré'
     case 'apple':
       return 'System (sur le Mac)'
     case 'albert': {

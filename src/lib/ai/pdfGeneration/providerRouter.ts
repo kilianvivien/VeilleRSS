@@ -171,23 +171,6 @@ async function dispatchToProvider(
       )
     }
 
-    case 'vertex': {
-      if (!settings.vertexApiKey) {
-        throw new Error(
-          'Clé API Vertex AI non configurée. Veuillez la configurer dans Paramètres → IA.'
-        )
-      }
-      const { generateVertexJSON } = await import('../vertexService')
-      return generateVertexJSON(
-        text,
-        settings.vertexApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        getEffectiveModel('vertex', settings),
-        { signal }
-      )
-    }
-
     case 'local': {
       if (!settings.localAiEndpoint) {
         throw new Error(
@@ -221,29 +204,6 @@ async function dispatchToProvider(
         systemPrompt,
         maxOutputTokens,
         getEffectiveModel('openrouter', settings),
-        { signal }
-      )
-    }
-
-    case 'cliproxy': {
-      if (!settings.cliProxyApiKey) {
-        throw new Error(
-          "Clé d'accès CLIProxyAPI non configurée. Veuillez la configurer dans Paramètres → IA."
-        )
-      }
-      if (!settings.cliProxyBaseUrl) {
-        throw new Error(
-          'Adresse CLIProxyAPI non configurée. Veuillez la configurer dans Paramètres → IA.'
-        )
-      }
-      const { generateCliProxyJSON } = await import('../cliProxyService')
-      return generateCliProxyJSON(
-        text,
-        settings.cliProxyApiKey,
-        settings.cliProxyBaseUrl,
-        systemPrompt,
-        maxOutputTokens,
-        getEffectiveModel('cliproxy', settings),
         { signal }
       )
     }

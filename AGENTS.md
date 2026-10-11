@@ -5,7 +5,7 @@ Instructions pour les agents qui interviennent dans ce dépôt.
 ## Projet
 
 - Veille RSS est une SPA React 19 + TypeScript construite avec Vite.
-- Node.js 20 ou supérieur est requis.
+- Node.js 22 ou supérieur est requis.
 - Les données utilisateur sont locales au navigateur : IndexedDB pour la veille et `localStorage` pour les préférences et la configuration IA.
 - Les clés API ne doivent jamais être committées, copiées dans des logs ou ajoutées à une image Docker.
 

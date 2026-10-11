@@ -17,17 +17,14 @@ import { SUPPORTED_LANGUAGES, type LanguageCode } from './languages'
  * Le registre de modules ES mémoïse déjà l'import, inutile de cacher nous-mêmes.
  */
 const loadGemini = () => import('./geminiService')
-const loadVertex = () => import('./vertexService')
 const loadMistral = () => import('./mistralService')
 const loadOpenRouter = () => import('./openrouterService')
-const loadCliProxy = () => import('./cliProxyService')
 const loadApple = () => import('./appleFmService')
 const loadAlbert = () => import('./albertService')
 const loadLocalAi = () => import('./localAiService')
 
 export type { AiProvider }
 export type GeminiModel = Exclude<Settings['geminiModel'], undefined>
-export type VertexModel = Exclude<Settings['vertexModel'], undefined>
 export type MistralModel = Exclude<Settings['mistralModel'], undefined>
 export type OpenRouterModel = Exclude<Settings['openrouterModel'], undefined>
 export type AlbertModel = Exclude<Settings['albertModel'], undefined>
@@ -94,7 +91,6 @@ function toLegacyOptions(models: ReadonlyArray<ModelOption>): ReadonlyArray<{
 
 export const GEMINI_MODEL_OPTIONS = toLegacyOptions(PROVIDER_REGISTRY.gemini.recommendedModels)
 
-export const VERTEX_MODEL_OPTIONS = toLegacyOptions(PROVIDER_REGISTRY.vertex.recommendedModels)
 
 export const MISTRAL_MODEL_OPTIONS = toLegacyOptions(PROVIDER_REGISTRY.mistral.recommendedModels)
 
@@ -113,9 +109,6 @@ function resolveGeminiModel(settings: Settings): string {
   return getEffectiveModel('gemini', settings, 'translation')
 }
 
-function resolveVertexModel(settings: Settings): string {
-  return getEffectiveModel('vertex', settings, 'translation')
-}
 
 function resolveMistralModel(settings: Settings): string {
   return getEffectiveModel('mistral', settings, 'translation')
@@ -125,9 +118,6 @@ function resolveOpenRouterModel(settings: Settings): string {
   return getEffectiveModel('openrouter', settings, 'translation')
 }
 
-function resolveCliProxyModel(settings: Settings): string {
-  return getEffectiveModel('cliproxy', settings, 'translation')
-}
 
 function resolveAlbertModel(settings: Settings): string {
   return getEffectiveModel('albert', settings, 'translation')
@@ -171,14 +161,10 @@ export function getTranslationModel(provider: AiProvider, settings: Settings): s
   switch (provider) {
     case 'gemini':
       return resolveGeminiModel(settings)
-    case 'vertex':
-      return resolveVertexModel(settings)
     case 'mistral':
       return resolveMistralModel(settings)
     case 'openrouter':
       return resolveOpenRouterModel(settings)
-    case 'cliproxy':
-      return resolveCliProxyModel(settings)
     case 'apple':
       return 'system'
     case 'albert':
@@ -242,16 +228,6 @@ async function generateTextWithProvider(
         resolveGeminiModel(settings),
         { signal }
       )
-    case 'vertex':
-      if (!settings.vertexApiKey) throw new Error('Clé API Vertex AI manquante.')
-      return (await loadVertex()).generateVertexSummary(
-        payload,
-        settings.vertexApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        resolveVertexModel(settings),
-        { signal }
-      )
     case 'mistral':
       if (!settings.mistralApiKey) throw new Error('Clé API Mistral manquante.')
       return (await loadMistral()).generateMistralSummary(
@@ -270,18 +246,6 @@ async function generateTextWithProvider(
         systemPrompt,
         maxOutputTokens,
         resolveOpenRouterModel(settings),
-        { signal }
-      )
-    case 'cliproxy':
-      if (!settings.cliProxyApiKey) throw new Error("Clé d'accès CLIProxyAPI manquante.")
-      if (!settings.cliProxyBaseUrl) throw new Error('Adresse CLIProxyAPI manquante.')
-      return (await loadCliProxy()).generateCliProxySummary(
-        payload,
-        settings.cliProxyApiKey,
-        settings.cliProxyBaseUrl,
-        systemPrompt,
-        maxOutputTokens,
-        resolveCliProxyModel(settings),
         { signal }
       )
     case 'apple':
@@ -338,16 +302,6 @@ async function generateJsonWithProvider(
         resolveGeminiModel(settings),
         { signal }
       )
-    case 'vertex':
-      if (!settings.vertexApiKey) throw new Error('Clé API Vertex AI manquante.')
-      return (await loadVertex()).generateVertexJSON(
-        payload,
-        settings.vertexApiKey,
-        systemPrompt,
-        maxOutputTokens,
-        resolveVertexModel(settings),
-        { signal }
-      )
     case 'mistral':
       if (!settings.mistralApiKey) throw new Error('Clé API Mistral manquante.')
       return (await loadMistral()).generateMistralJSON(
@@ -366,18 +320,6 @@ async function generateJsonWithProvider(
         systemPrompt,
         maxOutputTokens,
         resolveOpenRouterModel(settings),
-        { signal }
-      )
-    case 'cliproxy':
-      if (!settings.cliProxyApiKey) throw new Error("Clé d'accès CLIProxyAPI manquante.")
-      if (!settings.cliProxyBaseUrl) throw new Error('Adresse CLIProxyAPI manquante.')
-      return (await loadCliProxy()).generateCliProxyJSON(
-        payload,
-        settings.cliProxyApiKey,
-        settings.cliProxyBaseUrl,
-        systemPrompt,
-        maxOutputTokens,
-        resolveCliProxyModel(settings),
         { signal }
       )
     case 'apple':

@@ -1,15 +1,11 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Eye, EyeOff, GraduationCap, Moon, Sparkles } from 'lucide-react'
+import { ChevronDown, Download, Eye, EyeOff, GraduationCap, Moon, Sparkles, Upload } from 'lucide-react'
 import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
 import type { AiProvider, Settings } from '@/types/settings'
-import {
-  MOBILE_VISIBLE_PROVIDERS,
-  PROVIDER_REGISTRY,
-  RETIRED_PROVIDERS,
-} from '@/lib/ai/providerRegistry'
+import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
 import { generateAppleFmSummary, isValidAppleFmBridgeUrl } from '@/lib/ai/appleFmService'
@@ -24,6 +20,15 @@ import { cn } from '@/lib/utils/cn'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import { InstallAppSection } from '@/components/pwa/InstallAppSection'
 import { AboutContent } from '@/components/about/AboutContent'
+import {
+  backupFilename,
+  createBackup,
+  readBackupFile,
+  restoreBackup,
+  summarizeBackup,
+} from '@/lib/backup/backupService'
+import { openFileDialog, saveFile } from '@/lib/platform/fileService'
+import { confirmDialog } from '@/lib/platform/dialogService'
 
 /**
  * Paramètres de l'outil de veille — un seul panneau pour les flux RSS et
@@ -81,10 +86,7 @@ interface ProviderDescriptorLike {
 
 /** Fournisseurs à clé — « heuristic » et « local » sont traités à part. */
 const KEY_PROVIDERS = (Object.values(PROVIDER_REGISTRY) as ProviderDescriptorLike[]).filter(
-  (descriptor) =>
-    descriptor.requiresApiKey &&
-    descriptor.settingsApiKeyField &&
-    !RETIRED_PROVIDERS.includes(descriptor.id)
+  (descriptor) => descriptor.requiresApiKey && descriptor.settingsApiKeyField
 )
 
 const SELECTABLE_PROVIDERS = [
@@ -124,6 +126,58 @@ export function SettingsModal({
   const [appleTestBusy, setAppleTestBusy] = useState(false)
   const [appleTestResult, setAppleTestResult] = useState<string | null>(null)
 
+  const isRefreshing = useRssStore((state) => state.isRefreshing)
+  const [backupStatus, setBackupStatus] = useState<{ kind: 'ok' | 'error'; text: string } | null>(
+    null
+  )
+
+  const handleExportBackup = async () => {
+    setBackupStatus(null)
+    try {
+      const backup = createBackup()
+      await saveFile(JSON.stringify(backup), backupFilename(backup.exportedAt), 'application/json')
+      const { feedCount, itemCount } = summarizeBackup(backup)
+      setBackupStatus({
+        kind: 'ok',
+        text: `Sauvegarde exportée : ${plural(feedCount, 'flux', 'flux')}, ${plural(itemCount, 'article', 'articles')}.`,
+      })
+    } catch (error) {
+      setBackupStatus({
+        kind: 'error',
+        text: error instanceof Error ? error.message : 'Impossible d’exporter la sauvegarde.',
+      })
+    }
+  }
+
+  const handleRestoreBackup = async () => {
+    setBackupStatus(null)
+    try {
+      const files = await openFileDialog({
+        filters: [{ name: 'Sauvegarde Veille RSS', extensions: ['json'] }],
+      })
+      if (!files) return
+
+      const backup = await readBackupFile(files[0])
+      const summary = summarizeBackup(backup)
+      const date = new Date(summary.exportedAt).toLocaleDateString('fr-FR', { dateStyle: 'long' })
+      const confirmed = await confirmDialog(
+        `Sauvegarde du ${date} : ${plural(summary.feedCount, 'flux', 'flux')}, ${plural(summary.itemCount, 'article', 'articles')} dont ${summary.savedCount} sauvegardé${summary.savedCount > 1 ? 's' : ''}.\n\nElle remplacera les flux, articles et réglages de ce navigateur. Les clés API restent inchangées. Continuer ?`
+      )
+      if (!confirmed) return
+
+      restoreBackup(backup)
+      setBackupStatus({
+        kind: 'ok',
+        text: `Sauvegarde restaurée : ${plural(summary.feedCount, 'flux', 'flux')}, ${plural(summary.itemCount, 'article', 'articles')}.`,
+      })
+    } catch (error) {
+      setBackupStatus({
+        kind: 'error',
+        text: error instanceof Error ? error.message : 'Impossible de restaurer cette sauvegarde.',
+      })
+    }
+  }
+
   const hasWatchedKeywords = (rssSettings.watchedKeywords?.length ?? 0) > 0
 
   /**
@@ -156,11 +210,7 @@ export function SettingsModal({
    */
   const optionsForSlot = (current: AiProvider | undefined) => {
     const options = [{ value: '', label: 'Par défaut' }, ...selectableProviders]
-    if (
-      current &&
-      !RETIRED_PROVIDERS.includes(current) &&
-      !options.some((option) => option.value === current)
-    ) {
+    if (current && !options.some((option) => option.value === current)) {
       options.push({ value: current, label: PROVIDER_REGISTRY[current].label })
     }
     return options
@@ -389,6 +439,46 @@ export function SettingsModal({
               ) : null}
             </div>
           </div>
+        </section>
+
+        {/* ── Sauvegarde ───────────────────────────────────────────────
+            Les données ne vivent que dans ce navigateur : c'est le seul
+            moyen de les mettre à l'abri ou de les porter ailleurs. */}
+        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+          <h3 className="rss-section-label text-[var(--text-secondary)]">SAUVEGARDE</h3>
+          <p className="text-xs leading-5 text-[var(--text-secondary)]">
+            Un fichier contenant vos flux, vos articles (lus, sauvegardés, traduits), vos
+            mots-clés suivis et vos réglages. Les clés API n’y figurent jamais.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => void handleExportBackup()}>
+              <Download className="h-4 w-4" aria-hidden="true" />
+              Exporter une sauvegarde
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={isRefreshing}
+              title={isRefreshing ? 'Attendez la fin de l’actualisation des flux.' : undefined}
+              onClick={() => void handleRestoreBackup()}
+            >
+              <Upload className="h-4 w-4" aria-hidden="true" />
+              Restaurer une sauvegarde
+            </Button>
+          </div>
+          {backupStatus ? (
+            <p
+              role="status"
+              className={cn(
+                'text-xs leading-5',
+                backupStatus.kind === 'error'
+                  ? 'text-[var(--warning)]'
+                  : 'text-[var(--text-secondary)]'
+              )}
+            >
+              {backupStatus.text}
+            </p>
+          ) : null}
         </section>
 
         {/* ── Application (PWA) ─────────────────────────────────────── */}
@@ -629,6 +719,10 @@ export function SettingsModal({
       </div>
     </Modal>
   )
+}
+
+function plural(count: number, singular: string, pluralForm: string): string {
+  return `${count} ${count > 1 ? pluralForm : singular}`
 }
 
 function SettingCheckbox({

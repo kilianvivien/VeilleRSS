@@ -97,7 +97,7 @@ function rssDevProxyPlugin(): Plugin {
 }
 
 
-const SW_TEMPLATE_PATH = path.resolve(__dirname, 'src/pwa/sw.template.js')
+const SW_TEMPLATE_PATH = path.resolve(import.meta.dirname, 'src/pwa/sw.template.js')
 
 /**
  * Ressources publiques non hachées, précachées en best-effort par le SW.
@@ -170,7 +170,7 @@ function serviceWorkerPlugin(): Plugin {
         hash.update(file.type === 'chunk' ? file.code : Buffer.from(file.source))
       }
       for (const url of SW_OPTIONAL_PRECACHE) {
-        hash.update(readFileSync(path.resolve(__dirname, 'public', url.slice(1))))
+        hash.update(readFileSync(path.resolve(import.meta.dirname, 'public', url.slice(1))))
       }
       const buildId = hash.digest('hex').slice(0, 12)
 
@@ -193,7 +193,7 @@ function serviceWorkerPlugin(): Plugin {
  * `npm version` suffise : aucune constante à re-synchroniser à la main.
  */
 const APP_VERSION = JSON.parse(
-  readFileSync(path.resolve(__dirname, 'package.json'), 'utf8')
+  readFileSync(path.resolve(import.meta.dirname, 'package.json'), 'utf8')
 ).version as string
 
 // https://vite.dev/config/
@@ -204,7 +204,7 @@ export default defineConfig({
   plugins: [react(), rssDevProxyPlugin(), serviceWorkerPlugin()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': path.resolve(import.meta.dirname, './src'),
     },
   },
   build: {

@@ -137,10 +137,8 @@ export interface RssSettings {
   briefingTopic: string
   /**
    * Notifie localement quand un mot-clé suivi apparaît dans un nouvel article.
-   * Distinct de `Settings.nativeNotificationsEnabled`, qui est un vestige mort
-   * de l'application Tauri, dans un autre store et avec un autre historique de
-   * persistance — le réutiliser activerait ce réglage à l'insu des anciens
-   * utilisateurs.
+   * Ne pas le renommer en `nativeNotificationsEnabled` : ce nom a existé dans
+   * les réglages hérités de l'application Tauri, avec `true` par défaut.
    */
   keywordNotificationsEnabled: boolean
 }
