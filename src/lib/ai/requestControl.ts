@@ -149,9 +149,6 @@ export function isRetryableAiError(
   return false
 }
 
-/** @deprecated Use `isRetryableAiError` — kept for existing call sites/tests. */
-export const isRetryableGeminiError = isRetryableAiError
-
 /**
  * Resolves after `ms`, or rejects immediately with the abort reason if the
  * signal fires (or is already aborted) so user cancellation interrupts a
@@ -237,6 +234,3 @@ export async function executeWithRetry<T>(
   }
   throw lastError
 }
-
-/** @deprecated Use `executeWithRetry` — kept so existing Gemini call sites need no change. */
-export const executeWithGeminiRetry = executeWithRetry

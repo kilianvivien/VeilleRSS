@@ -3,10 +3,9 @@ import { isValidAppleFmBridgeUrl } from './appleFmService'
 
 /**
  * Shipped source of truth for AI providers and their recommended models.
- * The remote catalog (`modelCatalog.ts`) can override `recommendedModels`
- * and `defaultModel` at runtime; a user-set model string in Settings always
- * wins. Model labels describe capability, never pricing or marketing tiers —
- * those rot faster than releases ship.
+ * A user-set model string in Settings always wins. Model labels describe
+ * capability, never pricing or marketing tiers — those rot faster than
+ * releases ship.
  */
 export interface ModelOption {
   id: string
@@ -215,20 +214,6 @@ export function isKnownProvider(value: unknown): value is AiProvider {
  */
 export const MOBILE_VISIBLE_PROVIDERS: readonly AiProvider[] = ['gemini', 'mistral', 'openrouter']
 
-// ─── Remote catalog injection (set by modelCatalog.ts, never imported here) ──
-
-let catalogDefaultModels: Partial<Record<AiProvider, string>> = {}
-
-/** Called by the model catalog after a valid catalog is loaded. */
-export function setCatalogDefaultModels(defaults: Partial<Record<AiProvider, string>>): void {
-  catalogDefaultModels = defaults
-}
-
-/** Test helper. */
-export function resetCatalogDefaultModels(): void {
-  catalogDefaultModels = {}
-}
-
 // ─── Resolution helpers ──────────────────────────────────────────────────────
 
 export type ModelUsage = 'general' | 'translation'
@@ -241,7 +226,7 @@ function readSettingsString(settings: Settings, field: keyof Settings | undefine
 
 /**
  * Resolves the model to use for a provider:
- * user-set value > remote catalog default > shipped default.
+ * user-set value > shipped default.
  * With `usage: 'translation'`, the translation-specific override wins
  * over the global user-set model.
  */
@@ -264,7 +249,7 @@ export function getEffectiveModel(
     return userModel
   }
 
-  return catalogDefaultModels[provider] || descriptor.defaultModel || ''
+  return descriptor.defaultModel || ''
 }
 
 /** True when the provider has the credentials/endpoint it needs in Settings. */

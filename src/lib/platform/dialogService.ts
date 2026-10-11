@@ -16,14 +16,3 @@ export async function confirmDialog(
   void _options
   return window.confirm(message)
 }
-
-export async function alertDialog(
-  message: string,
-  _options?: {
-    title?: string
-    kind?: 'info' | 'warning' | 'error'
-  }
-): Promise<void> {
-  void _options
-  window.alert(message)
-}

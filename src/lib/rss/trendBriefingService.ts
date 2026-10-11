@@ -11,7 +11,6 @@ const logger = createLogger('rss:trend-briefing')
 
 /** Périodes proposées dans le volet Briefing IA, en heures. */
 export const BRIEFING_WINDOW_OPTIONS = [24, 72, 168, 720] as const
-export type BriefingWindowHours = (typeof BRIEFING_WINDOW_OPTIONS)[number]
 
 const MAX_TOP_TERMS = 8
 const MAX_TOP_SOURCES = 6

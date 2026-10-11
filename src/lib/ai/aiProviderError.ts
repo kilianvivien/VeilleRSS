@@ -160,16 +160,6 @@ export function friendlyAiErrorMessage(category: AiErrorCategory, providerLabel?
   }
 }
 
-/** Returns true for categories where switching provider is a meaningful recovery action. */
-export function isProviderSwitchableError(category: AiErrorCategory): boolean {
-  return (
-    category === 'rate_limit' ||
-    category === 'auth' ||
-    category === 'server' ||
-    category === 'network'
-  )
-}
-
 /**
  * Single mapper from any thrown value to a user-facing French message.
  * UI catch blocks should call this instead of rendering raw `error.message`.

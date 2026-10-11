@@ -57,10 +57,6 @@ export function getProviderCooldownRemainingMs(
   return entry.cooldownUntil - now
 }
 
-export function isProviderOnCooldown(provider: AiProvider, now: number = Date.now()): boolean {
-  return getProviderCooldownRemainingMs(provider, now) > 0
-}
-
 /**
  * Throws a French AiProviderError if the provider is currently on cooldown.
  * Called by the provider router before dispatching a request.
@@ -78,9 +74,4 @@ export function assertProviderAvailable(provider: AiProvider, now: number = Date
       `Le fournisseur ${getProviderLabel(provider)} a échoué plusieurs fois d'affilée — ` +
       `nouvel essai possible dans ${remainingSeconds} s.`,
   })
-}
-
-/** Test helper: clears all cooldown state. */
-export function resetProviderCooldowns(): void {
-  entries.clear()
 }

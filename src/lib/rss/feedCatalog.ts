@@ -1052,20 +1052,8 @@ export const FEED_CATALOG: CatalogPack[] = [
 
 export const CATALOG_REGIONS = Array.from(new Set(FEED_CATALOG.map((pack) => pack.region)))
 
-const CATALOG_FEEDS_BY_URL = new Map<string, CatalogFeed>(
-  FEED_CATALOG.flatMap((pack) => pack.feeds.map((feed) => [feed.url, feed] as const))
-)
-
 export function getAllCatalogFeeds(): CatalogFeed[] {
   return FEED_CATALOG.flatMap((pack) => pack.feeds)
-}
-
-export function findCatalogFeedByUrl(url: string): CatalogFeed | undefined {
-  return CATALOG_FEEDS_BY_URL.get(url)
-}
-
-export function findCatalogPack(packId: string): CatalogPack | undefined {
-  return FEED_CATALOG.find((pack) => pack.id === packId)
 }
 
 /**
