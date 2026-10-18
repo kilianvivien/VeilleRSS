@@ -287,7 +287,7 @@ function ToneLegend({ compact }: { compact: boolean }) {
   )
 }
 
-function ConstellationGraph({
+export function ConstellationGraph({
   graph,
   activeKey,
   neighbours,
