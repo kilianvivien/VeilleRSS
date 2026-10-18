@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Download, Eye, EyeOff, GraduationCap, Moon, Sparkles, Upload } from 'lucide-react'
+import { ChevronDown, Database, Download, Eye, EyeOff, GraduationCap, Info, Moon, Palette, Rss, Sparkles, Upload } from 'lucide-react'
 import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
@@ -113,6 +113,16 @@ const ACCENT_OPTIONS: { value: AccentColor; label: string; swatch: string }[] = 
   { value: 'blue', label: 'Bleu', swatch: 'linear-gradient(135deg, #6ba4ff, #2f6fe4)' },
 ]
 
+type SettingsTab = 'general' | 'flux' | 'ia' | 'donnees' | 'apropos'
+
+const SETTINGS_TABS: { value: SettingsTab; label: string; icon: typeof Palette }[] = [
+  { value: 'general', label: 'Général', icon: Palette },
+  { value: 'flux', label: 'Flux & tendances', icon: Rss },
+  { value: 'ia', label: 'Intelligence artificielle', icon: Sparkles },
+  { value: 'donnees', label: 'Données', icon: Database },
+  { value: 'apropos', label: 'À propos', icon: Info },
+]
+
 export function SettingsModal({
   open,
   onOpenChange,
@@ -120,6 +130,7 @@ export function SettingsModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const [tab, setTab] = useState<SettingsTab>('general')
   const rssSettings = useRssStore((state) => state.settings)
   const updateRssSettings = useRssStore((state) => state.updateSettings)
   const aiSettings = useSettingsStore()
@@ -291,10 +302,32 @@ export function SettingsModal({
       onOpenChange={onOpenChange}
       title="Paramètres"
       description="Réglages des flux RSS et des fournisseurs IA. Les données restent dans ce navigateur."
-      size="lg"
-      bodyClassName="sm:max-h-[calc(100dvh-12rem)] sm:overflow-y-auto sm:overscroll-contain"
+      size="xl"
+      bodyClassName="sm:pb-0!"
     >
-      <div className="space-y-6">
+      <div className="flex min-h-0 flex-col gap-4 sm:h-[min(640px,calc(100dvh-12rem))] sm:flex-row sm:gap-6">
+        <nav aria-label="Rubriques des paramètres" className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 sm:w-[190px] sm:flex-col sm:overflow-visible sm:pb-6">
+          {SETTINGS_TABS.map((entry) => (
+            <button
+              key={entry.value}
+              type="button"
+              onClick={() => setTab(entry.value)}
+              aria-current={tab === entry.value ? 'page' : undefined}
+              className={cn(
+                'flex h-9 shrink-0 items-center gap-2.5 rounded-xl px-3 text-left text-[13px] whitespace-nowrap transition-colors',
+                tab === entry.value
+                  ? 'bg-[var(--accent-muted)] font-medium text-[var(--text-primary)]'
+                  : 'text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
+              )}
+            >
+              <entry.icon className={cn('h-4 w-4 shrink-0', tab === entry.value ? 'text-[var(--link)]' : 'text-[var(--text-muted)]')} aria-hidden="true" />
+              {entry.label}
+            </button>
+          ))}
+        </nav>
+      <div key={tab} className="cst-rise min-h-0 min-w-0 flex-1 space-y-6 sm:overflow-y-auto sm:overscroll-contain sm:pr-1 sm:pb-6">
+        {tab === 'general' ? (
+          <>
         {/* ── Apparence ──────────────────────────────────────────────── */}
         <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">APPARENCE</h3>
@@ -348,7 +381,11 @@ export function SettingsModal({
             ) : null}
           </div>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'flux' ? (
+          <>
         {/* ── Flux RSS ─────────────────────────────────────────────── */}
         <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">FLUX RSS</h3>
@@ -477,11 +514,15 @@ export function SettingsModal({
             </div>
           </div>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'donnees' ? (
+          <>
         {/* ── Sauvegarde ───────────────────────────────────────────────
             Les données ne vivent que dans ce navigateur : c'est le seul
             moyen de les mettre à l'abri ou de les porter ailleurs. */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">SAUVEGARDE</h3>
           <p className="text-xs leading-5 text-[var(--text-secondary)]">
             Un fichier contenant vos flux, vos articles (lus, sauvegardés, traduits), vos
@@ -517,14 +558,22 @@ export function SettingsModal({
             </p>
           ) : null}
         </section>
+          </>
+        ) : null}
 
+        {tab === 'general' ? (
+          <>
         {/* ── Application (PWA) ─────────────────────────────────────── */}
         <div className="border-t border-[var(--border)] pt-5">
           <InstallAppSection />
         </div>
+          </>
+        ) : null}
 
+        {tab === 'ia' ? (
+          <>
         {/* ── Intelligence artificielle ────────────────────────────── */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">
             INTELLIGENCE ARTIFICIELLE
           </h3>
@@ -717,7 +766,11 @@ export function SettingsModal({
             </span>
           </p>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'general' ? (
+          <>
         {/* ── Tutoriel ─────────────────────────────────────────────── */}
         <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -745,14 +798,22 @@ export function SettingsModal({
             Revoir
           </Button>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'apropos' ? (
+          <>
         {/* ── À propos ─────────────────────────────────────────────────
             Plus d'icône « i » dans les barres d'outils : les mentions
             atterrissent ici, sur mobile comme sur bureau. */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">À PROPOS</h3>
           <AboutContent />
         </section>
+          </>
+        ) : null}
+
+      </div>
       </div>
     </Modal>
   )
