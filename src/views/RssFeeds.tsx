@@ -1258,21 +1258,16 @@ export function RssFeeds() {
     <section className="relative flex h-full min-h-0 flex-col" aria-label="Articles">
         {/* En-tête de liste : trois rangées aérées — titre et actions, recherche,
             vues. Les sujets du moment ouvrent la liste elle-même. */}
-        <div className="flex flex-shrink-0 flex-col gap-3 border-b border-[var(--border)] px-4 pt-4 pb-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <h2
-              className="min-w-0 truncate text-lg font-semibold tracking-[-0.01em] text-[var(--text-primary)]"
-              title={listTitle}
-            >
-              {listTitle}
-            </h2>
-            <span
-              className="shrink-0 font-mono text-xs text-[var(--text-muted)] tabular-nums"
-              data-testid="filtered-article-count"
-            >
-              {visibleItems.length}
-            </span>
-            <span className="flex-1" />
+        <div className="flex flex-shrink-0 flex-col gap-2.5 border-b border-[var(--border)] px-4 pt-3.5 pb-3">
+          <h2 className="sr-only">{listTitle}</h2>
+          <div className="flex min-w-0 items-center gap-1">
+            <SegmentedControl<SmartView>
+              size="sm"
+              value={smartView}
+              onChange={setSmartView}
+              options={SMART_VIEW_OPTIONS}
+              className="mr-auto shrink-0"
+            />
             <button
               type="button"
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)] hidden lg:flex"
@@ -1321,18 +1316,30 @@ export function RssFeeds() {
             </button>
           </div>
 
-          <SearchBar value={query} onChange={setQuery} placeholder="Rechercher titres, extraits, sources…" className="min-w-0" />
-
           <div className="flex min-w-0 items-center gap-2">
-            <SegmentedControl<SmartView>
-              size="sm"
-              value={smartView}
-              onChange={setSmartView}
-              options={SMART_VIEW_OPTIONS}
-              className="shrink-0"
-            />
+            <SearchBar value={query} onChange={setQuery} placeholder="Rechercher…" className="min-w-0 flex-1" />
+            <span
+              className="shrink-0 font-mono text-xs text-[var(--text-muted)] tabular-nums"
+              data-testid="filtered-article-count"
+              title={`${visibleItems.length} articles`}
+            >
+              {visibleItems.length}
+            </span>
+            {activeFeed ? (
+              <span className="flex h-8 max-w-[40%] min-w-0 items-center gap-1.5 rounded-full border border-[var(--border-strong)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
+                <span className="truncate font-medium">{activeFeed.title}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveFeedId(null)}
+                  aria-label="Afficher toutes les sources"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </span>
+            ) : null}
             {activeTerm ? (
-              <span className="flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-muted)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
+              <span className="flex h-8 max-w-[40%] min-w-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-muted)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
                 <span className="sr-only">Filtré sur « {activeTerm.label} »</span>
                 <span aria-hidden="true" className="truncate font-medium">{activeTerm.label}</span>
                 <button
