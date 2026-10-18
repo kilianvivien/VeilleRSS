@@ -75,7 +75,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 - ajout de n'importe quel flux RSS ou Atom à partir de son URL ;
 - détection automatique du flux lorsqu'une page web compatible est collée ;
-- catalogue de sources prêt à l'emploi : presse turque, médias internationaux, Europe, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique et Amériques ;
+- catalogue de plus de 200 sources prêtes à l'emploi : presse française (nationale, régionale, audiovisuelle, économique), action publique et administration, Belgique et Suisse francophones, presse européenne (Allemagne, Europe du Sud, du Nord, centrale et orientale), presse turque, médias internationaux, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique, Amériques et institutions européennes ;
 - classement des sources par catégories ;
 - import et export OPML pour migrer facilement depuis ou vers un autre lecteur RSS ;
 - sauvegarde complète dans un fichier (sources, articles, mots-clés suivis, réglages) et restauration sur n'importe quel appareil ;
