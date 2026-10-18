@@ -136,6 +136,9 @@ describe('selected trend summary wiring', () => {
     fireEvent.click(intervals[0])
     expect(intervals[0]).toHaveAttribute('aria-pressed', 'true')
     expect(intervals[11]).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.change(within(card).getByRole('slider', { name: 'Tranche à comparer' }), { target: { value: '1' } })
+    expect(intervals[1]).toHaveAttribute('aria-pressed', 'true')
+    expect(intervals[0]).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: '6 h' }))
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('1')
@@ -174,6 +177,27 @@ describe('selected trend summary wiring', () => {
     expect(card).toHaveTextContent('50 % des articles')
   })
 
+  it('returns to the topic list even when a reader was previously open on mobile', () => {
+    render(<RssFeeds />)
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
+    const detail = () => screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
+    fireEvent.click(within(detail()).getByRole('button', { name: 'Voir les articles' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ouvrir Ankara' })[0])
+    expect(screen.getByTestId('reading-pane')).toBeInTheDocument()
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByText('Tendances'))
+    fireEvent.click(within(detail()).getByRole('button', { name: 'Voir les articles' }))
+    expect(screen.queryByTestId('reading-pane')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('article-row')).toHaveLength(3)
+  })
+
+  it('keeps the analysis window controls available when the constellation is empty', () => {
+    useRssStore.setState({ items: [] })
+    render(<RssFeeds />)
+    expect(screen.getByText('La constellation se prépare')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '7 j' }))
+    expect(useRssStore.getState().settings.trendWindowHours).toBe(168)
+  })
+
   it('uses the watched keyword’s summary matches for the detail and article filter', () => {
     const state = useRssStore.getState()
     useRssStore.setState({
@@ -185,6 +209,12 @@ describe('selected trend summary wiring', () => {
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toHaveTextContent('Mot-clé suivi')
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
+    const previews = screen.getByRole('complementary', { name: 'Liens et articles : Ankara' })
+    // « London » contient le mot suivi dans son résumé, pas dans son titre.
+    expect(within(within(previews).getByRole('list')).getByRole('button', { name: /London/ })).toBeInTheDocument()
+    fireEvent.click(within(previews).getByRole('button', { name: 'Explorer les articles' }))
+    expect(screen.getAllByTestId('article-row')).toHaveLength(4)
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Tendances/ }))
     // La liste est une vue à part : on y passe par la navigation.
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
     expect(screen.getAllByTestId('article-row')).toHaveLength(4)
@@ -224,7 +254,8 @@ describe('RssFeeds progressive article rendering', () => {
     fireEvent.click(screen.getByRole('button', { name: /Afficher 80 articles supplémentaires/i }))
     expect(screen.getAllByTestId('article-row')).toHaveLength(160)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sélectionner les articles visibles' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Options des articles' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sélectionner les articles visibles' }))
     expect(useRssStore.getState().selectedItemIds).toHaveLength(200)
   })
 })
@@ -273,15 +304,15 @@ describe('RssFeeds mobile composition', () => {
   it('opens the sources drawer from the tab bar and closes it again', () => {
     render(<RssFeeds />)
 
-    expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /^Sources/ })).not.toBeInTheDocument()
 
     const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
     fireEvent.click(within(nav).getByRole('button', { name: 'Sources' }))
-    const drawer = screen.getByRole('dialog', { name: 'Sources et vues' })
+    const drawer = screen.getByRole('dialog', { name: /^Sources/ })
     expect(drawer).toBeInTheDocument()
 
     fireEvent.click(within(drawer).getByRole('button', { name: 'Fermer le tiroir des sources' }))
-    expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: /^Sources/ })).not.toBeInTheDocument()
   })
 
   it('switches panes from the bottom tab bar', () => {

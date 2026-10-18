@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { ArrowRight, BellPlus, BellRing, Plus, X } from 'lucide-react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
+import { ArrowDown, ArrowRight, ArrowUp, BellPlus, BellRing, Orbit, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { TrendReport, TrendTerm } from '@/lib/rss/trendAnalysis'
 import { buildTopicGraph, neighbourKeys, type TopicGraph } from '@/lib/rss/topicGraph'
@@ -19,7 +19,7 @@ interface ConstellationViewProps {
   /** Bascule vers la liste, déjà filtrée sur le sujet sélectionné. */
   onViewArticles: () => void
   onWatchTerm: (term: string) => void
-  /** Version mobile : carte plus petite, sans flux ni indicateurs. */
+  /** Graphe et liste d’articles adaptés à une composition sur une colonne. */
   compact?: boolean
   /** Commandes de l'en-tête au bureau : fenêtre d'analyse, affinage IA. */
   toolbar?: ReactNode
@@ -60,6 +60,19 @@ export function ConstellationView({
   onSelectWatched,
   onUnwatchTerm,
 }: ConstellationViewProps) {
+  const graphRef = useRef<HTMLElement>(null)
+  const detailRef = useRef<HTMLDivElement>(null)
+  const revealDetail = () => {
+    if (!compact) return
+    requestAnimationFrame(() => {
+      detailRef.current?.focus({ preventScroll: true })
+      detailRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })
+    })
+  }
+  const selectTerm = (term: TrendTerm) => {
+    onSelectTerm(term)
+    revealDetail()
+  }
   const graph = useMemo(
     () =>
       buildTopicGraph(
@@ -70,26 +83,35 @@ export function ConstellationView({
       ),
     [compact, report.terms]
   )
-  const focusTerm =
-    report.terms.find((term) => term.key === activeKey) ?? (activeKey ? null : report.terms[0] ?? null)
+  const watchedStat = activeWatched ? report.watched.find((stat) => stat.term === activeWatched) : undefined
+  const focusTerm: TrendTerm | null = watchedStat ? {
+    key: report.focus?.key ?? watchedStat.term,
+    label: watchedStat.term,
+    count: watchedStat.count,
+    previousCount: watchedStat.previousCount,
+    delta: watchedStat.delta,
+    changeRatio: watchedStat.previousCount > 0 ? watchedStat.delta / watchedStat.previousCount : null,
+    isNew: watchedStat.count > 0 && watchedStat.previousCount === 0,
+    sourceCount: watchedStat.sourceCount,
+    feedIds: [...new Set(watchedStat.itemIds.flatMap((id) => itemById.get(id)?.feedId ?? []))],
+    itemIds: watchedStat.itemIds,
+    unreadCount: watchedStat.unreadCount,
+    buckets: watchedStat.buckets,
+    isPhrase: watchedStat.term.includes(' '),
+  } : report.terms.find((term) => term.key === activeKey) ?? (activeKey || activeWatched ? null : report.terms[0] ?? null)
   const neighbours = useMemo(
-    () => (focusTerm ? neighbourKeys(graph, focusTerm.key) : []),
-    [focusTerm, graph]
+    () => {
+      if (!focusTerm) return []
+      if (!activeWatched) return neighbourKeys(graph, focusTerm.key)
+      const ids = new Set(focusTerm.itemIds)
+      return graph.nodes.filter((node) => node.term.itemIds.some((id) => ids.has(id))).slice(0, 3).map((node) => node.term.key)
+    },
+    [focusTerm, graph, activeWatched]
   )
-
-  if (report.terms.length === 0) {
-    return (
-      <div className={cn('flex flex-col', compact ? 'py-2' : 'h-full min-h-0 overflow-auto p-6')}>
-        <p className="rounded-[18px] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
-          Pas encore assez d’articles sur la période pour dessiner la constellation. Ajoutez des
-          sources ou élargissez la fenêtre d’analyse.
-        </p>
-      </div>
-    )
-  }
 
   const graphCard = (
     <section
+      ref={graphRef}
       aria-label="Constellation des sujets"
       className={cn(
         'flex min-w-0 flex-col gap-2 overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)]',
@@ -102,29 +124,46 @@ export function ConstellationView({
       </div>
       <ConstellationGraph
         graph={graph}
-        activeKey={activeKey}
+        activeKey={graph.nodes.some((node) => node.term.key === activeKey) ? activeKey : null}
         neighbours={neighbours}
-        onSelect={(term) => (term.key === activeKey ? onClearSelection() : onSelectTerm(term))}
+        onSelect={(term) => (term.key === activeKey ? onClearSelection() : selectTerm(term))}
       />
+      <details className="border-t border-[var(--border)] pt-1">
+        <summary className="min-h-11 cursor-pointer content-center text-xs text-[var(--text-secondary)]">
+          Parcourir les {report.terms.length} sujets
+        </summary>
+        <ul className="grid gap-1 pb-1 sm:grid-cols-2">
+          {report.terms.map((term) => (
+            <li key={term.key} className="min-w-0">
+              <button type="button" onClick={() => selectTerm(term)} aria-pressed={term.key === activeKey}
+                className={cn('flex min-h-11 w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs hover:bg-[var(--hover-strong)]', term.key === activeKey && 'bg-[var(--accent-muted)]')}>
+                <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ background: TREND_TONE_COLOR[trendTone(term)] }} />
+                <span className="min-w-0 flex-1 break-words text-[var(--text-primary)]">{term.label}</span>
+                <span className="shrink-0 font-mono tabular-nums text-[var(--text-muted)]">{term.count}</span>
+                <ArrowDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </details>
     </section>
   )
 
   const detail = focusTerm ? (
     <TopicDetail
       term={focusTerm}
-      isSelected={focusTerm.key === activeKey}
+      isSelected={Boolean(activeWatched) || focusTerm.key === activeKey}
       related={neighbours.map((key) => report.terms.find((term) => term.key === key)).filter((term): term is TrendTerm => Boolean(term))}
       itemById={itemById}
       feedById={feedById}
       watched={watchedTerms.some((watched) => watched.toLowerCase() === focusTerm.label.toLowerCase())}
-      onSelectTerm={onSelectTerm}
+      onSelectTerm={selectTerm}
       onOpenItem={onOpenItem}
       onViewArticles={() => {
-        if (focusTerm.key !== activeKey) onSelectTerm(focusTerm)
+        if (!activeWatched && focusTerm.key !== activeKey) onSelectTerm(focusTerm)
         onViewArticles()
       }}
       onWatch={() => onWatchTerm(focusTerm.label)}
-      compact={compact}
       withHeader={!focusPanel}
     />
   ) : null
@@ -132,7 +171,7 @@ export function ConstellationView({
   const volumeChange = report.previousItemCount === 0 ? null : Math.round(((report.itemCount - report.previousItemCount) / report.previousItemCount) * 100)
 
   return (
-    <div className="h-full min-h-0 overflow-auto">
+    <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
       <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-4 sm:p-6">
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
@@ -161,25 +200,41 @@ export function ConstellationView({
         <WatchedBar
           watched={report.watched}
           active={activeWatched}
-          onSelect={onSelectWatched}
+          onSelect={(term) => {
+            onSelectWatched?.(term)
+            revealDetail()
+          }}
           onRemove={onUnwatchTerm}
           onAdd={onWatchTerm}
         />
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        {report.terms.length === 0 && !focusPanel ? (
+          <section className="flex flex-col items-center gap-3 rounded-[20px] border border-dashed border-[var(--border-strong)] bg-[var(--surface)] px-5 py-12 text-center">
+            <Orbit className="h-8 w-8 text-[var(--link)]" aria-hidden="true" />
+            <h2 className="font-serif text-2xl font-medium">La constellation se prépare</h2>
+            <p className="max-w-md text-sm leading-6 text-[var(--text-muted)]">Pas encore assez d’articles sur la période. Ajoutez des sources ou élargissez la fenêtre d’analyse ci-dessus.</p>
+          </section>
+        ) : (
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="flex min-w-0 flex-col gap-4">
-            {graphCard}
-            {compact ? null : <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />}
+            {report.terms.length > 0 ? graphCard : null}
+            {compact ? null : <TopicStream report={report} activeKey={activeKey} onSelectTerm={selectTerm} />}
           </div>
           {/* Un seul « sujet » à droite : le détail chiffré quand un sujet est
               choisi, flanqué des liens et articles ; sinon le sujet principal. */}
-          <div className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-0 xl:h-[calc(100dvh-10rem)] xl:min-h-[560px] xl:overflow-y-auto">
+          <div ref={detailRef} tabIndex={-1} className="flex min-w-0 scroll-mt-4 flex-col gap-4 outline-none">
+            {compact && (activeKey || activeWatched) ? (
+              <button type="button" className="flex min-h-11 items-center gap-2 self-start rounded-full px-3 text-xs text-[var(--link)] hover:bg-[var(--hover)]" onClick={() => graphRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' })}>
+                <ArrowUp className="h-4 w-4" aria-hidden="true" /> Retour à la constellation
+              </button>
+            ) : null}
             {focusPanel ? (
               <div className="cst-rise min-w-0 flex-shrink-0 [&>section]:rounded-[20px] [&>section]:p-5">{focusPanel}</div>
             ) : null}
             {detail}
-            {compact ? <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} /> : null}
+            {compact ? <TopicStream report={report} activeKey={activeKey} onSelectTerm={selectTerm} /> : null}
           </div>
         </div>
+        )}
       </div>
     </div>
   )
@@ -215,7 +270,7 @@ function WatchedBar({
           <span
             key={stat.term}
             className={cn(
-              'flex h-9 items-center rounded-full border text-xs transition-colors',
+              'flex min-h-11 max-w-full items-center rounded-full border text-xs transition-colors sm:min-h-9',
               isActive ? 'border-[var(--trend-hot)] bg-[var(--hover-strong)]' : 'border-[var(--border)]'
             )}
           >
@@ -223,9 +278,9 @@ function WatchedBar({
               type="button"
               onClick={() => onSelect?.(stat.term)}
               aria-pressed={isActive}
-              className="flex h-full items-center gap-2 rounded-l-full pr-1 pl-3 text-[var(--text-primary)]"
+              className="flex min-h-11 min-w-0 items-center gap-2 rounded-l-full pr-1 pl-3 text-[var(--text-primary)] sm:min-h-9"
             >
-              <span className="font-medium">{stat.term}</span>
+              <span className="truncate font-medium">{stat.term}</span>
               <span className="font-mono tabular-nums text-[var(--text-muted)]">{stat.count}</span>
               {stat.delta > 0 ? (
                 <span className="font-mono tabular-nums text-[var(--trend-hot)]">+{stat.delta}</span>
@@ -235,7 +290,7 @@ function WatchedBar({
               type="button"
               onClick={() => onRemove?.(stat.term)}
               aria-label={`Ne plus suivre « ${stat.term} »`}
-              className="flex h-full items-center rounded-r-full pr-2.5 pl-1 text-[var(--text-muted)] pointer-fine:hover:text-[var(--text-primary)]"
+              className="flex min-h-11 w-10 shrink-0 items-center justify-center rounded-r-full text-[var(--text-muted)] sm:min-h-9 sm:w-8 pointer-fine:hover:text-[var(--text-primary)]"
             >
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
@@ -247,7 +302,7 @@ function WatchedBar({
           event.preventDefault()
           submit()
         }}
-        className="flex h-9 items-center rounded-full border border-dashed border-[var(--border-strong)] pr-1 pl-3"
+        className="flex min-h-11 max-w-full items-center rounded-full border border-dashed border-[var(--border-strong)] pr-1 pl-3 focus-within:border-[var(--accent)] sm:min-h-9"
       >
         <input
           value={draft}
@@ -260,7 +315,7 @@ function WatchedBar({
           type="submit"
           disabled={!draft.trim()}
           aria-label="Suivre ce mot-clé"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--text-muted)] disabled:opacity-40 sm:h-7 sm:w-7 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
@@ -274,6 +329,7 @@ function ToneLegend({ compact }: { compact: boolean }) {
     ['forte hausse', TREND_TONE_COLOR.hot],
     ['nouveau', TREND_TONE_COLOR.new],
     ['stable', TREND_TONE_COLOR.calm],
+    ['en baisse', TREND_TONE_COLOR.down],
   ]
   return (
     <div className="flex flex-wrap items-center gap-3 text-[11px] text-[var(--text-muted)]">
@@ -368,8 +424,10 @@ export function ConstellationGraph({
               transition: 'opacity 450ms',
             }}
           >
+            {/* Agrandir la zone de contact sans fausser la taille = volume. */}
+            <span aria-hidden="true" className="absolute top-1/2 left-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full" />
             <span className="cst-node-body absolute inset-0 block" style={{ animationDelay: `${-index * 0.7}s` }}>
-              {tone === 'hot' || tone === 'new' ? (
+              {selected && (tone === 'hot' || tone === 'new') ? (
                 <span className="cst-halo absolute inset-0 rounded-full border-2" style={{ borderColor: color }} aria-hidden="true" />
               ) : null}
               <span
@@ -413,7 +471,6 @@ function TopicDetail({
   onOpenItem,
   onViewArticles,
   onWatch,
-  compact,
   withHeader = true,
 }: {
   term: TrendTerm
@@ -426,7 +483,6 @@ function TopicDetail({
   onOpenItem: (item: RssItem) => void
   onViewArticles: () => void
   onWatch: () => void
-  compact: boolean
   /** Sans en-tête quand un panneau voisin présente déjà le sujet. */
   withHeader?: boolean
 }) {
@@ -435,20 +491,20 @@ function TopicDetail({
     .map((id) => itemById.get(id))
     .filter((item): item is RssItem => Boolean(item))
     .sort((a, b) => (b.publishedAt ?? b.fetchedAt) - (a.publishedAt ?? a.fetchedAt))
-    .slice(0, compact ? 3 : 12)
+    .slice(0, 3)
 
   return (
     <aside
       aria-label={withHeader ? 'Sujet sélectionné' : `Liens et articles : ${term.label}`}
       key={term.key}
-      className="cst-rise flex min-h-0 min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-5 xl:min-h-[420px] xl:flex-1"
+      className="cst-rise flex min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"
     >
       {withHeader ? (
       <div className="flex flex-col gap-1.5">
         <span className="rss-section-label uppercase text-[var(--text-muted)]">
           {isSelected ? 'Sujet sélectionné' : 'Sujet principal'}
         </span>
-        <h2 className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{term.label}</h2>
+        <h2 className="break-words text-2xl font-semibold tracking-[-0.02em] text-[var(--text-primary)]">{term.label}</h2>
         <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
           <span className="rounded-full px-2.5 py-0.5 font-semibold text-[#0b0d12]" style={{ backgroundColor: color }}>
             {formatTrendDelta(term)}
@@ -469,7 +525,7 @@ function TopicDetail({
                 key={relatedTerm.key}
                 type="button"
                 onClick={() => onSelectTerm(relatedTerm)}
-                className="flex h-8 items-center gap-1.5 rounded-full border border-[var(--border)] px-3 text-xs text-[var(--text-primary)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
+                className="flex min-h-11 max-w-full items-center gap-1.5 rounded-full border border-[var(--border)] px-3 py-1.5 text-left text-xs text-[var(--text-primary)] transition-colors sm:min-h-8 pointer-fine:hover:bg-[var(--hover)]"
               >
                 <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: TREND_TONE_COLOR[trendTone(relatedTerm)] }} aria-hidden="true" />
                 {relatedTerm.label}
@@ -479,7 +535,8 @@ function TopicDetail({
         </div>
       ) : null}
 
-      <ul className="-mx-1 flex min-h-0 flex-col gap-1 overflow-y-auto px-1 xl:flex-1">
+      {articles.length === 0 ? <p className="text-xs leading-5 text-[var(--text-muted)]">Aucun article sur ce sujet dans la période sélectionnée.</p> : null}
+      <ul className="flex flex-col gap-1.5">
         {articles.map((item, index) => (
           <li key={item.id} className="cst-rise" style={{ animationDelay: `${index * 0.06}s` }}>
             <button
@@ -487,7 +544,7 @@ function TopicDetail({
               onClick={() => onOpenItem(item)}
               className="flex w-full flex-col gap-0.5 rounded-xl bg-[var(--hover)] px-3 py-2.5 text-left transition-colors pointer-fine:hover:bg-[var(--hover-strong)]"
             >
-              <span className="truncate text-[11px] text-[var(--text-muted)]">
+              <span className="w-full truncate text-[11px] text-[var(--text-muted)]">
                 <span className="font-medium text-[var(--link)]">{feedById.get(item.feedId)?.title ?? 'Source'}</span>
                 {' · '}
                 {formatRelativeDate(item.publishedAt ?? item.fetchedAt)}
@@ -498,13 +555,13 @@ function TopicDetail({
         ))}
       </ul>
 
-      <div className="mt-auto flex flex-shrink-0 gap-2">
+      <div className="flex shrink-0 gap-2">
         <button
           type="button"
           onClick={onViewArticles}
-          className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--text-primary)] text-sm font-semibold text-[var(--bg-primary)] transition-opacity pointer-fine:hover:opacity-90"
+          className="flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--text-primary)] text-sm font-semibold text-[var(--bg-primary)] transition-opacity pointer-fine:hover:opacity-90"
         >
-          Voir les {term.count} articles
+          Explorer les articles
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </button>
         <button
@@ -513,7 +570,7 @@ function TopicDetail({
           disabled={watched}
           aria-label={watched ? 'Mot déjà suivi' : `Suivre « ${term.label} »`}
           title={watched ? 'Mot déjà suivi' : 'Suivre ce mot'}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)] transition-colors disabled:text-[var(--trend-hot)] pointer-fine:hover:bg-[var(--hover)]"
+          className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)] transition-colors disabled:text-[var(--trend-hot)] pointer-fine:hover:bg-[var(--hover)]"
         >
           {watched ? <BellRing className="h-4 w-4" aria-hidden="true" /> : <BellPlus className="h-4 w-4" aria-hidden="true" />}
         </button>
@@ -549,7 +606,7 @@ function TopicStream({
               type="button"
               onClick={() => onSelectTerm(term)}
               aria-pressed={term.key === activeKey}
-              className="flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] text-[var(--text-primary)] transition-colors"
+              className="flex min-h-11 max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-left text-[11px] text-[var(--text-primary)] transition-colors sm:min-h-7"
               style={{ borderColor: term.key === activeKey ? STREAM_COLORS[index] : 'var(--border)' }}
             >
               <span className="h-2 w-2 rounded-sm" style={{ backgroundColor: STREAM_COLORS[index] }} aria-hidden="true" />
@@ -559,7 +616,7 @@ function TopicStream({
         </div>
       </div>
       <svg
-        className="cst-stream h-[200px] w-full"
+        className="cst-stream h-[140px] w-full sm:h-[200px]"
         viewBox="0 0 1000 220"
         preserveAspectRatio="none"
         role="img"

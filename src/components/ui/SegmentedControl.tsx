@@ -17,8 +17,7 @@ interface SegmentedControlProps<T extends string> {
 }
 
 /**
- * Shared segmented control component with glass material and sliding highlight
- * Replaces ad-hoc inline segmented toggles across views
+ * Equal-width choices with a sliding highlight inside the padded track.
  */
 export function SegmentedControl<T extends string>({
   value,
@@ -38,15 +37,10 @@ export function SegmentedControl<T extends string>({
         className
       )}
     >
-      {/* Sliding highlight pill */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-[3px] rounded-full"
-        style={{ width: segmentWidthPct }}
-      >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-[3px]">
         <div
           className="h-full w-full rounded-full bg-[var(--text-primary)] shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
-          style={{ transform: `translateX(${selectedIndex * 100}%)` }}
+          style={{ width: segmentWidthPct, transform: `translateX(${Math.max(0, selectedIndex) * 100}%)` }}
         />
       </div>
 
@@ -61,9 +55,9 @@ export function SegmentedControl<T extends string>({
             aria-pressed={active}
             style={{ width: segmentWidthPct }}
             className={cn(
-              'relative z-10 flex-1 rounded-full font-medium flex items-center justify-center gap-1.5 whitespace-nowrap',
+              'cst-segment relative z-10 min-w-0 flex-1 rounded-full font-medium flex items-center justify-center gap-1.5 whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]',
               'transition-colors duration-200',
-              size === 'sm' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm',
+              size === 'sm' ? 'px-2.5 py-1 text-xs sm:px-3' : 'px-4 py-2 text-sm',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               active
                 ? 'text-[var(--bg-primary)]'

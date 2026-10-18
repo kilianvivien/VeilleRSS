@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
-import { Download, Link2, MoreHorizontal, Moon, Plus, RefreshCw, ScrollText, Settings, Sun, Upload, WifiOff } from 'lucide-react'
+import { Download, Link2, MoreHorizontal, Moon, RefreshCw, ScrollText, Settings, Sun, Upload, WifiOff } from 'lucide-react'
+import { AddSourcesButton } from './AddSourcesButton'
 import { cn } from '@/lib/utils/cn'
 import { MenuButton } from '@/components/ui/MenuButton'
 import { AppIcon } from './AppIcon'
@@ -152,14 +153,7 @@ export function AppNavRail({
 
       <div className="flex flex-shrink-0 flex-col gap-2 border-t border-[var(--border)] px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
         <div className="flex gap-1.5">
-          <button
-            type="button"
-            onClick={onOpenCatalog}
-            className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--text-primary)] text-[13px] font-semibold text-[var(--bg-primary)] transition-[opacity,transform] duration-150 active:scale-[0.98] pointer-fine:hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-            Ajouter des sources
-          </button>
+          <AddSourcesButton onClick={onOpenCatalog} />
           <SourcesMenu
             canExport={feedCount > 0}
             onAddFeedUrl={onAddFeedUrl}
@@ -242,7 +236,7 @@ function SourcesMenu({
     <MenuButton
       label="Autres actions sur les sources"
       placement="top"
-      className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
+      className="flex h-12 w-11 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
       entries={[
         { label: 'Coller l’adresse d’un flux', icon: <Link2 className="h-4 w-4" aria-hidden="true" />, onSelect: onAddFeedUrl },
         { label: 'Importer un fichier OPML', icon: <Upload className="h-4 w-4" aria-hidden="true" />, onSelect: onImportOpml },

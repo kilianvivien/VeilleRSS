@@ -11,6 +11,8 @@ interface RssArticleRowProps {
   item: RssItem
   feed?: RssFeed
   selected: boolean
+  /** Sur mobile, les cases apparaissent après l’action de sélection groupée. */
+  selectionMode?: boolean
   active: boolean
   density: RssDensity
   /** Titre traduit affiché à la place de l’original quand une traduction est en cache. */
@@ -50,6 +52,7 @@ export const RssArticleRow = memo(function RssArticleRow({
   item,
   feed,
   selected,
+  selectionMode = false,
   active,
   density,
   displayTitle,
@@ -148,18 +151,20 @@ export const RssArticleRow = memo(function RssArticleRow({
             : undefined
         }
       >
+        <label className={cn('hidden h-11 w-11 shrink-0 items-start justify-center pt-2.5 lg:block lg:h-4 lg:w-4 lg:pt-1', selectionMode && 'flex')}>
         <input
           type="checkbox"
           checked={selected}
           onChange={(event) => onSelectedChange(item.id, event.target.checked)}
           onClick={(event) => event.stopPropagation()}
           className={cn(
-            'mt-1 h-5 w-5 shrink-0 rounded border-[var(--border)] accent-[var(--accent)] transition-opacity lg:h-4 lg:w-4',
+            'h-5 w-5 rounded border-[var(--border)] accent-[var(--accent)] transition-opacity lg:h-4 lg:w-4',
             // Au bureau, la case n'encombre la ligne qu'au survol ou une fois cochée.
             !selected && 'lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100'
           )}
           aria-label={`Sélectionner ${item.title}`}
         />
+        </label>
 
         <button
           type="button"
@@ -235,7 +240,7 @@ export const RssArticleRow = memo(function RssArticleRow({
           className={cn(
             // `active:` remplace le retour visuel supprimé par
             // `-webkit-tap-highlight-color: transparent`.
-            '-mr-2 h-10 w-10 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors active:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:text-[var(--text-primary)] lg:mr-0 lg:h-6 lg:w-auto',
+            '-mr-2 h-11 w-11 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors active:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:text-[var(--text-primary)] lg:mr-0 lg:h-6 lg:w-auto',
             item.savedAt
               ? 'text-[var(--trend-hot)]'
               : 'opacity-100 lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100'

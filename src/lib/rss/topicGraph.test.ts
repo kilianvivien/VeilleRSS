@@ -77,4 +77,14 @@ describe('buildTopicGraph', () => {
   it('handles an empty report', () => {
     expect(buildTopicGraph([])).toEqual({ nodes: [], edges: [], aspect: 1.7 })
   })
+
+  it('keeps a useful set of topics instead of discarding nodes at touching boundaries', () => {
+    const crowded = Array.from({ length: 12 }, (_, index) =>
+      term(`Sujet très long numéro ${index}`, ids(`t${index}-`, 24))
+    )
+    expect(buildTopicGraph(crowded).nodes.length).toBeGreaterThanOrEqual(10)
+    expect(buildTopicGraph(crowded, {
+      limit: 7, aspect: 0.95, labelCharWidth: 0.022, maxLabelWidth: 0.42,
+    }).nodes.length).toBeGreaterThanOrEqual(5)
+  })
 })

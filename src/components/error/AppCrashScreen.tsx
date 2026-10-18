@@ -49,8 +49,8 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-[var(--bg-primary)] px-5 py-10">
-      <main className="w-full max-w-lg">
+    <div className="flex h-full overflow-y-auto overscroll-contain bg-[var(--bg-primary)] px-5 py-8">
+      <main className="m-auto w-full max-w-lg shrink-0">
         <div className="rounded-[22px] border border-[var(--border)] bg-[var(--surface-elevated)] p-6 shadow-[0_24px_60px_rgba(15,23,42,0.14)] sm:p-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/12 text-amber-600 dark:text-amber-400">
             <TriangleAlert className="h-6 w-6" aria-hidden="true" />
@@ -68,7 +68,7 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-macos border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[var(--accent-muted)] px-4 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_26%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-macos border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[var(--accent-muted)] px-4 text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_26%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] sm:flex-1"
             >
               <RefreshCw className="h-4 w-4" aria-hidden="true" />
               Recharger l’application
@@ -89,7 +89,7 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
               type="button"
               onClick={() => setDetailsOpen((current) => !current)}
               aria-expanded={detailsOpen}
-              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+              className="flex min-h-11 w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
             >
               <span className="min-w-0 flex-1">Détails techniques</span>
               <ChevronDown
@@ -102,13 +102,13 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
             </button>
             {detailsOpen ? (
               <div className="space-y-2 border-t border-[var(--border)] p-3">
-                <pre className="max-h-52 overflow-auto rounded-md bg-[var(--hover)] p-3 font-mono text-[11px] leading-5 whitespace-pre-wrap text-[var(--text-secondary)]">
+                <pre className="max-h-52 overflow-auto rounded-md bg-[var(--hover)] p-3 font-mono text-[11px] leading-5 break-words whitespace-pre-wrap text-[var(--text-secondary)]">
                   {report}
                 </pre>
                 <button
                   type="button"
                   onClick={() => void handleCopy()}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-macos border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
                 >
                   <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                   {copied ? 'Copié' : 'Copier les détails'}
@@ -130,14 +130,14 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="inline-flex h-9 items-center rounded-macos border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400"
+                    className="inline-flex min-h-11 items-center rounded-xl border border-red-500/30 bg-red-500/10 px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-500/20 dark:text-red-400"
                   >
                     Confirmer la réinitialisation
                   </button>
                   <button
                     type="button"
                     onClick={() => setResetArmed(false)}
-                    className="inline-flex h-9 items-center rounded-macos px-3 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+                    className="inline-flex min-h-11 items-center rounded-xl px-3 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
                   >
                     Annuler
                   </button>
@@ -147,7 +147,7 @@ export function AppCrashScreen({ error, onRetry }: { error: Error; onRetry: () =
               <button
                 type="button"
                 onClick={() => setResetArmed(true)}
-                className="text-xs font-medium text-[var(--text-muted)] underline underline-offset-2 transition-colors hover:text-[var(--text-secondary)]"
+                className="min-h-11 text-left text-xs font-medium text-[var(--text-muted)] underline underline-offset-2 transition-colors hover:text-[var(--text-secondary)]"
               >
                 Le problème persiste à chaque chargement ? Réinitialiser les réglages
               </button>

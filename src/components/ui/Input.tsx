@@ -1,5 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
-import { forwardRef } from 'react'
+import { forwardRef, useId } from 'react'
 import { cn } from '@/lib/utils/cn'
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -25,16 +25,20 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       className,
       type = 'text',
       disabled,
+      id: providedId,
+      'aria-describedby': describedBy,
       ...props
     },
     ref
   ) => {
     const hasError = !!error
+    const generatedId = useId()
+    const id = providedId ?? generatedId
 
     return (
-      <div className="w-full">
+      <div className="min-w-0 w-full">
         {label && (
-          <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
+          <label htmlFor={id} className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">
             {label}
           </label>
         )}
@@ -48,6 +52,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
           <input
             ref={ref}
+            id={id}
+            data-ui-text-input="true"
+            aria-invalid={hasError || undefined}
+            aria-describedby={[describedBy, error || helperText ? `${id}-help` : null].filter(Boolean).join(' ') || undefined}
             type={type}
             disabled={disabled}
             className={cn(
@@ -61,7 +69,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                 'border-[var(--border)] focus:border-[var(--accent)] focus:ring-[var(--focus-ring)]':
                   !hasError,
                 // Error state
-                'border-accent-red focus:border-accent-red focus:ring-accent-red/20':
+                'border-[var(--error)] focus:border-[var(--error)] focus:ring-[var(--focus-ring)]':
                   hasError,
                 // Icon padding
                 'pl-10': leftIcon,
@@ -81,8 +89,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 
         {(error || helperText) && (
           <p
+            id={`${id}-help`}
+            role={hasError ? 'alert' : undefined}
             className={cn('mt-1.5 text-sm', {
-              'text-accent-red': hasError,
+              'text-[var(--error)]': hasError,
               'text-[var(--text-secondary)]': !hasError,
             })}
           >

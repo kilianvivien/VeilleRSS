@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react'
+import * as Dialog from '@radix-ui/react-dialog'
 import { Modal } from '@/components/ui'
 import { cn } from '@/lib/utils/cn'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
@@ -148,6 +149,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   // Flèches du clavier : la navigation attendue d'un carrousel au bureau.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof HTMLElement && event.target.closest('input, textarea, select, [role="radiogroup"], [role="slider"]')) return
       if (event.key === 'ArrowRight') goNext()
       if (event.key === 'ArrowLeft') goPrevious()
     }
@@ -202,7 +204,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   )
 
   const dots = (
-    <div className="flex items-center gap-1.5" role="tablist" aria-label="Étapes du tutoriel">
+    <div className="flex items-center gap-0 sm:gap-1.5" role="tablist" aria-label="Étapes du tutoriel">
       {STEPS.map((item, dotIndex) => (
         <button
           key={item.id}
@@ -212,14 +214,11 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           aria-label={`Étape ${dotIndex + 1} sur ${STEPS.length} : ${item.title}`}
           onClick={() => goTo(dotIndex)}
           className={cn(
-            'h-1.5 rounded-full transition-all duration-300',
-            dotIndex === index
-              ? 'w-7 bg-[var(--accent)]'
-              : dotIndex < index
-                ? 'w-1.5 bg-[color-mix(in_srgb,var(--accent)_45%,transparent)]'
-                : 'w-1.5 bg-[var(--border-strong)] hover:bg-[var(--text-muted)]'
+            'flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-[var(--hover)] sm:h-8 sm:w-7'
           )}
-        />
+        >
+          <span aria-hidden="true" className={cn('h-1.5 rounded-full transition-all duration-300', dotIndex === index ? 'w-6 bg-[var(--accent)]' : dotIndex < index ? 'w-1.5 bg-[color-mix(in_srgb,var(--accent)_45%,transparent)]' : 'w-1.5 bg-[var(--border-strong)]')} />
+        </button>
       ))}
     </div>
   )
@@ -228,7 +227,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     <button
       type="button"
       onClick={onFinish}
-      className="rounded-full px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      className="min-h-11 rounded-full px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
     >
       Passer
     </button>
@@ -261,6 +260,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     return (
       <Modal
         open
+        accessibleTitle="Tutoriel de démarrage"
         onOpenChange={(next) => {
           // Fermer par la croix ou Échap vaut « passer » : dans les deux cas
           // le tutoriel ne doit pas revenir au prochain lancement.
@@ -292,12 +292,14 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
+    <Dialog.Root open onOpenChange={(next) => { if (!next) onFinish() }}>
+    <Dialog.Portal>
+    <Dialog.Content
       aria-label="Tutoriel de démarrage"
+      aria-describedby={undefined}
       className="fixed inset-0 z-[80] flex flex-col bg-[var(--bg-primary)]"
     >
+      <Dialog.Title className="sr-only">Tutoriel de démarrage</Dialog.Title>
       <div className="flex flex-shrink-0 items-center justify-between px-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-1">
         <span className="text-xs font-medium tabular-nums text-[var(--text-muted)]">
           {index + 1} / {STEPS.length}
@@ -305,15 +307,17 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
         {skipButton}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto px-6 pb-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-6 pb-4">
         {content}
       </div>
 
-      <div className="flex flex-shrink-0 items-center gap-3 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+      <div className="flex shrink-0 justify-center">{dots}</div>
+      <div className="flex flex-shrink-0 items-center justify-between gap-3 px-5 pt-2 pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
         {previousButton}
-        {dots}
         <div className="ml-auto">{nextButton}</div>
       </div>
-    </div>
+    </Dialog.Content>
+    </Dialog.Portal>
+    </Dialog.Root>
   )
 }

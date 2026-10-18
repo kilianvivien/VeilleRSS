@@ -97,7 +97,7 @@ export function PwaPrompts() {
           type="button"
           onClick={close}
           aria-label="Masquer ce message"
-          className="-mt-1 -mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+          className="-mt-1 -mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

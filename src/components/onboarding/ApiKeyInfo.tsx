@@ -107,7 +107,7 @@ export function ApiKeyInfo({ className }: { className?: string }) {
         aria-controls={panelId}
         aria-label="Qu’est-ce qu’une clé API ?"
         className={cn(
-          'inline-flex h-[1.125rem] w-[1.125rem] items-center justify-center rounded-full border align-middle transition-colors',
+          'inline-flex h-11 w-11 items-center justify-center rounded-full border align-middle transition-colors sm:h-5 sm:w-5',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]',
           open
             ? 'border-transparent bg-[var(--accent)] text-white'
@@ -189,7 +189,7 @@ export function ApiKeyInfo({ className }: { className?: string }) {
                     href={provider.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
+                    className="inline-flex min-h-11 items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
                   >
                     {provider.label}
                     <ExternalLink className="h-2.5 w-2.5 opacity-60" aria-hidden="true" />
@@ -202,7 +202,7 @@ export function ApiKeyInfo({ className }: { className?: string }) {
                 choisissez.
               </p>
             </div>,
-            document.body
+            triggerRef.current?.closest('[role="dialog"]') ?? document.body
           )
         : null}
     </>
