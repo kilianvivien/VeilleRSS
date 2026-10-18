@@ -34,6 +34,8 @@ export interface TopicGraphEdge {
 export interface TopicGraph {
   nodes: TopicGraphNode[]
   edges: TopicGraphEdge[]
+  /** Rapport largeur / hauteur de la zone pour laquelle la carte a été calculée. */
+  aspect: number
 }
 
 interface BuildOptions {
@@ -41,15 +43,17 @@ interface BuildOptions {
   /** Liens retenus au plus par sujet, pour garder une carte lisible. */
   maxEdgesPerNode?: number
   iterations?: number
+  /** Rapport largeur / hauteur de la zone ; plus étroit sur mobile. */
+  aspect?: number
 }
 
 const MIN_SHARED_ITEMS = 2
 const MIN_EDGE_WEIGHT = 0.15
 
 export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}): TopicGraph {
-  const { limit = 12, maxEdgesPerNode = 3, iterations = 260 } = options
+  const { limit = 12, maxEdgesPerNode = 3, iterations = 260, aspect = GRAPH_ASPECT } = options
   const selected = terms.slice(0, limit)
-  if (selected.length === 0) return { nodes: [], edges: [] }
+  if (selected.length === 0) return { nodes: [], edges: [], aspect }
 
   const edges = computeEdges(selected, maxEdgesPerNode)
   const maxCount = Math.max(...selected.map((term) => term.count), 1)
@@ -57,7 +61,7 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
 
   // Départ en spirale dorée, du sujet le plus fort (au centre) vers la
   // périphérie : la simulation converge vite et sans tirage aléatoire.
-  const width = GRAPH_ASPECT
+  const width = aspect
   const positions = selected.map((_, index) => {
     const angle = index * 2.399963
     const distance = 0.08 + 0.36 * Math.sqrt(index / selected.length)
@@ -128,6 +132,7 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
       r: radii[index],
     })),
     edges,
+    aspect,
   }
 }
 

@@ -274,12 +274,13 @@ describe('RssFeeds mobile composition', () => {
     expect(screen.getAllByTestId('article-row')).toHaveLength(10)
   })
 
-  it('opens the sources drawer from the header and closes it again', () => {
+  it('opens the sources drawer from the tab bar and closes it again', () => {
     render(<RssFeeds />)
 
     expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les sources et vues' }))
+    const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
+    fireEvent.click(within(nav).getByRole('button', { name: 'Sources' }))
     const drawer = screen.getByRole('dialog', { name: 'Sources et vues' })
     expect(drawer).toBeInTheDocument()
 

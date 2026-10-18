@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { ArrowRight, BellPlus, BellRing, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { TrendReport, TrendTerm } from '@/lib/rss/trendAnalysis'
-import { buildTopicGraph, GRAPH_ASPECT, neighbourKeys, type TopicGraph } from '@/lib/rss/topicGraph'
+import { buildTopicGraph, neighbourKeys, type TopicGraph } from '@/lib/rss/topicGraph'
 import type { RssFeed, RssItem } from '@/types/rss'
 import { formatRelativeDate } from './rssFormatting'
 import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from './trendTone'
@@ -60,7 +60,10 @@ export function ConstellationView({
   onSelectWatched,
   onUnwatchTerm,
 }: ConstellationViewProps) {
-  const graph = useMemo(() => buildTopicGraph(report.terms, { limit: compact ? 8 : 12 }), [compact, report.terms])
+  const graph = useMemo(
+    () => buildTopicGraph(report.terms, compact ? { limit: 8, aspect: 1.05 } : { limit: 12 }),
+    [compact, report.terms]
+  )
   const focusTerm =
     report.terms.find((term) => term.key === activeKey) ?? (activeKey ? null : report.terms[0] ?? null)
   const neighbours = useMemo(
@@ -302,15 +305,15 @@ export function ConstellationGraph({
   const position = new Map(graph.nodes.map((node) => [node.term.key, node]))
 
   return (
-    <div className="relative w-full" style={{ aspectRatio: String(GRAPH_ASPECT) }}>
+    <div className="relative w-full" style={{ aspectRatio: String(graph.aspect) }}>
       {graph.edges.map((edge, index) => {
         const a = position.get(edge.source)!
         const b = position.get(edge.target)!
-        // Calcul dans un repère isotrope (largeur = GRAPH_ASPECT), puis
+        // Calcul dans un repère isotrope (largeur = graph.aspect), puis
         // conversion en pourcentage de la largeur pour la longueur.
-        const dx = (b.x - a.x) * GRAPH_ASPECT
+        const dx = (b.x - a.x) * graph.aspect
         const dy = b.y - a.y
-        const length = Math.hypot(dx, dy) / GRAPH_ASPECT
+        const length = Math.hypot(dx, dy) / graph.aspect
         const angle = (Math.atan2(dy, dx) * 180) / Math.PI
         const on = activeKey !== null && (edge.source === activeKey || edge.target === activeKey)
         const thickness = 1 + edge.weight * 3
@@ -348,7 +351,7 @@ export function ConstellationGraph({
         const selected = node.term.key === activeKey
         const dimmed = activeKey !== null && !lit.has(node.term.key)
         // Rayon exprimé en fraction de la hauteur : converti en largeur.
-        const diameter = ((node.r * 2) / GRAPH_ASPECT) * 100
+        const diameter = ((node.r * 2) / graph.aspect) * 100
         return (
           <button
             key={node.term.key}
@@ -387,7 +390,12 @@ export function ConstellationGraph({
               </span>
               <span
                 aria-hidden="true"
-                className="absolute left-1/2 top-full mt-1.5 max-w-[9rem] -translate-x-1/2 truncate whitespace-nowrap text-xs font-medium text-[var(--text-primary)]"
+                className={cn(
+                  'absolute top-full mt-1.5 max-w-[9rem] truncate whitespace-nowrap text-xs font-medium text-[var(--text-primary)]',
+                  // Près des bords, l'étiquette s'aligne vers l'intérieur au
+                  // lieu de déborder de la carte.
+                  node.x < 0.2 ? 'left-0' : node.x > 0.8 ? 'right-0' : 'left-1/2 -translate-x-1/2'
+                )}
               >
                 {node.term.label}
               </span>

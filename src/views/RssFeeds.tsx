@@ -27,6 +27,7 @@ import {
   Plus,
   Radar,
   RefreshCw,
+  Rss,
   Rows2,
   Rows3,
   ScrollText,
@@ -42,7 +43,8 @@ import { MenuButton } from '@/components/ui/MenuButton'
 import { Sparkline } from '@/components/rss/Sparkline'
 import { ConstellationView } from '@/components/rss/ConstellationView'
 import { TrendFocusCard } from '@/components/rss/TrendFocusCard'
-import { AppNavRail } from '@/components/rss/AppNavRail'
+import { AppNavRail, ArticlesIcon, ConstellationIcon } from '@/components/rss/AppNavRail'
+import { AppIcon } from '@/components/rss/AppIcon'
 import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from '@/components/rss/trendTone'
 import { SearchBar } from '@/components/search'
 import {
@@ -1115,7 +1117,15 @@ export function RssFeeds() {
 
   /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
   const handleMobileTab = useCallback(
-    (value: RightPane) => {
+    (value: RightPane | 'sources' | 'settings') => {
+      if (value === 'sources') {
+        setIsSourcesOpen(true)
+        return
+      }
+      if (value === 'settings') {
+        setShowSettingsModal(true)
+        return
+      }
       if (value === rightPane) {
         if (value === 'article' && openItemId) setOpenItemId(null)
         return
@@ -1817,60 +1827,30 @@ export function RssFeeds() {
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-[var(--bg-primary)]">
       {isDesktop ? null : (
-        /* En-tête compact mobile : actions en icônes, cibles ≥ 40 px. */
+        /* En-tête compact mobile : marque, état et rafraîchissement. Sources
+           et réglages vivent dans la barre d'onglets. */
         <header className="relative z-20 flex flex-shrink-0 items-center gap-1 bg-transparent px-2 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
-            title="Sources et vues"
-            aria-label="Ouvrir les sources et vues"
-            onClick={() => setIsSourcesOpen(true)}
-          >
-            <Menu className="h-5 w-5" aria-hidden="true" />
-          </Button>
+          <AppIcon size={30} className="mr-1.5 ml-2" />
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-lg font-bold text-[var(--text-primary)] max-[359px]:text-base">
-              Veille RSS
-            </h1>
-            <p className="truncate text-[11px] text-[var(--text-secondary)]">
+            <h1 className="truncate text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Veille</h1>
+            <p className="truncate text-[11px] text-[var(--text-muted)]">
               {feeds.length === 0
                 ? 'Aucune source suivie'
-                : `${totals.unread} non lu${totals.unread > 1 ? 's' : ''} · ${feeds.length} source${feeds.length > 1 ? 's' : ''}`}
+                : !isOnline
+                  ? 'Hors connexion'
+                  : `${totals.unread} non lu${totals.unread > 1 ? 's' : ''} · ${feeds.length} source${feeds.length > 1 ? 's' : ''}`}
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
+          <button
+            type="button"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-secondary)] disabled:opacity-40 active:bg-[var(--hover)]"
             onClick={() => void refreshAllFeeds()}
-            isLoading={isRefreshing}
-            disabled={feeds.length === 0 || !isOnline}
+            disabled={feeds.length === 0 || !isOnline || isRefreshing}
             title="Rafraîchir toutes les sources"
             aria-label="Rafraîchir toutes les sources"
           >
-            {!isRefreshing ? <RefreshCw className="h-5 w-5" aria-hidden="true" /> : null}
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
-            title="Catalogue de sources"
-            aria-label="Catalogue de sources"
-            onClick={() => setShowCatalog(true)}
-          >
-            <Library className="h-5 w-5" aria-hidden="true" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-11 w-11 shrink-0 p-0 max-[359px]:h-10 max-[359px]:w-10"
-            title="Paramètres"
-            aria-label="Paramètres"
-            onClick={() => setShowSettingsModal(true)}
-          >
-            <Settings className="h-5 w-5" aria-hidden="true" />
-          </Button>
+            <RefreshCw className={cn('h-5 w-5', isRefreshing && 'animate-spin')} aria-hidden="true" />
+          </button>
         </header>
       )}
 
@@ -1935,7 +1915,15 @@ export function RssFeeds() {
                   : readingPaneElement}
           </div>
 
-          <MobileTabBar value={rightPane} onChange={handleMobileTab} />
+          <MobileTabBar
+            value={rightPane}
+            onChange={handleMobileTab}
+            unreadCount={totals.unread}
+            hasRisingTopics={displayedTrendReport.terms.some((term) => {
+              const tone = trendTone(term)
+              return tone === 'hot' || tone === 'new'
+            })}
+          />
 
           {/* Tiroir des sources : le rail habituel dans un panneau coulissant. */}
           {isSourcesOpen ? (
@@ -1951,8 +1939,8 @@ export function RssFeeds() {
               />
               <div className="animate-drawer-in absolute inset-y-0 left-0 flex w-[304px] max-w-[86vw] flex-col border-r border-[var(--border)] bg-[var(--bg-primary)] shadow-2xl">
                 <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] pt-[calc(env(safe-area-inset-top)+0.75rem)] pr-2 pb-3 pl-4">
-                  <h2 className="text-sm font-semibold text-[var(--text-primary)]">
-                    Sources &amp; vues
+                  <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+                    Sources <span className="font-mono text-xs font-normal text-[var(--text-muted)]">{feeds.length}</span>
                   </h2>
                   <Button
                     size="sm"
@@ -2110,12 +2098,16 @@ function EmptyState({ hasFeeds, onOpenCatalog }: { hasFeeds: boolean; onOpenCata
   )
 }
 
-/** Onglets de la barre de navigation mobile. */
+/** Onglets de la barre de navigation mobile, mêmes pictogrammes que le rail du bureau. */
 const MOBILE_TABS = [
-  { value: 'article', label: 'Articles', icon: Newspaper },
-  { value: 'trends', label: 'Tendances', icon: Radar },
+  { value: 'article', label: 'Articles', icon: ArticlesIcon },
+  { value: 'trends', label: 'Tendances', icon: ConstellationIcon },
   { value: 'briefing', label: 'Briefing', icon: ScrollText },
+  { value: 'sources', label: 'Sources', icon: Rss },
+  { value: 'settings', label: 'Réglages', icon: Settings },
 ] as const
+
+type MobileTab = (typeof MOBILE_TABS)[number]['value']
 
 /**
  * Barre d'onglets basse, à hauteur de pouce ; re-taper « Articles » pendant
@@ -2124,17 +2116,21 @@ const MOBILE_TABS = [
 function MobileTabBar({
   value,
   onChange,
+  unreadCount = 0,
+  hasRisingTopics = false,
 }: {
   value: RightPane
-  onChange: (value: RightPane) => void
+  onChange: (value: MobileTab) => void
+  unreadCount?: number
+  hasRisingTopics?: boolean
 }) {
   return (
     <nav
       aria-label="Navigation principale"
-      className="relative z-20 flex min-h-[var(--mobile-tabbar-height)] flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-2 pt-1 pb-[calc(env(safe-area-inset-bottom)+0.375rem)]"
+      className="relative z-20 flex min-h-[var(--mobile-tabbar-height)] flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-primary)_86%,transparent)] px-3 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] backdrop-blur-xl"
     >
       {MOBILE_TABS.map((tab) => {
-        const active = tab.value === value
+        const active = (tab.value as string) === value
         const Icon = tab.icon
         return (
           <button
@@ -2142,17 +2138,23 @@ function MobileTabBar({
             type="button"
             onClick={() => onChange(tab.value)}
             aria-current={active ? 'page' : undefined}
+            aria-label={tab.value === 'article' && unreadCount > 0 ? `${tab.label}, ${unreadCount} non lus` : tab.label}
             className={cn(
-              'flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 font-medium transition-colors',
-              active
-                ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]'
-                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+              'relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 font-medium transition-colors duration-200',
+              active ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]' : 'text-[var(--text-muted)]'
             )}
           >
-            <Icon
-              className={cn('h-5 w-5 shrink-0', active && 'text-[var(--accent)]')}
-              aria-hidden="true"
-            />
+            <span className="relative">
+              <Icon className={cn('h-[22px] w-[22px] shrink-0', active && 'text-[var(--link)]')} />
+              {tab.value === 'article' && unreadCount > 0 ? (
+                <span aria-hidden="true" className="absolute -top-1.5 left-3.5 min-w-[18px] rounded-full bg-[var(--accent)] px-1 text-center font-mono text-[9px] leading-[16px] text-[var(--accent-foreground)] tabular-nums">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              ) : null}
+              {tab.value === 'trends' && hasRisingTopics ? (
+                <span className="absolute -top-0.5 -right-1 h-2 w-2 rounded-full bg-[var(--trend-hot)]" aria-hidden="true" />
+              ) : null}
+            </span>
             <span className="max-w-full truncate text-[10px]">{tab.label}</span>
           </button>
         )

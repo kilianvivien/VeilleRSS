@@ -32,7 +32,7 @@ interface AppNavRailProps {
 const TIME_FORMATTER = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' })
 
 /** Pictogramme de la constellation : trois nœuds reliés. */
-function ConstellationIcon({ className }: { className?: string }) {
+export function ConstellationIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" className={className} aria-hidden="true">
       <circle cx="6" cy="17" r="2" />
@@ -43,7 +43,7 @@ function ConstellationIcon({ className }: { className?: string }) {
   )
 }
 
-function ArticlesIcon({ className }: { className?: string }) {
+export function ArticlesIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" className={className} aria-hidden="true">
       <path d="M5 6h14M5 12h14M5 18h9" />

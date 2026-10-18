@@ -97,16 +97,17 @@ export function TrendBriefingPanel({
       <div className="mx-auto flex max-w-[1180px] flex-col gap-5 p-4 sm:p-6">
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
-            <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Briefing IA</h1>
+            <h1 className="text-[22px] font-semibold sm:text-[26px] tracking-[-0.02em] text-[var(--text-primary)]">Briefing IA</h1>
             <p className="text-sm text-[var(--text-muted)]">
               {briefing
                 ? `${briefing.providerLabel} · ${formatGeneratedAt(briefing.generatedAt)}`
                 : `${currentItemCount} article${currentItemCount > 1 ? 's' : ''} disponibles sur ${formatWindow(windowHours)}`}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
             <SegmentedControl<string>
               size="sm"
+              className="flex-1 sm:flex-none"
               value={String(windowHours)}
               onChange={(value) => onWindowChange(Number(value))}
               options={BRIEFING_WINDOW_OPTIONS.map((hours) => ({
@@ -114,13 +115,20 @@ export function TrendBriefingPanel({
                 label: formatWindow(hours),
               }))}
             />
-            <Button variant="primary" onClick={onGenerate} disabled={!available || loading} title={generateTitle}>
+            <Button
+              variant="primary"
+              onClick={onGenerate}
+              disabled={!available || loading}
+              title={generateTitle}
+              aria-label={loading ? 'Rédaction en cours' : generateLabel}
+              className="h-10 w-10 shrink-0 rounded-full p-0 sm:w-auto sm:rounded-xl sm:px-4"
+            >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
               )}
-              {loading ? 'Rédaction…' : generateLabel}
+              <span className="hidden sm:inline">{loading ? 'Rédaction…' : generateLabel}</span>
             </Button>
           </div>
         </header>
@@ -135,7 +143,7 @@ export function TrendBriefingPanel({
               onKeyDown={(event) => {
                 if (event.key === 'Enter' && available && !loading) onGenerate()
               }}
-              placeholder="Sur quel sujet ? Laissez vide pour toute l’actualité de la période"
+              placeholder="Sur quel sujet ? (facultatif)"
               aria-label="Limiter le briefing à un sujet"
               className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
@@ -152,8 +160,8 @@ export function TrendBriefingPanel({
             ) : null}
           </label>
           {topicSuggestions.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 text-[11px] text-[var(--text-muted)]">Sujets du moment</span>
+            <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible">
+              <span className="mr-1 shrink-0 text-[11px] text-[var(--text-muted)]">Sujets du moment</span>
               {topicSuggestions.map((suggestion) => {
                 const active = trimmedTopic.toLowerCase() === suggestion.toLowerCase()
                 return (
@@ -163,7 +171,7 @@ export function TrendBriefingPanel({
                     onClick={() => onTopicChange(active ? '' : suggestion)}
                     aria-pressed={active}
                     className={cn(
-                      'h-8 rounded-full border px-3 text-xs transition-colors',
+                      'h-8 shrink-0 rounded-full border px-3 text-xs whitespace-nowrap transition-colors',
                       active
                         ? 'border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--text-primary)]'
                         : 'border-[var(--border)] text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
@@ -186,11 +194,11 @@ export function TrendBriefingPanel({
         {loading ? (
           <BriefingSkeleton />
         ) : briefing === null ? (
-          <div className="cst-rise flex flex-col items-center gap-3 rounded-[24px] border border-dashed border-[var(--border-strong)] px-6 py-14 text-center">
+          <div className="cst-rise flex flex-col items-center gap-3 rounded-[24px] border border-dashed border-[var(--border-strong)] px-5 py-8 text-center sm:px-6 sm:py-14">
             <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--accent-muted)]">
               <Sparkles className="h-6 w-6 text-[var(--link)]" aria-hidden="true" />
             </span>
-            <p className="font-serif text-2xl font-medium text-[var(--text-primary)]">
+            <p className="font-serif text-xl font-medium text-[var(--text-primary)] sm:text-2xl">
               {trimmedTopic ? `Le point sur « ${trimmedTopic} »` : 'Votre revue de presse, en un clic'}
             </p>
             <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">

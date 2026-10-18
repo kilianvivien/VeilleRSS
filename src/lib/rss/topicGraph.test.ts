@@ -55,6 +55,6 @@ describe('buildTopicGraph', () => {
   })
 
   it('handles an empty report', () => {
-    expect(buildTopicGraph([])).toEqual({ nodes: [], edges: [] })
+    expect(buildTopicGraph([])).toEqual({ nodes: [], edges: [], aspect: 1.7 })
   })
 })

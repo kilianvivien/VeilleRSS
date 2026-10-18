@@ -101,7 +101,7 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
       <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:gap-6">
         {/* ── Filtres ── */}
         <aside className="flex min-w-0 shrink-0 flex-col gap-4 sm:w-[220px] sm:overflow-y-auto sm:pb-6">
-          <div className="flex flex-col gap-1.5">
+          <div className="hidden flex-col gap-1.5 sm:flex">
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--hover)]">
               <div
                 className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500"
@@ -113,7 +113,7 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
             </span>
           </div>
 
-          <nav aria-label="Filtrer par région" className="flex gap-1 overflow-x-auto sm:flex-col sm:overflow-visible">
+          <nav aria-label="Filtrer par région" className="-mx-1 flex gap-1 overflow-x-auto px-1 [scrollbar-width:none] sm:mx-0 sm:flex-col sm:overflow-visible sm:px-0">
             <FilterRow label="Toutes les régions" count={CATALOG_FEEDS.length} active={region === ALL} onClick={() => setRegion(ALL)} />
             {CATALOG_REGIONS.map((candidate) => (
               <FilterRow
@@ -127,8 +127,8 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
           </nav>
 
           <div className="flex flex-col gap-2">
-            <span className="rss-section-label uppercase text-[var(--text-muted)]">Langue</span>
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filtrer par langue">
+            <span className="rss-section-label hidden uppercase text-[var(--text-muted)] sm:block">Langue</span>
+            <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 [scrollbar-width:none] sm:flex-wrap sm:overflow-visible" role="group" aria-label="Filtrer par langue">
               <LanguageChip label="Toutes" active={language === ALL} onClick={() => setLanguage(ALL)} />
               {LANGUAGES.map((candidate) => (
                 <LanguageChip
@@ -145,7 +145,7 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
             <button
               type="button"
               onClick={onAddUrl}
-              className="flex items-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] px-3 py-2.5 text-left text-xs text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
+              className="hidden items-center gap-2 rounded-xl border border-dashed border-[var(--border-strong)] px-3 py-2.5 text-left text-xs text-[var(--text-secondary)] transition-colors sm:flex pointer-fine:hover:bg-[var(--hover)]"
             >
               <Link2 className="h-4 w-4 shrink-0 text-[var(--link)]" aria-hidden="true" />
               <span>
@@ -158,13 +158,14 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
 
         {/* ── Résultats ── */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <label className="flex h-11 shrink-0 items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3.5 focus-within:border-[var(--accent)]">
+          <div className="sticky top-0 z-10 -mx-6 flex shrink-0 items-center gap-2 bg-[var(--surface-elevated)] px-6 py-2 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
+          <label className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3.5 focus-within:border-[var(--accent)]">
             <Search className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
             <input
               ref={searchInputRef}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Rechercher un média, un pays, un type de source…"
+              placeholder="Rechercher un média, un pays…"
               aria-label="Rechercher dans le catalogue"
               className="min-w-0 flex-1 bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
             />
@@ -184,6 +185,18 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
               </button>
             ) : null}
           </label>
+          {onAddUrl ? (
+            <button
+              type="button"
+              onClick={onAddUrl}
+              aria-label="Coller l’adresse d’un flux"
+              title="Coller l’adresse d’un flux"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--link)] sm:hidden"
+            >
+              <Link2 className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
+          </div>
 
           {packs.length === 0 ? (
             <p className="py-10 text-center text-sm text-[var(--text-muted)]">
@@ -251,7 +264,7 @@ function LanguageChip({ label, active, onClick }: { label: string; active: boole
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'h-7 rounded-full border px-2.5 text-[11px] transition-colors',
+        'h-7 shrink-0 rounded-full border px-2.5 text-[11px] transition-colors',
         active
           ? 'border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--text-primary)]'
           : 'border-[var(--border)] text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'

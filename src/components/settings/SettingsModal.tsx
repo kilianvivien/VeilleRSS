@@ -115,12 +115,12 @@ const ACCENT_OPTIONS: { value: AccentColor; label: string; swatch: string }[] = 
 
 type SettingsTab = 'general' | 'flux' | 'ia' | 'donnees' | 'apropos'
 
-const SETTINGS_TABS: { value: SettingsTab; label: string; icon: typeof Palette }[] = [
-  { value: 'general', label: 'Général', icon: Palette },
-  { value: 'flux', label: 'Flux & tendances', icon: Rss },
-  { value: 'ia', label: 'Intelligence artificielle', icon: Sparkles },
-  { value: 'donnees', label: 'Données', icon: Database },
-  { value: 'apropos', label: 'À propos', icon: Info },
+const SETTINGS_TABS: { value: SettingsTab; label: string; shortLabel: string; icon: typeof Palette }[] = [
+  { value: 'general', label: 'Général', shortLabel: 'Général', icon: Palette },
+  { value: 'flux', label: 'Flux & tendances', shortLabel: 'Flux', icon: Rss },
+  { value: 'ia', label: 'Intelligence artificielle', shortLabel: 'IA', icon: Sparkles },
+  { value: 'donnees', label: 'Données', shortLabel: 'Données', icon: Database },
+  { value: 'apropos', label: 'À propos', shortLabel: 'À propos', icon: Info },
 ]
 
 export function SettingsModal({
@@ -306,7 +306,10 @@ export function SettingsModal({
       bodyClassName="sm:pb-0!"
     >
       <div className="flex min-h-0 flex-col gap-4 sm:h-[min(640px,calc(100dvh-12rem))] sm:flex-row sm:gap-6">
-        <nav aria-label="Rubriques des paramètres" className="-mx-1 flex shrink-0 gap-1 overflow-x-auto px-1 sm:w-[190px] sm:flex-col sm:overflow-visible sm:pb-6">
+        <nav
+          aria-label="Rubriques des paramètres"
+          className="sticky top-0 z-10 -mx-6 flex shrink-0 gap-1 overflow-x-auto bg-[var(--surface-elevated)] px-6 py-2 [scrollbar-width:none] sm:static sm:mx-0 sm:w-[190px] sm:flex-col sm:overflow-visible sm:bg-transparent sm:px-0 sm:py-0 sm:pb-6 [&::-webkit-scrollbar]:hidden"
+        >
           {SETTINGS_TABS.map((entry) => (
             <button
               key={entry.value}
@@ -321,7 +324,8 @@ export function SettingsModal({
               )}
             >
               <entry.icon className={cn('h-4 w-4 shrink-0', tab === entry.value ? 'text-[var(--link)]' : 'text-[var(--text-muted)]')} aria-hidden="true" />
-              {entry.label}
+              <span className="sm:hidden">{entry.shortLabel}</span>
+              <span className="hidden sm:inline">{entry.label}</span>
             </button>
           ))}
         </nav>
