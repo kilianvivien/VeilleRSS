@@ -11,6 +11,7 @@ import {
 } from 'react'
 import {
   ArrowUp,
+  ArrowUpDown,
   Check,
   CheckCheck,
   Download,
@@ -1255,67 +1256,57 @@ export function RssFeeds() {
 
   const articleListSection = (
     <section className="relative flex h-full min-h-0 flex-col" aria-label="Articles">
-        <div className="flex flex-shrink-0 flex-col gap-2 border-b border-[var(--border)] px-3 py-2.5">
+        {/* En-tête de liste : trois rangées aérées — titre et actions, recherche,
+            vues. Les sujets du moment ouvrent la liste elle-même. */}
+        <div className="flex flex-shrink-0 flex-col gap-3 border-b border-[var(--border)] px-4 pt-4 pb-3">
           <div className="flex min-w-0 items-center gap-2">
             <h2
-              className="min-w-0 flex-1 truncate text-base font-semibold text-[var(--text-primary)]"
+              className="min-w-0 truncate text-lg font-semibold tracking-[-0.01em] text-[var(--text-primary)]"
               title={listTitle}
             >
               {listTitle}
             </h2>
             <span
-              className="shrink-0 rounded-full bg-[var(--hover)] px-2 py-0.5 text-xs text-[var(--text-muted)] tabular-nums"
+              className="shrink-0 font-mono text-xs text-[var(--text-muted)] tabular-nums"
               data-testid="filtered-article-count"
             >
               {visibleItems.length}
             </span>
-          </div>
-
-          <div className="flex min-w-0 items-center gap-1.5">
-            <SearchBar
-              value={query}
-              onChange={setQuery}
-              placeholder="Rechercher…"
-              className="min-w-0 flex-1"
-              inputClassName="field-row-control"
-            />
-            {/* `md` et non `sm` : mêmes rembourrage, corps de texte et rayon
-                que le champ de recherche, donc exactement la même hauteur. */}
-            <Select
-              size="md"
-              value={sortMode}
-              onValueChange={(value) => setSortMode(value as RssSortMode)}
-              options={SORT_OPTIONS}
-              aria-label="Trier les articles"
-              className="w-[124px] shrink-0"
-              triggerClassName="field-row-control"
-            />
-            <Button
-              size="sm"
-              variant="ghost"
-              className="hidden h-9 w-9 shrink-0 p-0 lg:inline-flex"
+            <span className="flex-1" />
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)] hidden lg:flex"
               onClick={handleSelectVisible}
               disabled={visibleItems.length === 0}
               title="Sélectionner les articles visibles"
               aria-label="Sélectionner les articles visibles"
             >
               <ListChecks className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-10 w-10 shrink-0 p-0 lg:h-9 lg:w-9"
+            </button>
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
               onClick={() => void handleMarkAllRead()}
               disabled={totals.unread === 0}
               title="Marquer tout comme lu"
               aria-label="Marquer tout comme lu"
             >
               <CheckCheck className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-10 w-10 shrink-0 p-0 lg:h-9 lg:w-9"
+            </button>
+            <MenuButton
+              label={`Trier les articles : ${SORT_OPTIONS.find((option) => option.value === sortMode)?.label ?? ''}`}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
+              entries={SORT_OPTIONS.map((option) => ({
+                label: option.label,
+                icon: option.value === sortMode ? <Check className="h-4 w-4" aria-hidden="true" /> : <span className="block h-4 w-4" />,
+                onSelect: () => setSortMode(option.value as RssSortMode),
+              }))}
+            >
+              <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+            </MenuButton>
+            <button
+              type="button"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
               onClick={() =>
                 updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })
               }
@@ -1327,67 +1318,35 @@ export function RssFeeds() {
               ) : (
                 <Rows3 className="h-4 w-4" aria-hidden="true" />
               )}
-            </Button>
-          </div>
-
-          <SegmentedControl<SmartView>
-            size="sm"
-            value={smartView}
-            onChange={setSmartView}
-            options={SMART_VIEW_OPTIONS}
-            className="self-start"
-          />
-
-          {trendChips.length > 0 ? (
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <span className="rss-section-label uppercase text-[var(--text-muted)]">En ce moment</span>
-              <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none]">
-                {trendChips.map((term) => {
-                  const color = TREND_TONE_COLOR[trendTone(term)]
-                  const isActive = activeTerm?.key === term.key
-                  return (
-                    <button
-                      key={term.key}
-                      type="button"
-                      aria-pressed={isActive}
-                      onClick={() => (isActive ? setActiveTerm(null) : selectTerm(term))}
-                      className={cn(
-                        'rss-trend-chip flex h-9 shrink-0 items-center gap-2 rounded-full border pl-2.5 pr-3 text-xs text-[var(--text-primary)] transition-[background-color,border-color,transform] duration-200 pointer-fine:hover:-translate-y-px',
-                        isActive
-                          ? 'bg-[var(--hover-strong)]'
-                          : 'border-[var(--border)] pointer-fine:hover:bg-[var(--hover)]'
-                      )}
-                      style={isActive ? { borderColor: color } : undefined}
-                    >
-                      <Sparkline values={term.buckets} width={30} height={12} color={color} lineOnly />
-                      <span className="max-w-[10rem] truncate font-medium">{term.label}</span>
-                      <span className="font-mono text-[11px] tabular-nums" style={{ color }}>
-                        {formatTrendDelta(term)}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {activeTerm ? (
-          <div className="flex flex-shrink-0 items-center gap-1.5 border-b border-[var(--border)] bg-[var(--accent-muted)] px-3 py-1.5">
-            <Radar className="h-3.5 w-3.5 shrink-0 text-[var(--accent)]" aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate text-xs text-[var(--text-primary)]">
-              Filtré sur « {activeTerm.label} »
-            </span>
-            <button
-              type="button"
-              onClick={() => setActiveTerm(null)}
-              aria-label="Retirer le filtre de tendance"
-              className="-my-1.5 -mr-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)]"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           </div>
-        ) : null}
+
+          <SearchBar value={query} onChange={setQuery} placeholder="Rechercher titres, extraits, sources…" className="min-w-0" />
+
+          <div className="flex min-w-0 items-center gap-2">
+            <SegmentedControl<SmartView>
+              size="sm"
+              value={smartView}
+              onChange={setSmartView}
+              options={SMART_VIEW_OPTIONS}
+              className="shrink-0"
+            />
+            {activeTerm ? (
+              <span className="flex h-8 min-w-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-muted)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
+                <span className="sr-only">Filtré sur « {activeTerm.label} »</span>
+                <span aria-hidden="true" className="truncate font-medium">{activeTerm.label}</span>
+                <button
+                  type="button"
+                  onClick={() => setActiveTerm(null)}
+                  aria-label="Retirer le filtre de tendance"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </span>
+            ) : null}
+          </div>
+        </div>
 
         <div
           ref={setArticleListElement}
@@ -1433,6 +1392,28 @@ export function RssFeeds() {
             <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
           ) : (
             <>
+              {trendChips.length > 0 && !activeTerm && !normalizedQuery ? (
+                <div className="flex min-w-0 items-center gap-2 overflow-x-auto px-4 pt-3 pb-1 [scrollbar-width:none]">
+                  <span className="rss-section-label shrink-0 uppercase text-[var(--text-muted)]">En ce moment</span>
+                  {trendChips.map((term) => {
+                    const color = TREND_TONE_COLOR[trendTone(term)]
+                    return (
+                      <button
+                        key={term.key}
+                        type="button"
+                        onClick={() => selectTerm(term)}
+                        className="rss-trend-chip flex h-8 shrink-0 items-center gap-2 rounded-full border border-[var(--border)] pr-3 pl-2.5 text-xs text-[var(--text-primary)] transition-[background-color,transform] duration-200 pointer-fine:hover:-translate-y-px pointer-fine:hover:bg-[var(--hover)]"
+                      >
+                        <Sparkline values={term.buckets} width={26} height={11} color={color} lineOnly />
+                        <span className="max-w-[9rem] truncate font-medium">{term.label}</span>
+                        <span className="font-mono text-[11px] tabular-nums" style={{ color }}>
+                          {formatTrendDelta(term)}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : null}
               <ul className="flex flex-col gap-0.5 py-1.5">
                 {renderedItems.map((item) => {
                   const cached =
