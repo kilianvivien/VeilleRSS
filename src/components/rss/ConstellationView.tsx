@@ -61,7 +61,13 @@ export function ConstellationView({
   onUnwatchTerm,
 }: ConstellationViewProps) {
   const graph = useMemo(
-    () => buildTopicGraph(report.terms, compact ? { limit: 8, aspect: 1.05 } : { limit: 12 }),
+    () =>
+      buildTopicGraph(
+        report.terms,
+        compact
+          ? { limit: 7, aspect: 0.95, labelCharWidth: 0.022, maxLabelWidth: 0.42 }
+          : { limit: 12 }
+      ),
     [compact, report.terms]
   )
   const focusTerm =
@@ -123,24 +129,15 @@ export function ConstellationView({
     />
   ) : null
 
-  if (compact) {
-    return (
-      <div className="flex flex-col gap-3">
-        {graphCard}
-        {detail}
-      </div>
-    )
-  }
-
   const volumeChange = report.previousItemCount === 0 ? null : Math.round(((report.itemCount - report.previousItemCount) / report.previousItemCount) * 100)
 
   return (
     <div className="h-full min-h-0 overflow-auto">
-      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-6">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-4 sm:p-6">
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
-            <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Tendances</h1>
-            <p className="text-sm text-[var(--text-muted)]">
+            <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] sm:text-[26px]">Tendances</h1>
+            <p role="region" aria-label="Volume de publication" className="text-sm text-[var(--text-muted)]">
               <span className="font-mono text-[var(--text-primary)] tabular-nums">{report.itemCount}</span> articles ·{' '}
               <span className="font-mono text-[var(--text-primary)] tabular-nums">{report.sourceCount}</span> sources
               {volumeChange !== null ? (
@@ -171,7 +168,7 @@ export function ConstellationView({
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
           <div className="flex min-w-0 flex-col gap-4">
             {graphCard}
-            <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />
+            {compact ? null : <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />}
           </div>
           {/* Un seul « sujet » à droite : le détail chiffré quand un sujet est
               choisi, flanqué des liens et articles ; sinon le sujet principal. */}
@@ -180,6 +177,7 @@ export function ConstellationView({
               <div className="cst-rise min-w-0 flex-shrink-0 [&>section]:rounded-[20px] [&>section]:p-5">{focusPanel}</div>
             ) : null}
             {detail}
+            {compact ? <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} /> : null}
           </div>
         </div>
       </div>
@@ -390,12 +388,9 @@ export function ConstellationGraph({
               </span>
               <span
                 aria-hidden="true"
-                className={cn(
-                  'absolute top-full mt-1.5 max-w-[9rem] truncate whitespace-nowrap text-xs font-medium text-[var(--text-primary)]',
-                  // Près des bords, l'étiquette s'aligne vers l'intérieur au
-                  // lieu de déborder de la carte.
-                  node.x < 0.2 ? 'left-0' : node.x > 0.8 ? 'right-0' : 'left-1/2 -translate-x-1/2'
-                )}
+                // La mise en page réserve la place de l'étiquette : centrée sous
+                // son nœud, elle ne chevauche ni ses voisines ni le bord.
+                className="absolute top-full left-1/2 mt-1.5 max-w-[8rem] -translate-x-1/2 truncate whitespace-nowrap text-xs font-medium text-[var(--text-primary)] sm:max-w-[9rem]"
               >
                 {node.term.label}
               </span>

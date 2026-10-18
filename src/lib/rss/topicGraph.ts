@@ -45,13 +45,30 @@ interface BuildOptions {
   iterations?: number
   /** Rapport largeur / hauteur de la zone ; plus étroit sur mobile. */
   aspect?: number
+  /** Largeur moyenne d'un caractère d'étiquette, en fraction de la hauteur. */
+  labelCharWidth?: number
+  /** Largeur maximale d'une étiquette (au-delà, elle est tronquée à l'écran). */
+  maxLabelWidth?: number
 }
+
+/** Hauteur d'une étiquette et écart avec son nœud, en fraction de la hauteur. */
+const LABEL_HEIGHT = 0.06
+const LABEL_GAP = 0.02
+/** Marge minimale entre deux blocs nœud + étiquette. */
+const BOX_PADDING = 0.012
 
 const MIN_SHARED_ITEMS = 2
 const MIN_EDGE_WEIGHT = 0.15
 
 export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}): TopicGraph {
-  const { limit = 12, maxEdgesPerNode = 3, iterations = 260, aspect = GRAPH_ASPECT } = options
+  const {
+    limit = 12,
+    maxEdgesPerNode = 3,
+    iterations = 260,
+    aspect = GRAPH_ASPECT,
+    labelCharWidth = 0.016,
+    maxLabelWidth = 0.34,
+  } = options
   const selected = terms.slice(0, limit)
   if (selected.length === 0) return { nodes: [], edges: [], aspect }
 
@@ -124,14 +141,81 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
     })
   }
 
+  // Dernière passe : chaque nœud et son étiquette forment un bloc ; deux
+  // blocs ne doivent jamais se chevaucher, ni sortir de la zone.
+  const boxes = selected.map((term, index) => {
+    const labelWidth = Math.min(maxLabelWidth, term.label.length * labelCharWidth + 0.02)
+    const r = radii[index]
+    return { halfWidth: Math.max(r, labelWidth / 2), above: r, below: r + LABEL_GAP + LABEL_HEIGHT }
+  })
+  const clampBox = (index: number) => {
+    const box = boxes[index]
+    const position = positions[index]
+    position.x = clamp(position.x, box.halfWidth + 0.01, width - box.halfWidth - 0.01)
+    position.y = clamp(position.y, box.above + 0.02, 1 - box.below - 0.01)
+  }
+  positions.forEach((_, index) => clampBox(index))
+
+  const overlapAmount = (i: number, j: number) => {
+    const a = positions[i]
+    const b = positions[j]
+    const overlapX = boxes[i].halfWidth + boxes[j].halfWidth + BOX_PADDING - Math.abs(a.x - b.x)
+    const [upper, lower] = a.y <= b.y ? [i, j] : [j, i]
+    const overlapY = boxes[upper].below + boxes[lower].above + BOX_PADDING - (positions[lower].y - positions[upper].y)
+    return { overlapX, overlapY, upper, lower }
+  }
+
+  // Indices encore affichés, du plus important au moins important.
+  let active = selected.map((_, index) => index)
+  const separate = () => {
+    for (let pass = 0; pass < 400; pass += 1) {
+      let moved = false
+      for (let p = 0; p < active.length; p += 1) {
+        for (let q = p + 1; q < active.length; q += 1) {
+          const i = active[p]
+          const j = active[q]
+          const { overlapX, overlapY, upper, lower } = overlapAmount(i, j)
+          if (overlapX <= 0 || overlapY <= 0) continue
+          moved = true
+          // On sépare selon l'axe qui demande le plus petit déplacement.
+          if (overlapX / width < overlapY) {
+            const direction = positions[i].x <= positions[j].x ? 1 : -1
+            positions[i].x -= (direction * overlapX) / 2
+            positions[j].x += (direction * overlapX) / 2
+          } else {
+            positions[upper].y -= overlapY / 2
+            positions[lower].y += overlapY / 2
+          }
+          clampBox(i)
+          clampBox(j)
+        }
+      }
+      if (!moved) return true
+    }
+    return active.every((i, p) =>
+      active.slice(p + 1).every((j) => {
+        const { overlapX, overlapY } = overlapAmount(i, j)
+        return overlapX <= 0 || overlapY <= 0
+      })
+    )
+  }
+
+  // Quand la place manque (petit écran, longues étiquettes), on retire les
+  // sujets les moins importants plutôt que de laisser des textes se superposer.
+  while (!separate() && active.length > 1) {
+    active = active.slice(0, -1)
+  }
+  const kept = new Set(active)
+  const keptKeys = new Set(selected.filter((_, index) => kept.has(index)).map((term) => term.key))
+
   return {
-    nodes: selected.map((term, index) => ({
+    nodes: selected.flatMap((term, index) => (kept.has(index) ? [{
       term,
       x: positions[index].x / width,
       y: positions[index].y,
       r: radii[index],
-    })),
-    edges,
+    }] : [])),
+    edges: edges.filter((edge) => keptKeys.has(edge.source) && keptKeys.has(edge.target)),
     aspect,
   }
 }

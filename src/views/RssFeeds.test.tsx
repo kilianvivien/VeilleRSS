@@ -51,7 +51,6 @@ vi.mock('@/components/rss', async () => ({
     ) : (
       <div />
     ),
-  TrendPanel: (await import('@/components/rss/TrendPanel')).TrendPanel,
   formatRefreshInterval: () => '',
   RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: (item: RssItem) => void }) => (
     <li data-testid="article-row">
@@ -99,9 +98,8 @@ function makeItems(count: number): RssItem[] {
 }
 
 describe('selected trend summary wiring', () => {
-  // Le classement détaillé (termes en hausse, carte de volume, détail du
-  // sujet) vit dans le panneau Tendances mobile ; au bureau, la vue
-  // Constellation le remplace par le graphe et un seul panneau de sujet.
+  // Bureau et mobile partagent la vue Constellation : on choisit un sujet en
+  // touchant son nœud dans le graphe.
   beforeEach(() => {
     isDesktopViewport = false
     const samples = makeItems(6).map((item, index) => ({
@@ -127,14 +125,12 @@ describe('selected trend summary wiring', () => {
   it('switches the top card to the clicked topic, updates the window, and restores the global view', () => {
     render(<RssFeeds />)
     expect(screen.getByRole('region', { name: 'Volume de publication' })).toHaveTextContent('5')
-    const terms = screen.getByRole('region', { name: 'Termes en hausse' })
-    fireEvent.click(within(terms).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('2')
     expect(within(card).getByText('Sources').nextElementSibling).toHaveTextContent('2')
     expect(card).toHaveTextContent('+100 %')
     expect(card).toHaveTextContent('40 % des articles')
-    expect(screen.queryByRole('region', { name: 'Volume de publication' })).not.toBeInTheDocument()
     expect(within(card).getByRole('group', { name: 'Évolution de Ankara' }).querySelectorAll('button')).toHaveLength(12)
     const intervals = within(within(card).getByRole('group', { name: 'Évolution de Ankara' })).getAllByRole('button')
     fireEvent.click(intervals[0])
@@ -155,7 +151,7 @@ describe('selected trend summary wiring', () => {
   it('keeps the topic detail on mobile and provides a separate route to its articles', () => {
     isDesktopViewport = false
     render(<RssFeeds />)
-    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toBeInTheDocument()
     fireEvent.click(within(card).getByRole('button', { name: 'Voir les articles' }))
@@ -167,7 +163,7 @@ describe('selected trend summary wiring', () => {
 
   it('refreshes the selected topic when a new article arrives', () => {
     render(<RssFeeds />)
-    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     act(() => {
       const fresh = { ...makeItems(1)[0], id: 'fresh', title: 'Ankara', publishedAt: Date.now() - 1000 }
       useRssStore.setState({ items: [...useRssStore.getState().items, fresh] })
@@ -189,7 +185,7 @@ describe('selected trend summary wiring', () => {
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toHaveTextContent('Mot-clé suivi')
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
-    // Au bureau, la liste est une vue à part : on y passe par le rail.
+    // La liste est une vue à part : on y passe par la navigation.
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
     expect(screen.getAllByTestId('article-row')).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'Retirer le filtre de tendance' }))

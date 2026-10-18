@@ -38,16 +38,16 @@
 
 ### Tableau de veille sur ordinateur
 
-![Tableau de veille RSS sur ordinateur, avec les sources, la liste d'articles et les tendances](public/screenshots/ordinateur@0.5x.png)
+![Vue Tendances de Veille RSS sur ordinateur : constellation animée des sujets, flux et sujet principal](public/screenshots/ordinateur@0.5x.png)
 
-<p align="center"><sub>Sources, articles et tendances réunis dans un tableau de veille à trois volets.</sub></p>
+<p align="center"><sub>La constellation des sujets : volume, élan et liens entre les sujets de la période.</sub></p>
 
 ### Une interface pensée pour le mobile
 
 <p align="center">
   <img src="public/screenshots/iphone@0.5x.png" width="300" alt="Liste d'articles de Veille RSS sur iPhone">
   &nbsp;&nbsp;
-  <img src="public/screenshots/android@0.5x.png" width="270" alt="Cartographie des tendances de Veille RSS sur Android">
+  <img src="public/screenshots/android@0.5x.png" width="270" alt="Constellation des tendances de Veille RSS sur Android">
 </p>
 
 <p align="center"><sub>Une navigation tactile dédiée sur iPhone et Android, jusqu'aux tendances.</sub></p>

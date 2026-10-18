@@ -51,7 +51,6 @@ import {
   FeedRail,
   RssArticleRow,
   RssReadingPane,
-  TrendPanel,
   formatRefreshInterval,
   type FeedRailGroup,
   type SmartView,
@@ -1554,53 +1553,13 @@ export function RssFeeds() {
     onWatchTerm: watchKeyword,
   }
 
-  const constellationCompactElement = <ConstellationView {...constellationProps} compact />
 
-  const trendsPanelElement = (
-    <TrendPanel
-      report={displayedTrendReport}
-      windowHours={trendWindowHours}
-      onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
-      watchedTerms={watchedKeywords}
-      onWatchTerm={watchKeyword}
-      onUnwatchTerm={unwatchKeyword}
-      watchedCollapsed={settings.collapseWatchedKeywords === true}
-      onToggleWatchedCollapsed={() =>
-        updateRssSettings({
-          collapseWatchedKeywords: settings.collapseWatchedKeywords !== true,
-        })
-      }
-      onSelectTerm={selectTerm}
-      onSelectWatched={(term) => {
-        setActiveTerm({ key: foldForMatching(term), label: term, kind: 'keyword' })
-        setQuery('')
-      }}
-      activeTermKey={activeTerm?.kind === 'keyword' ? null : activeTerm?.key ?? null}
-      onClearSelection={() => setActiveTerm(null)}
-      onViewArticles={() => {
-        if (!isDesktop) setOpenItemId(null)
-        setRightPane('article')
-      }}
-      leading={isDesktop ? undefined : constellationCompactElement}
-      aiRefinement={{
-        available: trendProviderReady,
-        loading: isRefiningTrends,
-        active: aiTrendSelection !== null,
-        providerLabel: aiTrendSelection?.providerLabel ?? trendProviderLabel,
-        error: trendRefinementError,
-      }}
-      onRefineWithAi={() => void handleRefineTrends()}
-      onClearAiRefinement={() => {
-        clearAiTrendSelection()
-        setTrendRefinementError(null)
-      }}
-    />
-  )
 
   const trendsToolbarElement = (
-    <div className="flex items-center gap-2">
+    <div className="flex w-full items-center gap-2 sm:w-auto">
       <SegmentedControl<string>
         size="sm"
+        className="flex-1 sm:flex-none"
         value={String(trendWindowHours)}
         onChange={(value) => updateRssSettings({ trendWindowHours: Number(value) })}
         options={TREND_WINDOW_OPTIONS.map((hours) => ({ value: String(hours), label: TREND_WINDOW_LABELS[hours] ?? `${hours} h` }))}
@@ -1612,9 +1571,11 @@ export function RssFeeds() {
         disabled={!trendProviderReady || isRefiningTrends}
         title={trendProviderReady ? `Écarter les termes génériques avec ${trendProviderLabel}` : 'Configurez un fournisseur dans Paramètres → IA'}
         aria-label="Affiner les tendances avec l’IA"
+        className="shrink-0"
       >
         {isRefiningTrends ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-        Affiner avec l’IA
+        <span className="hidden sm:inline">Affiner avec l’IA</span>
+        <span className="sm:hidden">IA</span>
       </Button>
     </div>
   )
@@ -1653,6 +1614,7 @@ export function RssFeeds() {
   const constellationElement = (
     <ConstellationView
       {...constellationProps}
+      compact={!isDesktop}
       toolbar={trendsToolbarElement}
       banner={trendsBannerElement}
       activeWatched={activeTerm?.kind === 'keyword' ? activeTerm.label : null}
@@ -1909,7 +1871,7 @@ export function RssFeeds() {
             {rightPane === 'article' && !openItem
               ? articleListSection
               : rightPane === 'trends'
-                ? trendsPanelElement
+                ? constellationElement
                 : rightPane === 'briefing'
                   ? briefingPanelElement
                   : readingPaneElement}
