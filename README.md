@@ -87,8 +87,8 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - vues **Tous**, **Non lus** et **Sauvegardés** en un clic, au-dessus de la liste ;
 - pastilles **En ce moment** pour filtrer la liste sur un sujet qui monte, et étiquette de sujet sur chaque article ;
 - recherche instantanée dans les titres, extraits, auteurs et noms de sources, avec surlignage ;
-- tri par date ou par source et choix de la densité d'affichage ;
-- marquage lu/non lu, sauvegarde et sélection multiple, avec une barre flottante qui n'apparaît qu'avec une sélection ;
+- menu **Options des articles** (`…`) pour trier par date ou par source, régler la densité et sélectionner les résultats ;
+- marquage lu/non lu, sauvegarde et sélection multiple, avec une barre flottante qui n'apparaît qu'avec une sélection ; sur mobile, les cases apparaissent après la sélection depuis le menu ;
 - lecteur éditorial (typographie serif, taille réglable) qui replace l'article dans la constellation et indique les autres sources qui couvrent le sujet ;
 - partage d'un article en un geste, vers la carte de partage du système ou le presse-papiers, dans sa version originale ou traduite ;
 - navigation tactile : tirer pour actualiser, balayer un article pour le classer et passer au précédent ou au suivant dans le lecteur ;
@@ -100,7 +100,8 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 - comparaison avec la période précédente, volumes, évolutions et mini-graphiques ;
 - **constellation des sujets** : graphe animé où la taille dit le volume, la couleur l'élan (forte hausse, nouveau, stable) et les liens les articles communs ;
 - **flux des sujets** : évolution des principaux sujets sur la période ;
-- détail du sujet sélectionné : évolution, comparaison, sujets liés et derniers articles ;
+- détail du sujet sélectionné : évolution, comparaison, sujets liés et derniers articles ; sur mobile, un appui sur un sujet ouvre son détail et un curseur permet de comparer les tranches horaires ;
+- liste **Parcourir les sujets** pour retrouver aussi les sujets que le graphe ne peut pas afficher sans chevauchement ;
 - suivi de mots-clés et filtrage immédiat des articles correspondants ;
 - notifications locales pour les nouveaux résultats lorsque l'application tourne en arrière-plan ;
 - détection des termes en progression à partir des articles déjà collectés.

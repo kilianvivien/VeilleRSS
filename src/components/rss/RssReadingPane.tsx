@@ -231,13 +231,6 @@ export function RssReadingPane({
         ? 'Voir l’original'
         : `Voir en ${targetLanguageLabel}`
       : `Traduire en ${targetLanguageLabel}`
-  const translateActionLabel = isTranslating
-    ? 'Traduction…'
-    : cachedTranslation
-      ? showTranslated
-        ? 'Original'
-        : targetLanguageLabel
-      : 'Traduire'
   const shareLabel = showTranslated ? 'Partager la traduction' : 'Partager l’article'
   const shareLink = item.link || feed?.siteUrl || ''
   const shareSucceeded = shareFeedback?.kind === 'success'
@@ -267,14 +260,10 @@ export function RssReadingPane({
     // `shared` et `cancelled` : la carte du système s'est chargée du retour.
   }
 
-  const savedLabel = item.savedAt ? 'Sauvé' : 'Sauver'
   const savedActionLabel = item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder l’article'
-  const readLabel = item.readAt ? 'Non lu' : 'Lu'
   const readActionLabel = item.readAt ? 'Marquer non lu' : 'Marquer lu'
-  const mobileActionClass =
-    'h-10 shrink-0 px-1.5 text-[11px] min-[390px]:px-2 sm:h-9 sm:px-2.5 sm:text-xs'
   const navButtonClass =
-    'inline-flex h-10 w-10 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors active:bg-[var(--hover)] disabled:pointer-events-none disabled:opacity-30 pointer-fine:hover:bg-[var(--hover)]'
+    'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-[var(--text-secondary)] transition-colors active:bg-[var(--hover)] disabled:pointer-events-none disabled:opacity-30 pointer-fine:hover:bg-[var(--hover)]'
 
   // ── Indice visuel du balayage ────────────────────────────────────────────
   // Le volet suit le doigt de façon amortie ; une pastille discrète apparaît
@@ -356,7 +345,7 @@ export function RssReadingPane({
         }}
       >
         {/* Barre d'outils : la source à gauche, les actions à droite. */}
-        <header className="flex flex-shrink-0 items-center gap-1 border-b border-[var(--border)] px-2 py-2 sm:px-4">
+        <header className="flex flex-shrink-0 flex-wrap items-center gap-1 border-b border-[var(--border)] px-2 py-2 sm:flex-nowrap sm:px-4">
           {onBack ? (
             <button
               type="button"
@@ -417,7 +406,7 @@ export function RssReadingPane({
             </span>
           ) : null}
 
-          <span className="flex shrink-0 items-center gap-0.5">
+          <span className="flex shrink-0 items-center gap-0.5 max-[389px]:basis-full max-[389px]:justify-end">
             <ToolbarButton onClick={onTranslate} disabled={isTranslating} label={translateLabel} active={showTranslated}>
               {isTranslating ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -457,10 +446,10 @@ export function RssReadingPane({
                 type="button"
                 onClick={onShowTopic}
                 disabled={!onShowTopic}
-                className="flex w-fit items-center gap-2 rounded-full border border-[var(--border)] py-1 pr-3 pl-2 text-xs text-[var(--text-primary)] transition-colors pointer-fine:enabled:hover:bg-[var(--hover)]"
+                className="flex min-h-11 w-fit max-w-full items-center gap-2 rounded-full border border-[var(--border)] py-1 pr-3 pl-2 text-xs text-[var(--text-primary)] transition-colors pointer-fine:enabled:hover:bg-[var(--hover)]"
               >
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: topic.color }} aria-hidden="true" />
-                <span className="font-medium">{topic.label}</span>
+                <span className="min-w-0 truncate font-medium">{topic.label}</span>
                 <span className="font-mono tabular-nums" style={{ color: topic.color }}>
                   {topic.delta}
                 </span>
@@ -550,7 +539,7 @@ export function RssReadingPane({
                     <button
                       type="button"
                       onClick={onShowTopic}
-                      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[var(--link)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
+                      className="min-h-11 shrink-0 rounded-full px-3 py-1.5 text-xs font-medium text-[var(--link)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
                     >
                       Voir la tendance →
                     </button>
@@ -623,7 +612,7 @@ function ToolbarButton({
       title={label}
       aria-label={label}
       aria-pressed={active}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 sm:h-9 sm:w-9 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
       style={active ? { color: activeColor } : undefined}
     >
       {children}

@@ -30,14 +30,12 @@ interface FeedRailProps {
   health: Map<string, RssFeedHealth>
   refreshingFeedIds: Set<string>
   activeFeedId: string | null
-  smartView: SmartView
   totals: { all: number; unread: number; saved: number }
   /**
    * `sidebar` : colonne fixe du bureau, actions révélées au survol.
    * `drawer` : tiroir tactile — actions toujours visibles, lignes plus hautes.
    */
   variant?: 'sidebar' | 'drawer'
-  onSelectSmartView: (view: SmartView) => void
   onSelectFeed: (feedId: string | null) => void
   onRefreshFeed: (feedId: string) => void
   onToggleFeed: (feed: RssFeed) => void
@@ -55,10 +53,8 @@ export function FeedRail({
   health,
   refreshingFeedIds,
   activeFeedId,
-  smartView,
   totals,
   variant = 'sidebar',
-  onSelectSmartView,
   onSelectFeed,
   onRefreshFeed,
   onToggleFeed,
@@ -112,7 +108,7 @@ export function FeedRail({
       </ul>
 
       {feedCount > 6 ? (
-        <label className="mx-0.5 flex h-8 items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 focus-within:border-[var(--accent)]">
+        <label className="mx-0.5 flex min-h-11 items-center gap-2 rounded-xl border border-[var(--border)] px-2.5 focus-within:border-[var(--accent)] sm:min-h-8">
           <Search className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
           <input
             value={filter}
@@ -122,7 +118,7 @@ export function FeedRail({
             className="min-w-0 flex-1 bg-transparent text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
           />
           {filter ? (
-            <button type="button" onClick={() => setFilter('')} aria-label="Effacer le filtre" className="text-[var(--text-muted)]">
+            <button type="button" onClick={() => setFilter('')} aria-label="Effacer le filtre" className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] sm:h-7 sm:w-7">
               <X className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           ) : null}
@@ -151,7 +147,7 @@ export function FeedRail({
                 type="button"
                 onClick={() => toggleGroup(group.category)}
                 aria-expanded={!isCollapsed}
-                className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[var(--text-muted)] pointer-fine:hover:text-[var(--text-primary)]"
+                className={cn('flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-[var(--text-muted)] pointer-fine:hover:text-[var(--text-primary)]', isDrawer && 'min-h-11')}
               >
                 <ChevronRight
                   className={cn('h-3 w-3 transition-transform duration-200', !isCollapsed && 'rotate-90')}
@@ -244,7 +240,7 @@ function FeedRow({
         onClick={onSelect}
         aria-current={active ? 'true' : undefined}
         title={feed.lastError ?? `${feed.title} · ${healthStyle.label}`}
-        className="flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left"
+        className={cn('flex min-w-0 flex-1 items-center gap-2.5 py-1.5 text-left', isDrawer && 'min-h-11')}
       >
         <span
           aria-hidden="true"
@@ -274,28 +270,24 @@ function FeedRow({
         </span>
       </button>
 
+      <div className={cn('relative flex shrink-0 items-center', !isDrawer && 'h-7 w-7')}>
       {unread > 0 ? (
         <span
           className={cn(
             'shrink-0 rounded-full px-1.5 font-mono text-[10px] leading-5 text-[var(--text-muted)] tabular-nums',
-            !isDrawer && 'pointer-fine:group-hover:hidden'
+            !isDrawer && 'pointer-events-none absolute inset-0 flex items-center justify-end px-0 group-focus-within:invisible pointer-coarse:invisible pointer-fine:group-hover:invisible'
           )}
         >
           {unread > 999 ? '999+' : unread}
         </span>
       ) : null}
 
-      <div
-        className={cn(
-          'shrink-0',
-          isDrawer ? 'block' : 'hidden group-focus-within:block pointer-fine:group-hover:block'
-        )}
-      >
+      <div className={cn('shrink-0', !isDrawer && 'opacity-0 focus-within:opacity-100 pointer-coarse:opacity-100 pointer-fine:group-hover:opacity-100')}>
         <MenuButton
           label={`Actions pour ${feed.title}`}
           className={cn(
             'flex items-center justify-center rounded-lg text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover-strong)] pointer-fine:hover:text-[var(--text-primary)]',
-            isDrawer ? 'h-10 w-10' : 'h-7 w-7'
+            isDrawer ? 'h-11 w-11' : 'h-7 w-7'
           )}
           entries={[
             { label: 'Rafraîchir', icon: <RefreshCw className="h-4 w-4" aria-hidden="true" />, onSelect: onRefresh },
@@ -306,6 +298,7 @@ function FeedRow({
         >
           <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
         </MenuButton>
+      </div>
       </div>
     </li>
   )

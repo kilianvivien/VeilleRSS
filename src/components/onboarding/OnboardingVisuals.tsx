@@ -232,9 +232,9 @@ export function PersonalizeVisual() {
   const isDark = theme === 'dark'
   return (
     <Panel className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <span className="text-xs font-medium text-[var(--text-primary)]">Couleur d’accent</span>
-        <div role="radiogroup" aria-label="Couleur d’accent" className="flex gap-1.5">
+        <div role="radiogroup" aria-label="Couleur d’accent" className="flex w-full justify-between sm:w-auto sm:gap-1.5">
           {ACCENTS.map((option) => (
             <button
               key={option.value}
@@ -267,7 +267,7 @@ export function PersonalizeVisual() {
                 aria-pressed={selected}
                 onClick={() => updateSettings({ theme: option.value })}
                 className={cn(
-                  'flex h-8 items-center gap-1.5 rounded-full px-3 text-xs transition-colors',
+                  'flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs transition-colors sm:min-h-8',
                   selected ? 'bg-[var(--text-primary)] text-[var(--bg-primary)]' : 'text-[var(--text-muted)]'
                 )}
               >

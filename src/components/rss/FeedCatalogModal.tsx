@@ -68,6 +68,7 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
 
   const resultCount = packs.reduce((sum, pack) => sum + pack.feeds.length, 0)
   const followedCount = CATALOG_FEEDS.filter((feed) => subscribedUrls.has(feed.url)).length
+  const basketCount = Array.from(basket.values()).filter((feed) => !subscribedUrls.has(feed.url)).length
 
   const toggleInBasket = (feed: CatalogFeed) =>
     setBasket((current) => {
@@ -95,12 +96,12 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
       title="Ajouter des sources"
       description={`${CATALOG_FEEDS.length} médias vérifiés, regroupés en bouquets. Vous en suivez ${followedCount}.`}
       size="xl"
-      className="sm:flex sm:max-h-[calc(100dvh-3rem)]! sm:max-w-[1120px] sm:flex-col"
-      bodyClassName="sm:flex sm:min-h-0 sm:flex-col sm:pb-0!"
+      className="h-[92dvh] sm:h-[min(820px,calc(100dvh-3rem))] sm:max-w-[1120px]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden! sm:pb-0!"
     >
-      <div className="flex min-h-0 min-w-0 flex-col gap-4 sm:flex-row sm:gap-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:gap-6">
         {/* ── Filtres ── */}
-        <aside className="flex min-w-0 shrink-0 flex-col gap-4 sm:w-[220px] sm:overflow-y-auto sm:pb-6">
+        <aside className="flex min-w-0 shrink-0 flex-col gap-2 sm:w-[220px] sm:gap-4 sm:overflow-y-auto sm:pb-6">
           <div className="hidden flex-col gap-1.5 sm:flex">
             <div className="h-1.5 overflow-hidden rounded-full bg-[var(--hover)]">
               <div
@@ -158,7 +159,7 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
 
         {/* ── Résultats ── */}
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <div className="sticky top-0 z-10 -mx-6 flex shrink-0 items-center gap-2 bg-[var(--surface-elevated)] px-6 py-2 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:py-0">
+          <div className="flex shrink-0 items-center gap-2">
           <label className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--bg-primary)] px-3.5 focus-within:border-[var(--accent)]">
             <Search className="h-4 w-4 shrink-0 text-[var(--text-muted)]" aria-hidden="true" />
             <input
@@ -199,12 +200,12 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
           </div>
 
           {packs.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[var(--text-muted)]">
+            <p className="grid min-h-0 flex-1 content-center py-6 text-center text-sm leading-6 text-[var(--text-muted)]">
               Aucune source du catalogue ne correspond. Essayez une autre région ou langue, ou collez
               l’adresse du flux.
             </p>
           ) : (
-            <div className="min-w-0 touch-pan-y space-y-3 overflow-x-hidden pr-1 pb-4 sm:min-h-0 sm:flex-1 sm:overflow-y-auto sm:overscroll-contain">
+            <div className="min-h-0 min-w-0 flex-1 touch-pan-y space-y-3 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 pb-4">
               {packs.map((pack) => (
                 <PackSection
                   key={pack.id}
@@ -218,10 +219,10 @@ export function FeedCatalogModal({ open, onOpenChange, subscribedUrls, onAddFeed
             </div>
           )}
 
-          {basket.size > 0 ? (
-            <div className="cst-menu sticky bottom-0 flex shrink-0 items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] py-2 pr-2 pl-4 shadow-[0_12px_36px_rgba(0,0,0,0.25)] sm:mb-4">
-              <span className="min-w-0 flex-1 truncate text-sm text-[var(--text-primary)]">
-                <span className="font-semibold tabular-nums">{basket.size}</span> source{basket.size > 1 ? 's' : ''} dans la sélection
+          {basketCount > 0 ? (
+            <div className="cst-menu flex shrink-0 flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-2 sm:mb-4 sm:pl-4">
+              <span className="min-w-0 basis-full px-1 text-xs text-[var(--text-primary)] sm:flex-1 sm:basis-auto sm:px-0">
+                <span className="font-semibold tabular-nums">{basketCount}</span> source{basketCount > 1 ? 's' : ''} dans la sélection
               </span>
               <Button size="sm" variant="ghost" onClick={() => setBasket(new Map())}>
                 Vider
@@ -245,7 +246,7 @@ function FilterRow({ label, count, active, onClick }: { label: string; count: nu
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'flex h-9 shrink-0 items-center gap-2 rounded-xl px-3 text-left text-[13px] whitespace-nowrap transition-colors',
+        'flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-3 text-left text-[13px] whitespace-nowrap transition-colors sm:min-h-9',
         active
           ? 'bg-[var(--accent-muted)] font-medium text-[var(--text-primary)]'
           : 'text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
@@ -264,7 +265,7 @@ function LanguageChip({ label, active, onClick }: { label: string; active: boole
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        'h-7 shrink-0 rounded-full border px-2.5 text-[11px] transition-colors',
+        'min-h-11 shrink-0 rounded-full border px-2.5 text-[11px] transition-colors sm:min-h-7',
         active
           ? 'border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--text-primary)]'
           : 'border-[var(--border)] text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
@@ -371,20 +372,24 @@ function PackSection({
             <li
               key={feed.id}
               className={cn(
-                'flex items-center gap-2.5 rounded-xl border px-3 py-2 transition-colors',
+                'flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-colors',
                 inBasket ? 'border-[var(--accent)] bg-[var(--accent-muted)]' : 'border-[var(--border)] pointer-fine:hover:bg-[var(--hover)]'
               )}
             >
-              <span className="w-7 shrink-0 rounded-md bg-[var(--hover)] py-0.5 text-center font-mono text-[10px] text-[var(--text-muted)] uppercase">
-                {feed.language}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] text-[var(--text-primary)]">{feed.title}</p>
-                <p className="truncate text-[11px] text-[var(--text-muted)]">
-                  {CATALOG_LANGUAGE_LABELS[feed.language]} · {feed.kind}
-                </p>
-                <ProbeBadge result={probes[feed.id]} />
-              </div>
+              <button type="button" disabled={subscribed} onClick={() => onToggleBasket(feed)}
+                aria-pressed={subscribed ? undefined : inBasket}
+                aria-label={subscribed ? `${feed.title} déjà ajouté` : inBasket ? `Retirer ${feed.title} de la sélection` : `Sélectionner ${feed.title}`}
+                title={feed.title}
+                className="flex min-h-11 min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left disabled:cursor-default">
+                <span aria-hidden="true" className={cn('flex h-7 w-7 shrink-0 items-center justify-center rounded-lg font-mono text-[10px] uppercase', inBasket ? 'bg-[var(--accent)] text-[var(--accent-foreground)]' : 'bg-[var(--hover)] text-[var(--text-muted)]')}>
+                  {inBasket ? <Check className="h-4 w-4" /> : feed.language}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="line-clamp-2 text-[13px] leading-4 text-[var(--text-primary)]">{feed.title}</span>
+                  <span className="mt-0.5 block truncate text-[11px] text-[var(--text-muted)]">{CATALOG_LANGUAGE_LABELS[feed.language]} · {feed.kind}</span>
+                  <ProbeBadge result={probes[feed.id]} />
+                </span>
+              </button>
               {subscribed ? (
                 <span
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--success)]"
@@ -394,30 +399,15 @@ function PackSection({
                   <Check className="h-4 w-4" aria-hidden="true" />
                 </span>
               ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => onToggleBasket(feed)}
-                    aria-pressed={inBasket}
-                    aria-label={inBasket ? `Retirer ${feed.title} de la sélection` : `Sélectionner ${feed.title}`}
-                    title={inBasket ? 'Retirer de la sélection' : 'Ajouter à la sélection'}
-                    className={cn(
-                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
-                      inBasket ? 'border-[var(--accent)] bg-[var(--accent)] text-[var(--accent-foreground)]' : 'border-[var(--border-strong)]'
-                    )}
-                  >
-                    {inBasket ? <Check className="h-3 w-3" aria-hidden="true" /> : null}
-                  </button>
                   <button
                     type="button"
                     onClick={() => onAddFeeds([feed], pack.region)}
                     aria-label={`Ajouter ${feed.title}`}
                     title={`Ajouter ${feed.title}`}
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-primary)] transition-colors pointer-fine:hover:bg-[var(--hover-strong)]"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--border)] text-[var(--text-primary)] transition-colors sm:h-8 sm:w-8 pointer-fine:hover:bg-[var(--hover-strong)]"
                   >
                     <Plus className="h-4 w-4" aria-hidden="true" />
                   </button>
-                </>
               )}
             </li>
           )
@@ -434,7 +424,7 @@ function ProbeBadge({ result }: { result?: FeedProbeResult }) {
   const Icon = result.status === 'ok' ? CircleCheck : result.status === 'empty' ? AlertTriangle : X
 
   return (
-    <p
+    <span
       className={cn(
         'mt-1 flex items-start gap-1 text-[11px] leading-4',
         result.status === 'ok' ? 'text-[var(--success)]' : result.status === 'empty' ? 'text-[var(--warning)]' : 'text-[var(--error)]'
@@ -443,6 +433,6 @@ function ProbeBadge({ result }: { result?: FeedProbeResult }) {
     >
       <Icon className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true" />
       <span className="min-w-0">{result.message}</span>
-    </p>
+    </span>
   )
 }

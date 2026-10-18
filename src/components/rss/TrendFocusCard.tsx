@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { ArrowLeft, ArrowRight } from 'lucide-react'
 import type { TrendFocus, TrendReport } from '@/lib/rss/trendAnalysis'
 import { cn } from '@/lib/utils/cn'
@@ -30,7 +30,7 @@ export function TrendFocusCard({ focus, report, onClear, onViewArticles }: {
           </p>
           <h3 className="mt-1 break-words text-lg font-semibold text-[var(--text-primary)]">{focus.label}</h3>
         </div>
-        <button type="button" onClick={onClear} className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+        <button type="button" onClick={onClear} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Vue globale
         </button>
@@ -66,7 +66,7 @@ export function TrendFocusCard({ focus, report, onClear, onViewArticles }: {
           : `Dernier article ${formatRelativeDate(focus.latestPublishedAt, report.generatedAt)}`}
       </p>
       {onViewArticles ? (
-        <button type="button" onClick={onViewArticles} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg bg-[var(--accent-muted)] px-3 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
+        <button type="button" onClick={onViewArticles} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg bg-[var(--accent-muted)] px-3 text-sm text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]">
           Voir les articles <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </button>
       ) : null}
@@ -100,24 +100,38 @@ function TrendEvolutionChart({ focus, report }: { focus: TrendFocus; report: Tre
       </div>
       <div role="group" aria-label={`Évolution de ${focus.label}`} className="mt-3 grid h-24 gap-1 border-b border-[var(--border)]" style={{ gridTemplateColumns: `repeat(${focus.buckets.length}, minmax(0, 1fr))` }}>
         {focus.buckets.map((count, index) => (
+          <Fragment key={index}>
+          <span aria-hidden="true" className={cn('flex h-full min-w-0 items-end justify-center gap-0.5 rounded-t px-0.5 pt-1 sm:hidden pointer-coarse:flex', selectedBucket === index && 'bg-[var(--accent-muted)]')}>
+            <span className="min-w-0 flex-1 rounded-t-sm bg-[var(--text-muted)] opacity-40" style={{ height: `${(focus.previousBuckets[index] ?? 0) / max * 100}%` }} />
+            <span className="min-w-0 flex-1 rounded-t-sm bg-[var(--accent)]" style={{ height: `${count / max * 100}%` }} />
+          </span>
           <button
-            key={index}
             type="button"
             aria-label={`${interval(index)} : ${count} articles ; période précédente : ${focus.previousBuckets[index] ?? 0} articles`}
             aria-pressed={selectedBucket === index}
             title={`${interval(index)} : ${count} articles`}
             onClick={() => setSelectedBucket(index)}
             onFocus={() => setSelectedBucket(index)}
-            className={cn('flex h-full min-w-0 items-end justify-center gap-0.5 rounded-t px-0.5 pt-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]', selectedBucket === index ? 'bg-[var(--accent-muted)]' : 'hover:bg-[var(--hover)]')}
+            className={cn('hidden h-full min-w-0 items-end justify-center gap-0.5 rounded-t px-0.5 pt-1 sm:flex pointer-coarse:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]', selectedBucket === index ? 'bg-[var(--accent-muted)]' : 'hover:bg-[var(--hover)]')}
           >
             <span aria-hidden="true" className="min-w-0 flex-1 rounded-t-sm bg-[var(--text-muted)] opacity-40" style={{ height: `${(focus.previousBuckets[index] ?? 0) / max * 100}%` }} />
             <span aria-hidden="true" className="min-w-0 flex-1 rounded-t-sm bg-[var(--accent)]" style={{ height: `${count / max * 100}%` }} />
           </button>
+          </Fragment>
         ))}
       </div>
       <div className="mt-1 flex justify-between gap-2 text-[10px] text-[var(--text-muted)]">
         <span>{dateFormat.format(windowStart)}</span><span>{dateFormat.format(report.generatedAt)}</span>
       </div>
+      {focus.buckets.length > 1 ? (
+        <label className="mt-2 block text-[11px] text-[var(--text-muted)] sm:hidden pointer-coarse:block">
+          Glissez pour comparer une tranche
+          <input type="range" min={0} max={focus.buckets.length - 1} step={1} value={selectedBucket}
+            aria-label="Tranche à comparer" aria-valuetext={interval(selectedBucket)}
+            onChange={(event) => setSelectedBucket(Number(event.target.value))}
+            className="block h-11 w-full accent-[var(--accent)]" />
+        </label>
+      ) : null}
       <div className="mt-2 min-h-14 text-[11px] leading-5 text-[var(--text-muted)]" aria-live="polite" aria-atomic="true">
         <p className="text-[var(--text-secondary)]">{interval(selectedBucket)} : <strong>{current} article{current > 1 ? 's' : ''}</strong></p>
         <p>{interval(selectedBucket, true)} : {previous} article{previous > 1 ? 's' : ''}</p>

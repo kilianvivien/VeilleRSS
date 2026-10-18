@@ -196,9 +196,9 @@
    * Partagée pour que les éléments flottants (bannières PWA) cessent de
    * deviner cette valeur : la barre et ce qui se pose au-dessus d'elle
    * doivent bouger ensemble.
-   * = cible tactile 3.5rem + pt-1 (0.25rem) + pb 0.375rem
+   * = cible tactile 3.5rem + pt 0.375rem + pb 0.375rem
    */
-  --mobile-tabbar-height: 4.125rem;
+  --mobile-tabbar-height: 4.25rem;
 }
 
 .dark {
@@ -483,6 +483,43 @@ button,
 a,
 [role='button'] {
   touch-action: manipulation;
+}
+
+:where(button, a, summary, [tabindex], input[type='range']):focus-visible:not([class*='focus:ring']):not([class*='focus-visible:ring']) {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Même taille de cible sur les feuilles, menus et contrôles de période. */
+@media (max-width: 639px), (pointer: coarse) {
+  [data-ui-button],
+  [data-ui-select-trigger],
+  [data-ui-text-input],
+  [role='option'],
+  .cst-segment {
+    min-height: 2.75rem;
+  }
+
+  .cst-segment {
+    min-width: 2.75rem;
+  }
+
+  button[role='radio'] {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content-root,
+  .modal-content-shell,
+  .modal-overlay,
+  .animate-drawer-in,
+  .animate-fade-in,
+  .animate-lift-in {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* iOS zoome automatiquement au focus des champs de moins de 16 px. On force

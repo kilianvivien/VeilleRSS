@@ -8,6 +8,8 @@ interface ModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   title?: string
+  /** Nom accessible quand la composition fournit son propre titre visuel. */
+  accessibleTitle?: string
   description?: string
   children: ReactNode
   footer?: ReactNode
@@ -20,13 +22,14 @@ interface ModalProps {
 
 /**
  * Modal dialog component using Radix UI
- * Features smooth liquid-glass animation without background blur
- * Supports custom sizes and footer actions
+ * Bounded card on desktop, bottom sheet on mobile. The header and footer
+ * stay reachable while long content scrolls inside the body.
  */
 export function Modal({
   open,
   onOpenChange,
   title,
+  accessibleTitle,
   description,
   children,
   footer,
@@ -91,11 +94,11 @@ export function Modal({
         >
           <div
             className={cn(
-              'relative pointer-events-auto w-full modal-content-shell',
+              'relative pointer-events-auto flex min-h-0 w-full flex-col modal-content-shell',
               'border border-[var(--border)] bg-[var(--surface-elevated)]',
               'transform-gpu will-change-[transform,opacity]',
               'rounded-t-[26px] border-b-0 sm:border-b sm:rounded-[24px]',
-              'max-h-[92dvh] overflow-y-auto overscroll-contain sm:max-h-none sm:overflow-hidden',
+              'max-h-[92dvh] overflow-hidden sm:max-h-[calc(100dvh-3rem)]',
               {
                 'sm:max-w-sm': size === 'sm',
                 'sm:max-w-md': size === 'md',
@@ -108,7 +111,7 @@ export function Modal({
             {/* Poignée : signale que la feuille se referme d'une tape au-dessus. */}
             <div
               aria-hidden="true"
-              className="relative z-10 flex justify-center pt-2 sm:hidden"
+              className="relative z-10 flex shrink-0 justify-center pt-2 sm:hidden"
             >
               <span className="h-1 w-9 rounded-full bg-[var(--text-muted)] opacity-40" />
             </div>
@@ -116,25 +119,23 @@ export function Modal({
             {/* Hidden description for accessibility - required by Radix UI */}
             {!title && (
               <Dialog.Title className="sr-only">
-                {description || 'Fenêtre de dialogue'}
+                {accessibleTitle || description || 'Fenêtre de dialogue'}
               </Dialog.Title>
             )}
-            <Dialog.Description className="sr-only">
-              {description || 'Modal dialog'}
-            </Dialog.Description>
+            {!description ? <Dialog.Description className="sr-only">Fenêtre de dialogue</Dialog.Description> : null}
 
             {/* Header */}
             {(title || description) && (
-              <div className="relative z-10 px-6 pt-3 pr-14 pb-4 sm:px-7 sm:pt-7">
+              <div className="relative z-10 shrink-0 px-5 pt-3 pr-16 pb-4 sm:px-7 sm:pt-7 sm:pr-16">
                 {title && (
                   <Dialog.Title className="text-xl font-semibold tracking-[-0.02em] text-[var(--text-primary)] leading-snug">
                     {title}
                   </Dialog.Title>
                 )}
                 {description && (
-                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
+                  <Dialog.Description className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
                     {description}
-                  </p>
+                  </Dialog.Description>
                 )}
               </div>
             )}
@@ -143,7 +144,7 @@ export function Modal({
             {!hideCloseButton && (
               <Dialog.Close
                 className={cn(
-                  'absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full sm:right-5 sm:top-5 sm:h-8 sm:w-8',
+                  'absolute right-3 top-3 z-20 flex h-11 w-11 items-center justify-center rounded-full sm:right-4 sm:top-4',
                   'border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
                   'hover:bg-[var(--hover)] transition-all duration-150',
                   'focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]'
@@ -158,7 +159,7 @@ export function Modal({
             {children && (
               <div
                 className={cn(
-                  'relative z-10 px-6 pb-4 sm:px-7',
+                  'relative z-10 min-h-0 overflow-y-auto overscroll-contain px-5 pb-4 sm:px-7',
                   !(title || description) && 'pt-6',
                   /* Sans pied de page, la marge basse qu'il portait — et qui
                      dégageait la barre de geste iOS — revient au corps. */
@@ -172,7 +173,7 @@ export function Modal({
 
             {/* Footer — marge basse étendue au-dessus de la barre de geste mobile. */}
             {footer && (
-              <div className="relative z-10 flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:rounded-b-[24px] sm:px-7 sm:pb-3">
+              <div className="relative z-10 flex shrink-0 items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-5 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-7 sm:pb-3">
                 {footer}
               </div>
             )}

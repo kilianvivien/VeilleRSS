@@ -61,7 +61,8 @@ export function SearchBar({
         {localValue && (
           <button
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-all"
+            type="button"
+            className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors sm:h-9 sm:w-9"
             aria-label="Effacer la recherche"
           >
             <X className="w-4 h-4" />

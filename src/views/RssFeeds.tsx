@@ -9,9 +9,9 @@ import {
   useRef,
   useState,
 } from 'react'
+import * as Dialog from '@radix-ui/react-dialog'
 import {
   ArrowUp,
-  ArrowUpDown,
   Check,
   CheckCheck,
   Download,
@@ -21,11 +21,7 @@ import {
   Loader2,
   Library,
   Link2,
-  Menu,
   MoreHorizontal,
-  Newspaper,
-  Plus,
-  Radar,
   RefreshCw,
   Rss,
   Rows2,
@@ -45,6 +41,7 @@ import { ConstellationView } from '@/components/rss/ConstellationView'
 import { TrendFocusCard } from '@/components/rss/TrendFocusCard'
 import { AppNavRail, ArticlesIcon, ConstellationIcon } from '@/components/rss/AppNavRail'
 import { AppIcon } from '@/components/rss/AppIcon'
+import { AddSourcesButton } from '@/components/rss/AddSourcesButton'
 import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from '@/components/rss/trendTone'
 import { SearchBar } from '@/components/search'
 import {
@@ -350,15 +347,6 @@ export function RssFeeds() {
   useEffect(() => {
     if (isDesktop) setIsSourcesOpen(false)
   }, [isDesktop])
-
-  useEffect(() => {
-    if (!isSourcesOpen) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsSourcesOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isSourcesOpen])
 
   const deferredQuery = useDeferredValue(query)
   const deferredTrendItems = useDeferredValue(items, EMPTY_RSS_ITEMS)
@@ -1153,13 +1141,8 @@ export function RssFeeds() {
       health={feedHealth}
       refreshingFeedIds={refreshingSet}
       activeFeedId={activeFeedId}
-      smartView={smartView}
       totals={totals}
       variant={isDesktop ? 'sidebar' : 'drawer'}
-      onSelectSmartView={(view) => {
-        setSmartView(view)
-        if (!isDesktop) setIsSourcesOpen(false)
-      }}
       onSelectFeed={(feedId) => {
         setActiveFeedId(feedId)
         if (!isDesktop) setIsSourcesOpen(false)
@@ -1179,21 +1162,16 @@ export function RssFeeds() {
   /** Pied du tiroir des sources (mobile) : mêmes actions que le rail du bureau. */
   const railActionBar = (
     <div className="flex flex-shrink-0 gap-1.5 border-t border-[var(--border)] px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
-      <button
-        type="button"
+      <AddSourcesButton
         onClick={() => {
           setShowCatalog(true)
           setIsSourcesOpen(false)
         }}
-        className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--text-primary)] text-sm font-semibold text-[var(--bg-primary)]"
-      >
-        <Plus className="h-4 w-4" aria-hidden="true" />
-        Ajouter des sources
-      </button>
+      />
       <MenuButton
         label="Autres actions sur les sources"
         placement="top"
-        className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)]"
+        className="flex h-12 w-11 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-secondary)]"
         entries={[
           {
             label: 'Coller l’adresse d’un flux',
@@ -1265,8 +1243,7 @@ export function RssFeeds() {
 
   const articleListSection = (
     <section className="relative flex h-full min-h-0 flex-col" aria-label="Articles">
-        {/* En-tête de liste : trois rangées aérées — titre et actions, recherche,
-            vues. Les sujets du moment ouvrent la liste elle-même. */}
+        {/* Deux rangées : vues et actions, puis recherche et filtres. */}
         <div className="flex flex-shrink-0 flex-col gap-2.5 border-b border-[var(--border)] px-4 pt-3.5 pb-3">
           <h2 className="sr-only">{listTitle}</h2>
           <div className="flex min-w-0 items-center gap-1">
@@ -1275,58 +1252,28 @@ export function RssFeeds() {
               value={smartView}
               onChange={setSmartView}
               options={SMART_VIEW_OPTIONS}
-              className="mr-auto shrink-0"
+              className="mr-auto min-w-0 flex-1"
             />
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)] hidden lg:flex"
-              onClick={handleSelectVisible}
-              disabled={visibleItems.length === 0}
-              title="Sélectionner les articles visibles"
-              aria-label="Sélectionner les articles visibles"
-            >
-              <ListChecks className="h-4 w-4" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
-              onClick={() => void handleMarkAllRead()}
-              disabled={totals.unread === 0}
-              title="Marquer tout comme lu"
-              aria-label="Marquer tout comme lu"
-            >
-              <CheckCheck className="h-4 w-4" aria-hidden="true" />
-            </button>
             <MenuButton
-              label={`Trier les articles : ${SORT_OPTIONS.find((option) => option.value === sortMode)?.label ?? ''}`}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
-              entries={SORT_OPTIONS.map((option) => ({
-                label: option.label,
-                icon: option.value === sortMode ? <Check className="h-4 w-4" aria-hidden="true" /> : <span className="block h-4 w-4" />,
-                onSelect: () => setSortMode(option.value as RssSortMode),
-              }))}
+              label="Options des articles"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)]"
+              entries={[
+                { label: 'Sélectionner les articles visibles', icon: <ListChecks className="h-4 w-4" aria-hidden="true" />, onSelect: handleSelectVisible, disabled: visibleItems.length === 0 },
+                { label: 'Marquer tout comme lu', icon: <CheckCheck className="h-4 w-4" aria-hidden="true" />, onSelect: () => void handleMarkAllRead(), disabled: totals.unread === 0 },
+                ...SORT_OPTIONS.map((option) => ({
+                  label: option.label,
+                  icon: option.value === sortMode ? <Check className="h-4 w-4" aria-hidden="true" /> : undefined,
+                  onSelect: () => setSortMode(option.value as RssSortMode),
+                })),
+                { label: density === 'compact' ? 'Affichage confortable' : 'Affichage compact', icon: density === 'compact' ? <Rows2 className="h-4 w-4" aria-hidden="true" /> : <Rows3 className="h-4 w-4" aria-hidden="true" />, onSelect: () => updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' }) },
+              ]}
             >
-              <ArrowUpDown className="h-4 w-4" aria-hidden="true" />
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
             </MenuButton>
-            <button
-              type="button"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
-              onClick={() =>
-                updateRssSettings({ density: density === 'compact' ? 'comfortable' : 'compact' })
-              }
-              title={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
-              aria-label={density === 'compact' ? 'Affichage confortable' : 'Affichage compact'}
-            >
-              {density === 'compact' ? (
-                <Rows2 className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Rows3 className="h-4 w-4" aria-hidden="true" />
-              )}
-            </button>
           </div>
 
-          <div className="flex min-w-0 items-center gap-2">
-            <SearchBar value={query} onChange={setQuery} placeholder="Rechercher…" className="min-w-0 flex-1" />
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <SearchBar value={query} onChange={setQuery} placeholder="Rechercher…" className="min-w-[8rem] flex-1" />
             <span
               className="shrink-0 font-mono text-xs text-[var(--text-muted)] tabular-nums"
               data-testid="filtered-article-count"
@@ -1335,27 +1282,27 @@ export function RssFeeds() {
               {visibleItems.length}
             </span>
             {activeFeed ? (
-              <span className="flex h-8 max-w-[40%] min-w-0 items-center gap-1.5 rounded-full border border-[var(--border-strong)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
+              <span className="flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border border-[var(--border-strong)] pl-3 text-xs text-[var(--text-primary)]">
                 <span className="truncate font-medium">{activeFeed.title}</span>
                 <button
                   type="button"
                   onClick={() => setActiveFeedId(null)}
                   aria-label="Afficher toutes les sources"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
               </span>
             ) : null}
             {activeTerm ? (
-              <span className="flex h-8 max-w-[40%] min-w-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-muted)] pr-1 pl-3 text-xs text-[var(--text-primary)]">
+              <span className="flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[var(--accent-muted)] pl-3 text-xs text-[var(--text-primary)]">
                 <span className="sr-only">Filtré sur « {activeTerm.label} »</span>
                 <span aria-hidden="true" className="truncate font-medium">{activeTerm.label}</span>
                 <button
                   type="button"
                   onClick={() => setActiveTerm(null)}
                   aria-label="Retirer le filtre de tendance"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
                 >
                   <X className="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -1418,7 +1365,7 @@ export function RssFeeds() {
                         key={term.key}
                         type="button"
                         onClick={() => selectTerm(term)}
-                        className="rss-trend-chip flex h-8 shrink-0 items-center gap-2 rounded-full border border-[var(--border)] pr-3 pl-2.5 text-xs text-[var(--text-primary)] transition-[background-color,transform] duration-200 pointer-fine:hover:-translate-y-px pointer-fine:hover:bg-[var(--hover)]"
+                        className="rss-trend-chip flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--border)] pr-3 pl-2.5 text-xs text-[var(--text-primary)] transition-[background-color,transform] duration-200 sm:min-h-8 pointer-fine:hover:-translate-y-px pointer-fine:hover:bg-[var(--hover)]"
                       >
                         <Sparkline values={term.buckets} width={26} height={11} color={color} lineOnly />
                         <span className="max-w-[9rem] truncate font-medium">{term.label}</span>
@@ -1443,6 +1390,7 @@ export function RssFeeds() {
                       item={item}
                       feed={feedById.get(item.feedId)}
                       selected={selectedIds.has(item.id)}
+                      selectionMode={showListActionBar}
                       active={openItemId === item.id}
                       density={density}
                       displayTitle={showTranslated && cached ? cached.title : item.title}
@@ -1483,7 +1431,7 @@ export function RssFeeds() {
             article coché, pour laisser la place aux contenus le reste du temps. */}
         {showListActionBar ? (
           <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-3">
-            <div className="cst-menu pointer-events-auto flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] py-1 pr-1 pl-3 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
+            <div className="cst-menu pointer-events-auto flex max-w-full flex-wrap items-center justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-1.5 shadow-[0_14px_40px_rgba(0,0,0,0.28)] sm:rounded-full sm:pl-3">
               <span className="mr-1 text-xs font-medium whitespace-nowrap text-[var(--text-primary)] tabular-nums">
                 {selectedCount} sélectionné{selectedCount > 1 ? 's' : ''}
               </span>
@@ -1491,22 +1439,22 @@ export function RssFeeds() {
                 type="button"
                 onClick={handleSelectVisible}
                 disabled={visibleItems.length === 0}
-                className="flex h-9 items-center gap-1.5 rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                className="flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors sm:min-h-9 pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
               >
                 <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                Tout le visible
+                <span className="sm:hidden">Tout</span><span className="hidden sm:inline">Tout le visible</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedItems([])}
-                className="flex h-9 items-center rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                className="flex min-h-11 items-center rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors sm:min-h-9 pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
               >
                 Effacer
               </button>
               <button
                 type="button"
                 onClick={() => void handleExportSelection()}
-                className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--text-primary)] px-4 text-xs font-semibold text-[var(--bg-primary)] transition-opacity pointer-fine:hover:opacity-90"
+                className="flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--text-primary)] px-4 text-xs font-semibold text-[var(--bg-primary)] transition-opacity sm:min-h-9 pointer-fine:hover:opacity-90"
               >
                 <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
                 Exporter
@@ -1556,7 +1504,7 @@ export function RssFeeds() {
 
 
   const trendsToolbarElement = (
-    <div className="flex w-full items-center gap-2 sm:w-auto">
+    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <SegmentedControl<string>
         size="sm"
         className="flex-1 sm:flex-none"
@@ -1585,7 +1533,7 @@ export function RssFeeds() {
       <div
         role="status"
         className={cn(
-          'flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs',
+          'flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-2 text-xs',
           trendRefinementError
             ? 'border-[color-mix(in_srgb,var(--error)_35%,transparent)] text-[var(--error)]'
             : 'border-[color-mix(in_srgb,var(--trend-new)_40%,transparent)] text-[var(--text-secondary)]'
@@ -1602,7 +1550,7 @@ export function RssFeeds() {
               clearAiTrendSelection()
               setTrendRefinementError(null)
             }}
-            className="shrink-0 rounded-full px-2.5 py-1 font-medium text-[var(--link)] pointer-fine:hover:bg-[var(--hover)]"
+            className="min-h-11 shrink-0 rounded-full px-2.5 py-1 font-medium text-[var(--link)] sm:min-h-8 pointer-fine:hover:bg-[var(--hover)]"
           >
             Revenir au classement local
           </button>
@@ -1633,7 +1581,10 @@ export function RssFeeds() {
             focus={displayedTrendReport.focus}
             report={displayedTrendReport}
             onClear={() => setActiveTerm(null)}
-            onViewArticles={() => setRightPane('article')}
+            onViewArticles={() => {
+              if (!isDesktop) setOpenItemId(null)
+              setRightPane('article')
+            }}
           />
         ) : undefined
       }
@@ -1658,6 +1609,7 @@ export function RssFeeds() {
           clearTrendBriefing()
           setBriefingError(null)
         }}
+        onOpenSettings={() => setShowSettingsModal(true)}
         topicSuggestions={displayedTrendReport.terms.slice(0, 6).map((term) => term.label)}
       />
     </Suspense>
@@ -1794,7 +1746,7 @@ export function RssFeeds() {
         <header className="relative z-20 flex flex-shrink-0 items-center gap-1 bg-transparent px-2 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2">
           <AppIcon size={30} className="mr-1.5 ml-2" />
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Veille</h1>
+            <p className="truncate text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Veille</p>
             <p className="truncate text-[11px] text-[var(--text-muted)]">
               {feeds.length === 0
                 ? 'Aucune source suivie'
@@ -1888,22 +1840,20 @@ export function RssFeeds() {
           />
 
           {/* Tiroir des sources : le rail habituel dans un panneau coulissant. */}
-          {isSourcesOpen ? (
-            <div className="fixed inset-0 z-40" role="dialog" aria-modal="true" aria-label="Sources et vues">
-              {/* Voile : doublon du bouton de fermeture pour un lecteur
-                  d'écran, on le retire de l'arbre d'accessibilité. */}
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-hidden="true"
-                onClick={() => setIsSourcesOpen(false)}
-                className="animate-fade-in absolute inset-0 bg-black/45"
-              />
-              <div className="animate-drawer-in absolute inset-y-0 left-0 flex w-[304px] max-w-[86vw] flex-col border-r border-[var(--border)] bg-[var(--bg-primary)] shadow-2xl">
+          <Dialog.Root open={isSourcesOpen} onOpenChange={setIsSourcesOpen}>
+            <Dialog.Portal>
+              <Dialog.Overlay className="animate-fade-in fixed inset-0 z-40 bg-black/45" />
+              <Dialog.Content
+                onCloseAutoFocus={(event) => {
+                  event.preventDefault()
+                  document.querySelector<HTMLButtonElement>('[data-mobile-sources]')?.focus()
+                }}
+                className="animate-drawer-in fixed inset-y-0 left-0 z-40 flex w-[320px] max-w-[90vw] flex-col border-r border-[var(--border)] bg-[var(--bg-primary)] shadow-2xl focus:outline-none">
                 <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--border)] pt-[calc(env(safe-area-inset-top)+0.75rem)] pr-2 pb-3 pl-4">
-                  <h2 className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
+                  <Dialog.Title className="text-[17px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">
                     Sources <span className="font-mono text-xs font-normal text-[var(--text-muted)]">{feeds.length}</span>
-                  </h2>
+                  </Dialog.Title>
+                  <Dialog.Description className="sr-only">Choisissez une source ou gérez vos abonnements RSS.</Dialog.Description>
                   <Button
                     size="sm"
                     variant="ghost"
@@ -1917,9 +1867,9 @@ export function RssFeeds() {
                 </div>
                 <div className="min-h-0 flex-1 overflow-auto p-2">{feedRailElement}</div>
                 {railActionBar}
-              </div>
-            </div>
-          ) : null}
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
         </>
       )}
 
@@ -2089,7 +2039,7 @@ function MobileTabBar({
   return (
     <nav
       aria-label="Navigation principale"
-      className="relative z-20 flex min-h-[var(--mobile-tabbar-height)] flex-shrink-0 items-stretch gap-1 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-primary)_86%,transparent)] px-3 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] backdrop-blur-xl"
+      className="relative z-20 flex min-h-[var(--mobile-tabbar-height)] flex-shrink-0 items-stretch gap-0.5 border-t border-[var(--border)] bg-[color-mix(in_srgb,var(--bg-primary)_86%,transparent)] px-2 pt-1.5 pb-[calc(env(safe-area-inset-bottom)+0.375rem)] backdrop-blur-xl"
     >
       {MOBILE_TABS.map((tab) => {
         const active = (tab.value as string) === value
@@ -2100,9 +2050,10 @@ function MobileTabBar({
             type="button"
             onClick={() => onChange(tab.value)}
             aria-current={active ? 'page' : undefined}
+            data-mobile-sources={tab.value === 'sources' ? '' : undefined}
             aria-label={tab.value === 'article' && unreadCount > 0 ? `${tab.label}, ${unreadCount} non lus` : tab.label}
             className={cn(
-              'relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-1 py-1.5 font-medium transition-colors duration-200',
+              'relative flex min-h-14 min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl px-0.5 py-1.5 font-medium transition-colors duration-200',
               active ? 'bg-[var(--accent-muted)] text-[var(--text-primary)]' : 'text-[var(--text-muted)]'
             )}
           >

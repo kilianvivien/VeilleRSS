@@ -13,6 +13,7 @@ const WINDOW_LABELS: Record<number, string> = {
   168: '7 j',
   720: '30 j',
 }
+const numberFormat = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 })
 
 interface TrendBriefingPanelProps {
   briefing: RssTrendBriefing | null
@@ -29,6 +30,7 @@ interface TrendBriefingPanelProps {
   error: string | null
   onGenerate: () => void
   onClear: () => void
+  onOpenSettings?: () => void
   /** Sujets du moment proposés en un clic pour cadrer le briefing. */
   topicSuggestions?: string[]
 }
@@ -71,6 +73,7 @@ export function TrendBriefingPanel({
   error,
   onGenerate,
   onClear,
+  onOpenSettings,
   topicSuggestions = [],
 }: TrendBriefingPanelProps) {
   const [copied, setCopied] = useState(false)
@@ -93,7 +96,7 @@ export function TrendBriefingPanel({
     : 'Configurez un fournisseur dans Paramètres → IA'
 
   return (
-    <div className="h-full min-h-0 overflow-auto">
+    <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
       <div className="mx-auto flex max-w-[1180px] flex-col gap-5 p-4 sm:p-6">
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
@@ -101,13 +104,13 @@ export function TrendBriefingPanel({
             <p className="text-sm text-[var(--text-muted)]">
               {briefing
                 ? `${briefing.providerLabel} · ${formatGeneratedAt(briefing.generatedAt)}`
-                : `${currentItemCount} article${currentItemCount > 1 ? 's' : ''} disponibles sur ${formatWindow(windowHours)}`}
+                : `${currentItemCount} article${currentItemCount > 1 ? 's' : ''} disponible${currentItemCount > 1 ? 's' : ''} sur ${formatWindow(windowHours)}`}
             </p>
           </div>
-          <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <SegmentedControl<string>
               size="sm"
-              className="flex-1 sm:flex-none"
+              className="min-w-[184px] flex-1 sm:min-w-0 sm:flex-none"
               value={String(windowHours)}
               onChange={(value) => onWindowChange(Number(value))}
               options={BRIEFING_WINDOW_OPTIONS.map((hours) => ({
@@ -121,13 +124,14 @@ export function TrendBriefingPanel({
               disabled={!available || loading}
               title={generateTitle}
               aria-label={loading ? 'Rédaction en cours' : generateLabel}
-              className="h-10 w-10 shrink-0 rounded-full p-0 sm:w-auto sm:rounded-xl sm:px-4"
+              className="ml-auto min-h-11 shrink-0 rounded-xl px-3 sm:px-4"
             >
               {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               ) : (
                 <Sparkles className="h-4 w-4" aria-hidden="true" />
               )}
+              <span className="sm:hidden">{loading ? 'Rédaction…' : briefing ? 'Régénérer' : 'Générer'}</span>
               <span className="hidden sm:inline">{loading ? 'Rédaction…' : generateLabel}</span>
             </Button>
           </div>
@@ -153,7 +157,7 @@ export function TrendBriefingPanel({
                 onClick={() => onTopicChange('')}
                 aria-label="Briefer toute la période"
                 title="Briefer toute la période"
-                className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                className="-mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
               >
                 <X className="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -171,7 +175,7 @@ export function TrendBriefingPanel({
                     onClick={() => onTopicChange(active ? '' : suggestion)}
                     aria-pressed={active}
                     className={cn(
-                      'h-8 shrink-0 rounded-full border px-3 text-xs whitespace-nowrap transition-colors',
+                      'min-h-11 shrink-0 rounded-full border px-3 text-xs whitespace-nowrap transition-colors sm:min-h-8',
                       active
                         ? 'border-[var(--accent)] bg-[var(--accent-muted)] text-[var(--text-primary)]'
                         : 'border-[var(--border)] text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
@@ -201,6 +205,9 @@ export function TrendBriefingPanel({
             <p className="font-serif text-xl font-medium text-[var(--text-primary)] sm:text-2xl">
               {trimmedTopic ? `Le point sur « ${trimmedTopic} »` : 'Votre revue de presse, en un clic'}
             </p>
+            {!available && onOpenSettings ? (
+              <Button variant="secondary" onClick={onOpenSettings}>Configurer l’IA</Button>
+            ) : null}
             <p className="max-w-lg text-sm leading-relaxed text-[var(--text-muted)]">
               {available
                 ? trimmedTopic
@@ -210,25 +217,23 @@ export function TrendBriefingPanel({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-            <article className="cst-rise flex min-w-0 flex-col gap-5 rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-8">
-              <div className="flex items-start gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="rss-section-label uppercase text-[var(--text-muted)]">
-                    Synthèse éditoriale · {formatWindow(briefing.windowHours)}
+          <>
+          <div className="xl:hidden"><BriefingStatsBar stats={briefing.stats} windowHours={briefing.windowHours} /></div>
+          <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <article className="cst-rise flex min-w-0 flex-col gap-5 rounded-[24px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-8">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="rss-section-label min-w-0 break-words uppercase text-[var(--text-muted)]">
+                    Synthèse<span className="hidden sm:inline"> éditoriale</span> · {formatWindow(briefing.windowHours)}
                     {briefing.topic ? ` · ${briefing.topic}` : ''}
                   </p>
-                  <h2 className="mt-1.5 font-serif text-[28px] leading-tight font-medium text-[var(--text-primary)]">
-                    {briefing.topic ? `Le point sur « ${briefing.topic} »` : 'L’essentiel de la période'}
-                  </h2>
-                </div>
-                <div className="flex shrink-0 items-center gap-0.5">
+                <div className="-mt-2 -mr-2 flex shrink-0 items-center gap-0.5">
                   <button
                     type="button"
                     onClick={() => void handleCopy()}
                     aria-label={copied ? 'Briefing copié' : 'Copier le briefing'}
                     title="Copier le briefing"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
                   >
                     {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
                   </button>
@@ -237,11 +242,15 @@ export function TrendBriefingPanel({
                     onClick={onClear}
                     aria-label="Effacer le briefing"
                     title="Effacer le briefing"
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--text-muted)] pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
                   >
                     <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   </button>
                 </div>
+                </div>
+                <h2 className="break-words font-serif text-[28px] leading-tight font-medium text-[var(--text-primary)]">
+                  {briefing.topic ? `Le point sur « ${briefing.topic} »` : 'L’essentiel de la période'}
+                </h2>
               </div>
 
               {stale ? (
@@ -258,7 +267,7 @@ export function TrendBriefingPanel({
                   {briefing.lines.map((line, index) => (
                     <li
                       key={`${index}-${line.slice(0, 24)}`}
-                      className="cst-rise grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 border-t border-[var(--border)] py-4 first:border-t-0 first:pt-0"
+                      className="cst-rise grid grid-cols-[1.25rem_minmax(0,1fr)] gap-2 border-t border-[var(--border)] py-4 first:border-t-0 first:pt-0 sm:grid-cols-[2.5rem_minmax(0,1fr)] sm:gap-3"
                       style={{ animationDelay: `${index * 0.05}s` }}
                     >
                       <span className="font-mono text-sm text-[var(--link)] tabular-nums">
@@ -271,13 +280,14 @@ export function TrendBriefingPanel({
               </section>
             </article>
 
-            <aside aria-label="Données du briefing" className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-0">
-              <BriefingStatsBar stats={briefing.stats} windowHours={briefing.windowHours} />
+            <aside aria-label="Données du briefing" className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:flex xl:flex-col">
+              <div className="hidden xl:block"><BriefingStatsBar stats={briefing.stats} windowHours={briefing.windowHours} /></div>
               <VolumeChart stats={briefing.stats} windowHours={briefing.windowHours} />
               <TopTermsChart stats={briefing.stats} />
               <TopSourcesChart stats={briefing.stats} />
             </aside>
           </div>
+          </>
         )}
       </div>
     </div>
@@ -323,8 +333,8 @@ function BriefingStatsBar({
 
 function StatTile({ label, value, hint }: { label: string; value: number | string; hint: string }) {
   return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3">
-      <p className="font-mono text-lg font-medium text-[var(--text-primary)] tabular-nums">{value}</p>
+    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-2.5 sm:p-3">
+      <p className="break-words font-mono text-base font-medium text-[var(--text-primary)] tabular-nums sm:text-lg">{value}</p>
       <p className="text-[11px] leading-4 text-[var(--text-muted)]">{label}</p>
       <p className="text-[10px] leading-4 text-[var(--text-muted)]">{hint}</p>
     </div>
@@ -345,14 +355,14 @@ function VolumeChart({ stats, windowHours }: { stats: RssBriefingStats; windowHo
   return (
     <ChartSection
       title="Volume de publication"
-      caption={`Un point toutes les ${stats.bucketHours.toFixed(1)} h sur ${formatWindow(windowHours)} · pic à ${max} article${max > 1 ? 's' : ''}`}
+      caption={`Un point toutes les ${numberFormat.format(stats.bucketHours)} h sur ${formatWindow(windowHours)} · pic à ${max} article${max > 1 ? 's' : ''}`}
     >
       <svg
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="none"
         className="h-16 w-full"
         role="img"
-        aria-label={`Volume par tranche de ${stats.bucketHours.toFixed(1)} heures : ${values.join(', ')}`}
+        aria-label={`Volume par tranche de ${numberFormat.format(stats.bucketHours)} heures : ${values.join(', ')}`}
         focusable="false"
       >
         {values.map((value, index) => {

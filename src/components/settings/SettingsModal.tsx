@@ -303,12 +303,12 @@ export function SettingsModal({
       title="Paramètres"
       description="Réglages des flux RSS et des fournisseurs IA. Les données restent dans ce navigateur."
       size="xl"
-      bodyClassName="sm:pb-0!"
+      bodyClassName="flex min-h-0 flex-col overflow-hidden! sm:pb-0!"
     >
-      <div className="flex min-h-0 flex-col gap-4 sm:h-[min(640px,calc(100dvh-12rem))] sm:flex-row sm:gap-6">
+      <div className="flex min-h-0 flex-col gap-3 sm:max-h-[min(620px,calc(100dvh-12rem))] sm:flex-row sm:gap-6">
         <nav
           aria-label="Rubriques des paramètres"
-          className="sticky top-0 z-10 -mx-6 flex shrink-0 gap-1 overflow-x-auto bg-[var(--surface-elevated)] px-6 py-2 [scrollbar-width:none] sm:static sm:mx-0 sm:w-[190px] sm:flex-col sm:overflow-visible sm:bg-transparent sm:px-0 sm:py-0 sm:pb-6 [&::-webkit-scrollbar]:hidden"
+          className="grid shrink-0 grid-cols-5 gap-1 pb-2 sm:flex sm:w-[190px] sm:flex-col sm:pb-6"
         >
           {SETTINGS_TABS.map((entry) => (
             <button
@@ -317,7 +317,7 @@ export function SettingsModal({
               onClick={() => setTab(entry.value)}
               aria-current={tab === entry.value ? 'page' : undefined}
               className={cn(
-                'flex h-9 shrink-0 items-center gap-2.5 rounded-xl px-3 text-left text-[13px] whitespace-nowrap transition-colors',
+                'flex h-14 min-w-0 shrink-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-center text-[10px] whitespace-nowrap transition-colors sm:h-11 sm:flex-row sm:justify-start sm:gap-2.5 sm:px-3 sm:text-left sm:text-[13px]',
                 tab === entry.value
                   ? 'bg-[var(--accent-muted)] font-medium text-[var(--text-primary)]'
                   : 'text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
@@ -329,7 +329,7 @@ export function SettingsModal({
             </button>
           ))}
         </nav>
-      <div key={tab} className="cst-rise min-h-0 min-w-0 flex-1 space-y-6 sm:overflow-y-auto sm:overscroll-contain sm:pr-1 sm:pb-6">
+      <div key={tab} className="cst-rise min-h-0 min-w-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-1 sm:pb-6">
         {tab === 'general' ? (
           <>
         {/* ── Apparence ──────────────────────────────────────────────── */}
@@ -355,6 +355,15 @@ export function SettingsModal({
                       aria-label={option.label}
                       title={option.label}
                       onClick={() => updateAiSettings({ accentColor: option.value })}
+                      tabIndex={selected ? 0 : -1}
+                      onKeyDown={(event) => {
+                        const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0
+                        if (!direction) return
+                        event.preventDefault()
+                        const index = (ACCENT_OPTIONS.indexOf(option) + direction + ACCENT_OPTIONS.length) % ACCENT_OPTIONS.length
+                        updateAiSettings({ accentColor: ACCENT_OPTIONS[index].value })
+                        event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button')[index]?.focus()
+                      }}
                       className={cn(
                         'h-8 w-8 rounded-full transition-transform duration-150 pointer-fine:hover:scale-110',
                         selected && 'ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--surface)]'
@@ -475,22 +484,32 @@ export function SettingsModal({
               </p>
             </div>
 
-            <SettingCheckbox
-              checked={rssSettings.refreshImportedFeeds}
-              onChange={(checked) => updateRssSettings({ refreshImportedFeeds: checked })}
-              label="Rafraîchir les flux après import OPML"
-              hint="Lance un premier chargement automatiquement après un import."
-            />
-
-            <SettingCheckbox
-              checked={rssSettings.markReadOnOpen !== false}
-              onChange={(checked) => updateRssSettings({ markReadOnOpen: checked })}
-              label="Marquer comme lu à l’ouverture"
-              hint="Un article ouvert dans le volet de lecture passe automatiquement en lu."
-            />
+            <div>
+              <Select size="sm" label="Densité de la liste" value={rssSettings.density ?? 'comfortable'}
+                onValueChange={(value) => updateRssSettings({ density: value === 'compact' ? 'compact' : 'comfortable' })}
+                options={[{ value: 'comfortable', label: 'Confortable' }, { value: 'compact', label: 'Compacte' }]} />
+              <p className="mt-1 text-[11px] leading-4 text-[var(--text-muted)]">Plus de place pour lire, ou davantage de titres à l’écran.</p>
+            </div>
+            <div className="sm:col-span-2">
+              <SettingToggle
+                checked={rssSettings.refreshImportedFeeds}
+                onChange={(checked) => updateRssSettings({ refreshImportedFeeds: checked })}
+                label="Rafraîchir les flux après import OPML"
+                hint="Lance un premier chargement automatiquement après un import."
+              />
+            </div>
 
             <div className="sm:col-span-2">
-              <SettingCheckbox
+              <SettingToggle
+                checked={rssSettings.markReadOnOpen !== false}
+                onChange={(checked) => updateRssSettings({ markReadOnOpen: checked })}
+                label="Marquer comme lu à l’ouverture"
+                hint="Un article ouvert dans le volet de lecture passe automatiquement en lu."
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <SettingToggle
                 checked={rssSettings.showTrendsByDefault !== false}
                 onChange={(checked) => updateRssSettings({ showTrendsByDefault: checked })}
                 label="Ouvrir sur le panneau Tendances"
@@ -499,7 +518,7 @@ export function SettingsModal({
             </div>
 
             <div className="sm:col-span-2">
-              <SettingCheckbox
+              <SettingToggle
                 checked={rssSettings.keywordNotificationsEnabled === true}
                 disabled={!hasWatchedKeywords}
                 onChange={(checked) => void handleToggleKeywordNotifications(checked)}
@@ -598,7 +617,7 @@ export function SettingsModal({
             ))}
           </div>
           <p className="text-[11px] leading-4 text-[var(--text-muted)]">
-            Un slot vide utilise le fournisseur par défaut.
+            Sans choix spécifique, la traduction et la veille utilisent le fournisseur par défaut.
           </p>
 
           {/* Clés API et modèles : un bloc repliable par fournisseur */}
@@ -827,7 +846,7 @@ function plural(count: number, singular: string, pluralForm: string): string {
   return `${count} ${count > 1 ? pluralForm : singular}`
 }
 
-function SettingCheckbox({
+function SettingToggle({
   checked,
   onChange,
   label,
@@ -841,24 +860,18 @@ function SettingCheckbox({
   disabled?: boolean
 }) {
   return (
-    <label
+    <div
       className={cn(
-        'flex items-start gap-2.5 text-sm text-[var(--text-primary)]',
+        'flex min-h-14 items-center justify-between gap-4 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--text-primary)]',
         disabled && 'opacity-60'
       )}
     >
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-0.5 h-4 w-4 rounded border-[var(--border)]"
-      />
-      <span>
+      <span className="min-w-0">
         {label}
         <span className="mt-0.5 block text-[11px] leading-4 text-[var(--text-muted)]">{hint}</span>
       </span>
-    </label>
+      <Switch checked={checked} disabled={disabled} onChange={onChange} label={label} />
+    </div>
   )
 }
 
@@ -884,7 +897,7 @@ function Collapsible({
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--hover)]"
+        className="flex min-h-11 w-full items-center gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--hover)]"
       >
         <span
           aria-hidden="true"

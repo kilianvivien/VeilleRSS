@@ -56,6 +56,9 @@ const LABEL_HEIGHT = 0.06
 const LABEL_GAP = 0.02
 /** Marge minimale entre deux blocs nœud + étiquette. */
 const BOX_PADDING = 0.012
+// The separation pass converges to touching padded boxes. Floating point
+// residue at that boundary must not discard otherwise well-spaced subjects.
+const OVERLAP_EPSILON = 0.00001
 
 const MIN_SHARED_ITEMS = 2
 const MIN_EDGE_WEIGHT = 0.15
@@ -175,7 +178,7 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
           const i = active[p]
           const j = active[q]
           const { overlapX, overlapY, upper, lower } = overlapAmount(i, j)
-          if (overlapX <= 0 || overlapY <= 0) continue
+          if (overlapX <= OVERLAP_EPSILON || overlapY <= OVERLAP_EPSILON) continue
           moved = true
           // On sépare selon l'axe qui demande le plus petit déplacement.
           if (overlapX / width < overlapY) {
@@ -195,7 +198,7 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
     return active.every((i, p) =>
       active.slice(p + 1).every((j) => {
         const { overlapX, overlapY } = overlapAmount(i, j)
-        return overlapX <= 0 || overlapY <= 0
+        return overlapX <= OVERLAP_EPSILON || overlapY <= OVERLAP_EPSILON
       })
     )
   }

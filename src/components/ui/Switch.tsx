@@ -13,7 +13,7 @@ interface SwitchProps {
  * Interrupteur marche/arrêt façon iOS.
  *
  * Un `role="switch"` natif plutôt qu'une case à cocher stylée : la cible fait
- * 44 px de large, la taille minimale confortable au pouce sur mobile.
+ * 44 × 44 px, autour d’un rail visuel de 24 px de haut.
  */
 export function Switch({ checked, onChange, label, disabled, className }: SwitchProps) {
   return (
@@ -25,18 +25,18 @@ export function Switch({ checked, onChange, label, disabled, className }: Switch
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
-        'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border border-transparent',
+        'relative inline-flex h-11 w-11 shrink-0 items-center rounded-full',
         'transition-colors duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] focus-visible:ring-offset-1',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        checked ? 'bg-[var(--accent)]' : 'bg-[var(--border)]',
         className
       )}
     >
+      <span aria-hidden="true" className={cn('pointer-events-none absolute inset-x-0 top-1/2 h-6 -translate-y-1/2 rounded-full transition-colors duration-200', checked ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]')} />
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm',
+          'pointer-events-none relative inline-block h-5 w-5 rounded-full bg-white shadow-sm',
           'transition-transform duration-200 ease-out',
           checked ? 'translate-x-[1.375rem]' : 'translate-x-0.5'
         )}
