@@ -696,8 +696,32 @@ export interface ExtractedTerm {
  * « Erdoğan » dix fois pèse autant qu’un article qui l’écrit une fois, pour que
  * le classement mesure le nombre d’articles et non la verbosité de la source.
  */
-export function extractTerms(text: string): ExtractedTerm[] {
-  if (!text) return []
+export function extractTerms(text: string): readonly ExtractedTerm[] {
+  if (!text) return EMPTY_TERMS
+
+  const cached = extractedTermsCache.get(text)
+  if (cached) return cached
+
+  const extracted = computeExtractedTerms(text)
+  // Borne simple : au-delà, on repart de zéro plutôt que de gérer un LRU. Le
+  // cache couvre largement une base locale et se reconstitue en un passage.
+  if (extractedTermsCache.size >= EXTRACTED_TERMS_CACHE_LIMIT) extractedTermsCache.clear()
+  extractedTermsCache.set(text, extracted)
+  return extracted
+}
+
+const EMPTY_TERMS: readonly ExtractedTerm[] = Object.freeze([])
+const EXTRACTED_TERMS_CACHE_LIMIT = 20_000
+
+/**
+ * Le texte d’un article ne change pas quand il est lu, sauvegardé ou traduit,
+ * alors que les tendances sont recalculées à chaque interaction (et deux fois
+ * quand le briefing a sa propre fenêtre). Les termes sont donc mis en cache par
+ * texte : le résultat est partagé et ne doit pas être modifié par l’appelant.
+ */
+const extractedTermsCache = new Map<string, readonly ExtractedTerm[]>()
+
+function computeExtractedTerms(text: string): readonly ExtractedTerm[] {
 
   const rawTokens = text.split(TOKEN_SPLIT).filter(Boolean)
   const terms = new Map<string, ExtractedTerm>()
@@ -743,7 +767,7 @@ export function extractTerms(text: string): ExtractedTerm[] {
     }
   }
 
-  return Array.from(terms.values())
+  return Object.freeze(Array.from(terms.values()))
 }
 
 /** Vrai si le texte contient le mot-clé, en ignorant casse et diacritiques. */

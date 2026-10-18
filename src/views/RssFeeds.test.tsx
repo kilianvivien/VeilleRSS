@@ -53,9 +53,9 @@ vi.mock('@/components/rss', async () => ({
     ),
   TrendPanel: (await import('@/components/rss/TrendPanel')).TrendPanel,
   formatRefreshInterval: () => '',
-  RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: () => void }) => (
+  RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: (item: RssItem) => void }) => (
     <li data-testid="article-row">
-      <button type="button" onClick={onOpen}>
+      <button type="button" onClick={() => onOpen(item)}>
         Ouvrir {item.title}
       </button>
     </li>

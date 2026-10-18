@@ -767,11 +767,22 @@ export function RssFeeds() {
     [addCatalogFeeds, refreshFeed]
   )
 
-  const handleSelectItem = (id: string, checked: boolean) => {
-    setSelectedItems(
-      checked ? [...selectedItemIds, id] : selectedItemIds.filter((itemId) => itemId !== id)
-    )
-  }
+  // Lu dans le store au moment du clic : la fonction reste stable et ne
+  // force pas chaque ligne mémoïsée à se repeindre à chaque sélection.
+  const handleSelectItem = useCallback(
+    (id: string, checked: boolean) => {
+      const current = useRssStore.getState().selectedItemIds
+      setSelectedItems(
+        checked ? [...current, id] : current.filter((itemId) => itemId !== id)
+      )
+    },
+    [setSelectedItems]
+  )
+
+  const handleSwipeToggleRead = useCallback(
+    (item: RssItem) => (item.readAt ? markUnread([item.id]) : markRead([item.id])),
+    [markRead, markUnread]
+  )
 
   const handleSelectVisible = () => {
     const visibleIds = visibleItems.map((item) => item.id)
@@ -1381,15 +1392,11 @@ export function RssFeeds() {
                           ? cached.summary || item.contentSnippet || item.summary
                           : item.contentSnippet || item.summary
                       }
-                      onOpen={() => handleOpenItem(item)}
-                      onSelectedChange={(checked) => handleSelectItem(item.id, checked)}
-                      onToggleSaved={() => toggleSaved(item.id)}
-                      onSwipeToggleRead={
-                        isDesktop
-                          ? undefined
-                          : () => (item.readAt ? markUnread([item.id]) : markRead([item.id]))
-                      }
-                      onSwipeToggleSaved={isDesktop ? undefined : () => toggleSaved(item.id)}
+                      onOpen={handleOpenItem}
+                      onSelectedChange={handleSelectItem}
+                      onToggleSaved={toggleSaved}
+                      onSwipeToggleRead={isDesktop ? undefined : handleSwipeToggleRead}
+                      onSwipeToggleSaved={isDesktop ? undefined : toggleSaved}
                     />
                   )
                 })}

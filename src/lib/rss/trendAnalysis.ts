@@ -315,7 +315,6 @@ export function computeTrends({
     .filter(
       (term) => term.isPhrase || term.sourceCount >= 2 || term.count >= 3 || term.previousCount > 0
     )
-    .sort(compareTrendTerms)
 
   return {
     generatedAt: now,
@@ -326,7 +325,7 @@ export function computeTrends({
     previousItemCount: previousItems.length,
     sourceCount: sources.size,
     volumeBuckets,
-    terms: dropRedundantTerms(terms).slice(0, termLimit),
+    terms: dropRedundantTerms(sortTrendTerms(terms), termLimit),
     watched: computeWatchedStats({
       watchedKeywords,
       currentItems,
@@ -462,9 +461,8 @@ export function computeRelatedTrendTerms({
       buckets: term.buckets,
       isPhrase: term.isPhrase,
     }))
-    .sort(compareTrendTerms)
 
-  return dropRedundantTerms(candidates).slice(0, termLimit)
+  return dropRedundantTerms(sortTrendTerms(candidates), termLimit)
 }
 
 /**
@@ -472,12 +470,20 @@ export function computeRelatedTrendTerms({
  * largeur de couverture, puis le volume brut. Un sujet repris par six titres
  * pèse plus qu’un sujet martelé par un seul.
  */
-function compareTrendTerms(a: TrendTerm, b: TrendTerm): number {
-  const scoreA = trendScore(a)
-  const scoreB = trendScore(b)
+function compareScoredTrendTerms(a: TrendTerm, scoreA: number, b: TrendTerm, scoreB: number): number {
   if (scoreB !== scoreA) return scoreB - scoreA
   if (b.count !== a.count) return b.count - a.count
-  return a.label.localeCompare(b.label, 'fr')
+  return trendLabelCollator.compare(a.label, b.label)
+}
+
+const trendLabelCollator = new Intl.Collator('fr')
+
+/** Trie par score décroissant, en calculant chaque score une seule fois. */
+function sortTrendTerms(terms: TrendTerm[]): TrendTerm[] {
+  return terms
+    .map((term) => ({ term, score: trendScore(term) }))
+    .sort((a, b) => compareScoredTrendTerms(a.term, a.score, b.term, b.score))
+    .map(({ term }) => term)
 }
 
 function trendScore(term: TrendTerm): number {
@@ -494,20 +500,48 @@ function trendScore(term: TrendTerm): number {
  * Supprime les mots seuls déjà couverts par une expression mieux classée
  * portant sur exactement les mêmes articles — « ministre » sous « ministre
  * affaires » n’ajoute rien au tableau.
+ *
+ * Les listes d’articles sont construites dans l’ordre du corpus, sans
+ * doublon : deux termes couvrent donc le même ensemble d’articles si et
+ * seulement si leurs `itemIds` sont identiques. Cette propriété permet de
+ * remplacer les comparaisons deux à deux (quadratiques, et qui recréaient un
+ * `Set` à chaque paire) par des index. Seuls les `limit` premiers termes
+ * retenus sont utiles à l’appelant : la boucle s’arrête dès qu’ils sont trouvés.
  */
-function dropRedundantTerms(terms: TrendTerm[]): TrendTerm[] {
+function dropRedundantTerms(terms: TrendTerm[], limit = Number.POSITIVE_INFINITY): TrendTerm[] {
+  const itemSets = new Map<TrendTerm, Set<string>>()
+  const itemSetOf = (term: TrendTerm): Set<string> => {
+    let set = itemSets.get(term)
+    if (!set) {
+      set = new Set(term.itemIds)
+      itemSets.set(term, set)
+    }
+    return set
+  }
+
+  const termsByWordCount = new Map<number, TrendTerm[]>()
+  let maxWordCount = 0
+  for (const term of terms) {
+    const wordCount = term.key.split(' ').length
+    maxWordCount = Math.max(maxWordCount, wordCount)
+    const bucket = termsByWordCount.get(wordCount)
+    if (bucket) bucket.push(term)
+    else termsByWordCount.set(wordCount, [term])
+  }
+
   const coveredByLongerPhrase = (term: TrendTerm): boolean => {
-    const words = term.key.split(' ')
-    if (words.length < 2) return false
+    const wordCount = term.key.split(' ').length
+    if (wordCount < 2) return false
 
-    return terms.some((candidate) => {
-      const candidateWords = candidate.key.split(' ')
-      if (candidateWords.length <= words.length) return false
-      if (!candidate.key.includes(term.key)) return false
-
-      const candidateItems = new Set(candidate.itemIds)
-      return term.itemIds.every((itemId) => candidateItems.has(itemId))
-    })
+    for (let size = wordCount + 1; size <= maxWordCount; size += 1) {
+      for (const candidate of termsByWordCount.get(size) ?? []) {
+        if (candidate.itemIds.length < term.itemIds.length) continue
+        if (!candidate.key.includes(term.key)) continue
+        const candidateItems = itemSetOf(candidate)
+        if (term.itemIds.every((itemId) => candidateItems.has(itemId))) return true
+      }
+    }
+    return false
   }
 
   const phraseWords = new Map<string, Set<string>>()
@@ -520,31 +554,40 @@ function dropRedundantTerms(terms: TrendTerm[]): TrendTerm[] {
     }
   }
 
-  const filtered = terms.filter((term) => {
+  const isKeptCandidate = (term: TrendTerm): boolean => {
     if (term.isPhrase) return !coveredByLongerPhrase(term)
     const covered = phraseWords.get(term.key)
     if (!covered) return true
     return term.itemIds.some((itemId) => !covered.has(itemId))
-  })
+  }
 
   // Deux expressions qui apparaissent dans exactement les mêmes articles et
   // partagent plusieurs mots sont presque toujours deux fenêtres sur le même
   // syntagme (« göçmen kaçakçılarına jandarma » / « kaçakçılarına jandarma
   // darbesi »). Le classement a déjà placé la meilleure en premier.
   const kept: TrendTerm[] = []
-  for (const term of filtered) {
-    const termWords = new Set(term.key.split(' '))
-    const redundantPhrase =
-      term.isPhrase &&
-      kept.some((candidate) => {
-        if (!candidate.isPhrase || candidate.itemIds.length !== term.itemIds.length) return false
-        const candidateItems = new Set(candidate.itemIds)
-        if (!term.itemIds.every((itemId) => candidateItems.has(itemId))) return false
-        const sharedWords = candidate.key.split(' ').filter((word) => termWords.has(word)).length
-        return sharedWords >= 2
-      })
+  const keptPhrasesBySignature = new Map<string, TrendTerm[]>()
+  for (const term of terms) {
+    if (kept.length >= limit) break
+    if (!isKeptCandidate(term)) continue
 
-    if (!redundantPhrase) kept.push(term)
+    if (term.isPhrase) {
+      const signature = term.itemIds.join('\u0000')
+      const sameItems = keptPhrasesBySignature.get(signature)
+      if (sameItems) {
+        const termWords = new Set(term.key.split(' '))
+        const redundantPhrase = sameItems.some(
+          (candidate) =>
+            candidate.key.split(' ').filter((word) => termWords.has(word)).length >= 2
+        )
+        if (redundantPhrase) continue
+        sameItems.push(term)
+      } else {
+        keptPhrasesBySignature.set(signature, [term])
+      }
+    }
+
+    kept.push(term)
   }
 
   return kept

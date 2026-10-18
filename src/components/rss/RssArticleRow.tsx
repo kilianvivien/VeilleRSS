@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { memo, useCallback, useRef, useState } from 'react'
 import { Bookmark, BookmarkCheck, Check, Languages, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import { usePointerSwipe } from '@/lib/hooks/usePointerSwipe'
@@ -15,13 +15,18 @@ interface RssArticleRowProps {
   /** Titre traduit affiché à la place de l’original quand une traduction est en cache. */
   displayTitle: string
   displaySummary: string
-  onOpen: () => void
-  onSelectedChange: (checked: boolean) => void
-  onToggleSaved: () => void
+  /**
+   * Les rappels reçoivent l’article : le parent peut ainsi passer des
+   * fonctions stables, et `memo` évite de repeindre toute la liste quand un
+   * seul article change d’état.
+   */
+  onOpen: (item: RssItem) => void
+  onSelectedChange: (itemId: string, checked: boolean) => void
+  onToggleSaved: (itemId: string) => void
   /** Balayage vers la droite : bascule lu / non lu. Mobile uniquement. */
-  onSwipeToggleRead?: () => void
+  onSwipeToggleRead?: (item: RssItem) => void
   /** Balayage vers la gauche : sauvegarde. Mobile uniquement. */
-  onSwipeToggleSaved?: () => void
+  onSwipeToggleSaved?: (itemId: string) => void
 }
 
 /** Au-delà, la ligne cesse de suivre le doigt : le geste est déjà lisible. */
@@ -36,7 +41,7 @@ const MAX_SWIPE_OFFSET = 120
  * élevée que pour un retour — une liste se parcourt surtout verticalement, un
  * faux positif y coûte cher.
  */
-export function RssArticleRow({
+export const RssArticleRow = memo(function RssArticleRow({
   item,
   feed,
   selected,
@@ -58,14 +63,17 @@ export function RssArticleRow({
   const [swipeOffset, setSwipeOffset] = useState(0)
   const swipeEnabled = Boolean(onSwipeToggleRead || onSwipeToggleSaved)
 
+  const handleSwipeRight = useCallback(() => onSwipeToggleRead?.(item), [item, onSwipeToggleRead])
+  const handleSwipeLeft = useCallback(() => onSwipeToggleSaved?.(item.id), [item.id, onSwipeToggleSaved])
+
   usePointerSwipe(rowRef, {
     enabled: swipeEnabled,
     commitDistance: 88,
     // Une ligne n'est pas au bord de l'écran : pas de conflit avec le
     // geste « retour » du système, la garde de bord serait contre-productive.
     edgeGuardPx: 0,
-    onSwipeRight: onSwipeToggleRead,
-    onSwipeLeft: onSwipeToggleSaved,
+    onSwipeRight: onSwipeToggleRead ? handleSwipeRight : undefined,
+    onSwipeLeft: onSwipeToggleSaved ? handleSwipeLeft : undefined,
     onMove: prefersReducedMotion
       ? undefined
       : (state) =>
@@ -136,7 +144,7 @@ export function RssArticleRow({
         <input
           type="checkbox"
           checked={selected}
-          onChange={(event) => onSelectedChange(event.target.checked)}
+          onChange={(event) => onSelectedChange(item.id, event.target.checked)}
           onClick={(event) => event.stopPropagation()}
           className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--border)] lg:h-4 lg:w-4"
           aria-label={`Sélectionner ${item.title}`}
@@ -144,7 +152,7 @@ export function RssArticleRow({
 
         <button
           type="button"
-          onClick={onOpen}
+          onClick={() => onOpen(item)}
           className="min-w-0 flex-1 text-left"
           aria-label={`Ouvrir : ${displayTitle}`}
         >
@@ -186,7 +194,7 @@ export function RssArticleRow({
 
         <button
           type="button"
-          onClick={onToggleSaved}
+          onClick={() => onToggleSaved(item.id)}
           aria-label={item.savedAt ? `Retirer ${item.title} des sauvegardés` : `Sauvegarder ${item.title}`}
           title={item.savedAt ? 'Retirer des sauvegardés' : 'Sauvegarder'}
           className={cn(
@@ -207,4 +215,4 @@ export function RssArticleRow({
       </div>
     </li>
   )
-}
+})
