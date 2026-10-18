@@ -1,5 +1,5 @@
-import { useMemo, type ReactNode } from 'react'
-import { ArrowRight, BellPlus, BellRing } from 'lucide-react'
+import { useMemo, useState, type ReactNode } from 'react'
+import { ArrowRight, BellPlus, BellRing, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { TrendReport, TrendTerm } from '@/lib/rss/trendAnalysis'
 import { buildTopicGraph, GRAPH_ASPECT, neighbourKeys, type TopicGraph } from '@/lib/rss/topicGraph'
@@ -21,10 +21,16 @@ interface ConstellationViewProps {
   onWatchTerm: (term: string) => void
   /** Version mobile : carte plus petite, sans flux ni indicateurs. */
   compact?: boolean
-  /** Colonne de droite au bureau (classement détaillé, mots suivis, IA). */
-  aside?: ReactNode
+  /** Commandes de l'en-tête au bureau : fenêtre d'analyse, affinage IA. */
+  toolbar?: ReactNode
+  /** Bandeau d'état sous l'en-tête (affinage IA actif, erreur). */
+  banner?: ReactNode
   /** Détail chiffré du sujet sélectionné (évolution, comparaison), au bureau. */
   focusPanel?: ReactNode
+  /** Mot-clé suivi actuellement sélectionné, le cas échéant. */
+  activeWatched?: string | null
+  onSelectWatched?: (term: string) => void
+  onUnwatchTerm?: (term: string) => void
 }
 
 const STREAM_SERIES = 5
@@ -47,8 +53,12 @@ export function ConstellationView({
   onViewArticles,
   onWatchTerm,
   compact = false,
-  aside,
+  toolbar,
+  banner,
   focusPanel,
+  activeWatched = null,
+  onSelectWatched,
+  onUnwatchTerm,
 }: ConstellationViewProps) {
   const graph = useMemo(() => buildTopicGraph(report.terms, { limit: compact ? 8 : 12 }), [compact, report.terms])
   const focusTerm =
@@ -119,37 +129,142 @@ export function ConstellationView({
     )
   }
 
+  const volumeChange = report.previousItemCount === 0 ? null : Math.round(((report.itemCount - report.previousItemCount) / report.previousItemCount) * 100)
+
   return (
-    <div className="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_380px] divide-x divide-[var(--border)]">
-      <div className="min-h-0 overflow-auto">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-4 p-6">
-          <header className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+    <div className="h-full min-h-0 overflow-auto">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-6">
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-col gap-1">
             <h1 className="text-[26px] font-semibold tracking-[-0.02em] text-[var(--text-primary)]">Tendances</h1>
-            <p className="text-xs text-[var(--text-muted)]">
-              Cliquez un sujet pour le suivre dans la liste, ses liens et ses articles.
+            <p className="text-sm text-[var(--text-muted)]">
+              <span className="font-mono text-[var(--text-primary)] tabular-nums">{report.itemCount}</span> articles ·{' '}
+              <span className="font-mono text-[var(--text-primary)] tabular-nums">{report.sourceCount}</span> sources
+              {volumeChange !== null ? (
+                <>
+                  {' · '}
+                  <span
+                    className="font-mono tabular-nums"
+                    style={{ color: volumeChange >= 0 ? 'var(--trend-hot)' : 'var(--trend-down)' }}
+                  >
+                    {volumeChange >= 0 ? '+' : '−'}
+                    {Math.abs(volumeChange)} %
+                  </span>{' '}
+                  par rapport aux {report.windowHours} h précédentes
+                </>
+              ) : null}
             </p>
-          </header>
-          {graphCard}
-          {focusPanel ? (
-            <>
-              {/* Un seul « sujet sélectionné » : le détail chiffré, flanqué des
-                  liens et des articles. */}
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
-                <div className="cst-rise min-w-0 [&>section]:h-full [&>section]:rounded-[20px] [&>section]:p-5">{focusPanel}</div>
-                {detail}
-              </div>
-              <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />
-            </>
-          ) : (
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
-              {detail}
-              <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />
-            </div>
-          )}
+          </div>
+          {toolbar}
+        </header>
+        {banner}
+        <WatchedBar
+          watched={report.watched}
+          active={activeWatched}
+          onSelect={onSelectWatched}
+          onRemove={onUnwatchTerm}
+          onAdd={onWatchTerm}
+        />
+        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+          <div className="flex min-w-0 flex-col gap-4">
+            {graphCard}
+            <TopicStream report={report} activeKey={activeKey} onSelectTerm={onSelectTerm} />
+          </div>
+          {/* Un seul « sujet » à droite : le détail chiffré quand un sujet est
+              choisi, flanqué des liens et articles ; sinon le sujet principal. */}
+          <div className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-0 xl:h-[calc(100dvh-10rem)] xl:min-h-[560px] xl:overflow-y-auto">
+            {focusPanel ? (
+              <div className="cst-rise min-w-0 flex-shrink-0 [&>section]:rounded-[20px] [&>section]:p-5">{focusPanel}</div>
+            ) : null}
+            {detail}
+          </div>
         </div>
       </div>
-      <div className="min-h-0 overflow-hidden">{aside}</div>
     </div>
+  )
+}
+
+/** Mots-clés suivis : pastilles cliquables, ajout et retrait en place. */
+function WatchedBar({
+  watched,
+  active,
+  onSelect,
+  onRemove,
+  onAdd,
+}: {
+  watched: TrendReport['watched']
+  active: string | null
+  onSelect?: (term: string) => void
+  onRemove?: (term: string) => void
+  onAdd: (term: string) => void
+}) {
+  const [draft, setDraft] = useState('')
+  const submit = () => {
+    const value = draft.trim()
+    if (!value) return
+    onAdd(value)
+    setDraft('')
+  }
+  return (
+    <section aria-label="Mots-clés suivis" className="flex flex-wrap items-center gap-2">
+      <span className="rss-section-label mr-1 uppercase text-[var(--text-muted)]">Mots suivis</span>
+      {watched.map((stat) => {
+        const isActive = active === stat.term
+        return (
+          <span
+            key={stat.term}
+            className={cn(
+              'flex h-9 items-center rounded-full border text-xs transition-colors',
+              isActive ? 'border-[var(--trend-hot)] bg-[var(--hover-strong)]' : 'border-[var(--border)]'
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => onSelect?.(stat.term)}
+              aria-pressed={isActive}
+              className="flex h-full items-center gap-2 rounded-l-full pr-1 pl-3 text-[var(--text-primary)]"
+            >
+              <span className="font-medium">{stat.term}</span>
+              <span className="font-mono tabular-nums text-[var(--text-muted)]">{stat.count}</span>
+              {stat.delta > 0 ? (
+                <span className="font-mono tabular-nums text-[var(--trend-hot)]">+{stat.delta}</span>
+              ) : null}
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemove?.(stat.term)}
+              aria-label={`Ne plus suivre « ${stat.term} »`}
+              className="flex h-full items-center rounded-r-full pr-2.5 pl-1 text-[var(--text-muted)] pointer-fine:hover:text-[var(--text-primary)]"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          </span>
+        )
+      })}
+      <form
+        onSubmit={(event) => {
+          event.preventDefault()
+          submit()
+        }}
+        className="flex h-9 items-center rounded-full border border-dashed border-[var(--border-strong)] pr-1 pl-3"
+      >
+        <input
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder="Suivre un mot…"
+          aria-label="Nouveau mot-clé à suivre"
+          className="w-36 bg-transparent text-xs text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+        />
+        <button
+          type="submit"
+          disabled={!draft.trim()}
+          aria-label="Suivre ce mot-clé"
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--text-muted)] disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)] pointer-fine:enabled:hover:text-[var(--text-primary)]"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </form>
+    </section>
   )
 }
 
@@ -260,7 +375,7 @@ function ConstellationGraph({
                 aria-hidden="true"
                 className="absolute inset-0 rounded-full transition-shadow duration-500"
                 style={{
-                  background: `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 50%, white), ${color} 70%)`,
+                  background: `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 72%, white), ${color} 72%)`,
                   boxShadow: `0 0 0 ${selected ? 3 : 0}px var(--text-primary), 0 0 32px color-mix(in srgb, ${color} ${selected ? 55 : 22}%, transparent)`,
                 }}
               />
@@ -317,13 +432,13 @@ function TopicDetail({
     .map((id) => itemById.get(id))
     .filter((item): item is RssItem => Boolean(item))
     .sort((a, b) => (b.publishedAt ?? b.fetchedAt) - (a.publishedAt ?? a.fetchedAt))
-    .slice(0, compact ? 3 : 4)
+    .slice(0, compact ? 3 : 12)
 
   return (
     <aside
       aria-label={withHeader ? 'Sujet sélectionné' : `Liens et articles : ${term.label}`}
       key={term.key}
-      className="cst-rise flex min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-5"
+      className="cst-rise flex min-h-0 min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-5 xl:min-h-[420px] xl:flex-1"
     >
       {withHeader ? (
       <div className="flex flex-col gap-1.5">
@@ -361,7 +476,7 @@ function TopicDetail({
         </div>
       ) : null}
 
-      <ul className="flex flex-col gap-1">
+      <ul className="-mx-1 flex min-h-0 flex-col gap-1 overflow-y-auto px-1 xl:flex-1">
         {articles.map((item, index) => (
           <li key={item.id} className="cst-rise" style={{ animationDelay: `${index * 0.06}s` }}>
             <button
@@ -380,7 +495,7 @@ function TopicDetail({
         ))}
       </ul>
 
-      <div className="mt-auto flex gap-2">
+      <div className="mt-auto flex flex-shrink-0 gap-2">
         <button
           type="button"
           onClick={onViewArticles}

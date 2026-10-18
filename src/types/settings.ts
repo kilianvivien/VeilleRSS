@@ -8,8 +8,14 @@ export type AiProvider =
   | 'albert'
   | 'heuristic'
 
+/** Couleur d'accent du thème « Constellation », au choix de l'utilisateur. */
+export type AccentColor = 'violet' | 'cyan' | 'amber' | 'rose' | 'blue'
+
+export const ACCENT_COLORS: AccentColor[] = ['violet', 'cyan', 'amber', 'rose', 'blue']
+
 export interface Settings {
   theme: 'light' | 'dark' | 'system'
+  accentColor?: AccentColor
   /** Le tutoriel de démarrage a été vu (terminé ou passé). Rejouable depuis les paramètres. */
   onboardingCompleted?: boolean
   // AI Configuration

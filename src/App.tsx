@@ -12,6 +12,7 @@ const OnboardingTour = lazy(() =>
 
 export default function App() {
   const theme = useSettingsStore((state) => state.theme)
+  const accentColor = useSettingsStore((state) => state.accentColor) ?? 'violet'
   const onboardingCompleted = useSettingsStore((state) => state.onboardingCompleted)
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   useRssRefreshScheduler()
@@ -28,6 +29,16 @@ export default function App() {
       /* localStorage indisponible — le thème reste appliqué pour la session. */
     }
   }, [theme])
+
+  // Accent choisi dans les réglages : même clé lue par le script anti-flash.
+  useEffect(() => {
+    document.documentElement.dataset.accent = accentColor
+    try {
+      window.localStorage.setItem('veille-web-accent', accentColor)
+    } catch {
+      /* localStorage indisponible : l'accent reste appliqué pour la session. */
+    }
+  }, [accentColor])
 
   /**
    * Préchauffage des vues paresseuses quand le navigateur est au repos.

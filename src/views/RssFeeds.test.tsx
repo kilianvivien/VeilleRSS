@@ -99,7 +99,11 @@ function makeItems(count: number): RssItem[] {
 }
 
 describe('selected trend summary wiring', () => {
+  // Le classement détaillé (termes en hausse, carte de volume, détail du
+  // sujet) vit dans le panneau Tendances mobile ; au bureau, la vue
+  // Constellation le remplace par le graphe et un seul panneau de sujet.
   beforeEach(() => {
+    isDesktopViewport = false
     const samples = makeItems(6).map((item, index) => ({
       ...item,
       title: index < 3 ? 'Ankara' : 'London',

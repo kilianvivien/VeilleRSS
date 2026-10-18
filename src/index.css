@@ -12,6 +12,7 @@
      chargées depuis un CDN : l'application reste locale et hors ligne. */
   --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-serif: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
 
   --radius-macos: 10px;
   --radius-card: 14px;
@@ -247,6 +248,57 @@
   --glass-border: rgba(255, 255, 255, 0.09);
   --glass-highlight: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Accents au choix (Réglages → Apparence). Le violet reste la valeur par
+   défaut définie plus haut ; seuls l'accent, le lien et le texte posé sur
+   l'accent changent, les tonalités de tendance restent stables. */
+html[data-accent='cyan'] {
+  --accent: #0e8c86;
+  --link: #0b6f6a;
+  --accent-foreground: #ffffff;
+}
+
+html.dark[data-accent='cyan'] {
+  --accent: #3dd6d0;
+  --link: #9ff0ec;
+  --accent-foreground: #0b0d12;
+}
+
+html[data-accent='amber'] {
+  --accent: #b86a00;
+  --link: #965500;
+  --accent-foreground: #ffffff;
+}
+
+html.dark[data-accent='amber'] {
+  --accent: #ffb547;
+  --link: #ffd28c;
+  --accent-foreground: #0b0d12;
+}
+
+html[data-accent='rose'] {
+  --accent: #c2367a;
+  --link: #a02a63;
+  --accent-foreground: #ffffff;
+}
+
+html.dark[data-accent='rose'] {
+  --accent: #f472b6;
+  --link: #f9a8d4;
+  --accent-foreground: #0b0d12;
+}
+
+html[data-accent='blue'] {
+  --accent: #2f6fe4;
+  --link: #2559c4;
+  --accent-foreground: #ffffff;
+}
+
+html.dark[data-accent='blue'] {
+  --accent: #6ba4ff;
+  --link: #a9cbff;
+  --accent-foreground: #0b0d12;
 }
 
 /* Glass surface utilities */
@@ -644,6 +696,38 @@ body {
   animation: cst-rise 450ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+/* Barres de données : croissance depuis la gauche. */
+@keyframes cst-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.cst-grow {
+  transform-origin: 0 50%;
+  animation: cst-grow 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Silhouette de chargement : reflet qui balaie la ligne. */
+@keyframes cst-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.cst-shimmer {
+  display: block;
+  background: linear-gradient(90deg, var(--hover) 0%, var(--hover-strong) 50%, var(--hover) 100%);
+  background-size: 200% 100%;
+  animation: cst-shimmer 1.6s ease-in-out infinite;
+}
+
 /* Menus déroulants : montée courte depuis leur bouton. */
 .cst-menu {
   animation: cst-rise 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -657,7 +741,9 @@ body {
   .cst-halo,
   .cst-stream,
   .cst-rise,
-  .cst-menu {
+  .cst-menu,
+  .cst-grow,
+  .cst-shimmer {
     animation: none;
   }
 }

@@ -1,5 +1,4 @@
 import {
-  cloneElement,
   lazy,
   Suspense,
   useCallback,
@@ -18,6 +17,7 @@ import {
   FileDown,
   Inbox,
   ListChecks,
+  Loader2,
   Library,
   Menu,
   Newspaper,
@@ -27,6 +27,7 @@ import {
   Rows2,
   Rows3,
   ScrollText,
+  Sparkles,
   Settings,
   Upload,
   WifiOff,
@@ -55,7 +56,13 @@ import type { RssDensity, RssFeed, RssItem, RssItemTranslation, RssSortMode } fr
 import { cn } from '@/lib/utils/cn'
 import { validateRssFeedUrl } from '@/lib/rss/rssUrlValidation'
 import { exportFeedsToOpml, parseOpml } from '@/lib/rss/opml'
-import { computeTrends, filterItemsByKeyword, filterItemsByTerm, type TrendFocusSelection } from '@/lib/rss/trendAnalysis'
+import {
+  computeTrends,
+  filterItemsByKeyword,
+  filterItemsByTerm,
+  TREND_WINDOW_OPTIONS,
+  type TrendFocusSelection,
+} from '@/lib/rss/trendAnalysis'
 import { REFRESH_INTERVAL_OPTIONS, REFRESH_OFF } from '@/lib/rss/refreshIntervals'
 import { applyStoredTrendSelection } from '@/lib/rss/trendSelection'
 import { foldForMatching } from '@/lib/rss/textAnalysis'
@@ -107,6 +114,7 @@ const SORT_OPTIONS = [
 
 const UNCATEGORIZED = 'Sources'
 const ARTICLE_BATCH_SIZE = 80
+const TREND_WINDOW_LABELS: Record<number, string> = { 6: '6 h', 24: '24 h', 72: '3 j', 168: '7 j' }
 /** Sujets proposés en pastilles au-dessus de la liste. */
 const TREND_CHIP_LIMIT = 4
 /** Sujets candidats pour l'étiquette affichée sur chaque article. */
@@ -1591,13 +1599,74 @@ export function RssFeeds() {
     />
   )
 
-  const desktopTrendsAsideElement = isDesktop ? cloneElement(trendsPanelElement, { showFocus: false }) : null
+  const trendsToolbarElement = (
+    <div className="flex items-center gap-2">
+      <SegmentedControl<string>
+        size="sm"
+        value={String(trendWindowHours)}
+        onChange={(value) => updateRssSettings({ trendWindowHours: Number(value) })}
+        options={TREND_WINDOW_OPTIONS.map((hours) => ({ value: String(hours), label: TREND_WINDOW_LABELS[hours] ?? `${hours} h` }))}
+      />
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => void handleRefineTrends()}
+        disabled={!trendProviderReady || isRefiningTrends}
+        title={trendProviderReady ? `Écarter les termes génériques avec ${trendProviderLabel}` : 'Configurez un fournisseur dans Paramètres → IA'}
+        aria-label="Affiner les tendances avec l’IA"
+      >
+        {isRefiningTrends ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+        Affiner avec l’IA
+      </Button>
+    </div>
+  )
+
+  const trendsBannerElement =
+    aiTrendSelection || trendRefinementError ? (
+      <div
+        role="status"
+        className={cn(
+          'flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs',
+          trendRefinementError
+            ? 'border-[color-mix(in_srgb,var(--error)_35%,transparent)] text-[var(--error)]'
+            : 'border-[color-mix(in_srgb,var(--trend-new)_40%,transparent)] text-[var(--text-secondary)]'
+        )}
+      >
+        <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" style={{ color: trendRefinementError ? undefined : 'var(--trend-new)' }} />
+        <span className="min-w-0 flex-1">
+          {trendRefinementError ?? `Sélection affinée par ${aiTrendSelection?.providerLabel ?? trendProviderLabel}. Les volumes restent calculés localement.`}
+        </span>
+        {aiTrendSelection ? (
+          <button
+            type="button"
+            onClick={() => {
+              clearAiTrendSelection()
+              setTrendRefinementError(null)
+            }}
+            className="shrink-0 rounded-full px-2.5 py-1 font-medium text-[var(--link)] pointer-fine:hover:bg-[var(--hover)]"
+          >
+            Revenir au classement local
+          </button>
+        ) : null}
+      </div>
+    ) : null
 
   /** Vue « Tendances » du bureau : la constellation, avec le classement détaillé à droite. */
   const constellationElement = (
     <ConstellationView
       {...constellationProps}
-      aside={desktopTrendsAsideElement}
+      toolbar={trendsToolbarElement}
+      banner={trendsBannerElement}
+      activeWatched={activeTerm?.kind === 'keyword' ? activeTerm.label : null}
+      onSelectWatched={(term) => {
+        if (activeTerm?.kind === 'keyword' && activeTerm.label === term) {
+          setActiveTerm(null)
+          return
+        }
+        setActiveTerm({ key: foldForMatching(term), label: term, kind: 'keyword' })
+        setQuery('')
+      }}
+      onUnwatchTerm={unwatchKeyword}
       focusPanel={
         displayedTrendReport.focus ? (
           <TrendFocusCard
@@ -1629,9 +1698,48 @@ export function RssFeeds() {
           clearTrendBriefing()
           setBriefingError(null)
         }}
+        topicSuggestions={displayedTrendReport.terms.slice(0, 6).map((term) => term.label)}
       />
     </Suspense>
   )
+
+  // Le sujet de l'article ouvert et ses voisins, pour le relier à la constellation.
+  const readerTopicTerm = useMemo(
+    () => (openItem ? displayedTrendReport.terms.slice(0, TOPIC_TAG_TERM_LIMIT).find((term) => term.itemIds.includes(openItem.id)) ?? null : null),
+    [displayedTrendReport, openItem]
+  )
+  const readerTopic = useMemo(() => {
+    if (!readerTopicTerm || !openItem) return undefined
+    const itemSet = new Set(readerTopicTerm.itemIds)
+    const related = displayedTrendReport.terms
+      .slice(0, TOPIC_TAG_TERM_LIMIT)
+      .filter((term) => term.key !== readerTopicTerm.key && term.itemIds.some((id) => itemSet.has(id)))
+      .slice(0, 3)
+      .map((term) => ({ label: term.label, color: TREND_TONE_COLOR[trendTone(term)] }))
+    const alsoCoveredBy = Array.from(
+      new Set(
+        readerTopicTerm.feedIds
+          .filter((feedId) => feedId !== openItem.feedId)
+          .map((feedId) => feedById.get(feedId)?.title)
+          .filter((title): title is string => Boolean(title))
+      )
+    ).slice(0, 4)
+    return {
+      label: readerTopicTerm.label,
+      color: TREND_TONE_COLOR[trendTone(readerTopicTerm)],
+      delta: formatTrendDelta(readerTopicTerm),
+      related,
+      alsoCoveredBy,
+    }
+  }, [displayedTrendReport, feedById, openItem, readerTopicTerm])
+  const readerSuggestions = displayedTrendReport.terms.slice(0, 4).map((term) => ({
+    key: term.key,
+    label: term.label,
+    color: TREND_TONE_COLOR[trendTone(term)],
+    delta: formatTrendDelta(term),
+    count: term.count,
+    onSelect: () => selectTerm(term),
+  }))
 
   const readingPaneElement = (
     <RssReadingPane
@@ -1673,6 +1781,12 @@ export function RssFeeds() {
       onOpenOriginal={() => {
         if (openItem) void openExternalUrl(openItem.link)
       }}
+      topic={readerTopic}
+      onShowTopic={readerTopicTerm ? () => {
+        selectTerm(readerTopicTerm)
+        setRightPane('trends')
+      } : undefined}
+      suggestions={readerSuggestions}
     />
   )
 
@@ -1810,7 +1924,7 @@ export function RssFeeds() {
               {rightPane === 'trends' ? (
                 constellationElement
               ) : rightPane === 'briefing' ? (
-                <div className="mx-auto h-full max-w-3xl border-x border-[var(--border)]">{briefingPanelElement}</div>
+                briefingPanelElement
               ) : (
                 <div className="grid h-full grid-cols-[minmax(360px,0.85fr)_minmax(0,1.15fr)] divide-x divide-[var(--border)]">
                   {articleListSection}

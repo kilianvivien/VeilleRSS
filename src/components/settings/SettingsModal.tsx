@@ -4,7 +4,7 @@ import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
-import type { AiProvider, Settings } from '@/types/settings'
+import type { AccentColor, AiProvider, Settings } from '@/types/settings'
 import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
@@ -103,6 +103,14 @@ const LOCAL_TIMEOUT_OPTIONS = [
   { value: '120', label: '2 minutes' },
   { value: '300', label: '5 minutes' },
   { value: '600', label: '10 minutes' },
+]
+
+const ACCENT_OPTIONS: { value: AccentColor; label: string; swatch: string }[] = [
+  { value: 'violet', label: 'Violet', swatch: 'linear-gradient(135deg, #9a8cff, #6a5ae0)' },
+  { value: 'cyan', label: 'Cyan', swatch: 'linear-gradient(135deg, #3dd6d0, #0e8c86)' },
+  { value: 'amber', label: 'Ambre', swatch: 'linear-gradient(135deg, #ffb547, #b86a00)' },
+  { value: 'rose', label: 'Rose', swatch: 'linear-gradient(135deg, #f472b6, #c2367a)' },
+  { value: 'blue', label: 'Bleu', swatch: 'linear-gradient(135deg, #6ba4ff, #2f6fe4)' },
 ]
 
 export function SettingsModal({
@@ -287,30 +295,59 @@ export function SettingsModal({
       bodyClassName="sm:max-h-[calc(100dvh-12rem)] sm:overflow-y-auto sm:overscroll-contain"
     >
       <div className="space-y-6">
-        {/* ── Apparence ────────────────────────────────────────────────
-            Mobile uniquement : sur bureau, la bascule vit dans la barre
-            d'outils, à portée immédiate. */}
-        {!isDesktop ? (
-          <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
-            <div className="flex min-w-0 items-start gap-2.5">
-              <Moon
-                className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]"
-                aria-hidden="true"
-              />
+        {/* ── Apparence ──────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <h3 className="rss-section-label text-[var(--text-secondary)]">APPARENCE</h3>
+          <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-[var(--text-primary)]">Mode sombre</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">Couleur d’accent</p>
                 <p className="text-[11px] leading-4 text-[var(--text-muted)]">
-                  Appliqué immédiatement, mémorisé pour les prochaines visites.
+                  Navigation, sélection, liens. Les couleurs des tendances restent fixes.
                 </p>
               </div>
+              <div role="radiogroup" aria-label="Couleur d’accent" className="flex items-center gap-2">
+                {ACCENT_OPTIONS.map((option) => {
+                  const selected = (aiSettings.accentColor ?? 'violet') === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={option.label}
+                      title={option.label}
+                      onClick={() => updateAiSettings({ accentColor: option.value })}
+                      className={cn(
+                        'h-8 w-8 rounded-full transition-transform duration-150 pointer-fine:hover:scale-110',
+                        selected && 'ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--surface)]'
+                      )}
+                      style={{ background: option.swatch }}
+                    />
+                  )
+                })}
+              </div>
             </div>
-            <Switch
-              checked={aiSettings.theme === 'dark'}
-              onChange={(checked) => updateAiSettings({ theme: checked ? 'dark' : 'light' })}
-              label="Mode sombre"
-            />
-          </section>
-        ) : null}
+            {!isDesktop ? (
+              <div className="flex items-center justify-between gap-4 border-t border-[var(--border)] pt-3">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <Moon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Mode sombre</p>
+                    <p className="text-[11px] leading-4 text-[var(--text-muted)]">
+                      Appliqué immédiatement, mémorisé pour les prochaines visites.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={aiSettings.theme === 'dark'}
+                  onChange={(checked) => updateAiSettings({ theme: checked ? 'dark' : 'light' })}
+                  label="Mode sombre"
+                />
+              </div>
+            ) : null}
+          </div>
+        </section>
 
         {/* ── Flux RSS ─────────────────────────────────────────────── */}
         <section className="space-y-3">
