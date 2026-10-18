@@ -33,13 +33,12 @@ export default function App() {
    * Préchauffage des vues paresseuses quand le navigateur est au repos.
    *
    * Le service worker ne précache que le graphe statique de l'entrée : sans
-   * cela, un utilisateur qui n'a jamais ouvert la cartographie se retrouverait
+   * cela, un utilisateur qui n'a jamais ouvert le briefing se retrouverait
    * avec un volet cassé une fois hors connexion. Les chunks passent par le
    * cache d'exécution du SW au vol, aucun protocole supplémentaire nécessaire.
    */
   useEffect(() => {
     const warmLazyViews = () => {
-      void import('@/components/rss/TrendMapView')
       void import('@/components/rss/TrendBriefingPanel')
       void import('@/components/rss/FeedCatalogModal')
       void import('@/components/settings/SettingsModal')

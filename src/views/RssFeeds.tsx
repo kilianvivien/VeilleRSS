@@ -1,4 +1,5 @@
 import {
+  cloneElement,
   lazy,
   Suspense,
   useCallback,
@@ -16,10 +17,9 @@ import {
   Download,
   FileDown,
   Inbox,
+  ListChecks,
   Library,
   Menu,
-  Moon,
-  Network,
   Newspaper,
   Plus,
   Radar,
@@ -28,15 +28,16 @@ import {
   Rows3,
   ScrollText,
   Settings,
-  Sun,
   Upload,
   WifiOff,
   X,
 } from 'lucide-react'
 import { Button, Input, LoadingSpinner, Modal, Select } from '@/components/ui'
-import { SlidingTabBar } from '@/components/ui/SlidingTabBar'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { Sparkline } from '@/components/rss/Sparkline'
+import { ConstellationView } from '@/components/rss/ConstellationView'
+import { TrendFocusCard } from '@/components/rss/TrendFocusCard'
+import { AppNavRail } from '@/components/rss/AppNavRail'
 import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from '@/components/rss/trendTone'
 import { SearchBar } from '@/components/search'
 import {
@@ -76,8 +77,7 @@ import {
 import { aiErrorToUserMessage } from '@/lib/ai/aiProviderError'
 
 /**
- * Vues secondaires chargées à la demande : la cartographie, le briefing, le
- * catalogue et les paramètres représentent une part importante du bundle pour
+ * Vues secondaires chargées à la demande : le briefing, le catalogue et les paramètres représentent une part importante du bundle pour
  * des écrans qu'une session n'ouvre pas forcément. Import direct (et non via
  * le baril `@/components/rss`) : un export de baril les ramènerait dans le
  * chunk d'entrée.
@@ -87,9 +87,6 @@ const FeedCatalogModal = lazy(() =>
 )
 const TrendBriefingPanel = lazy(() =>
   import('@/components/rss/TrendBriefingPanel').then((m) => ({ default: m.TrendBriefingPanel }))
-)
-const TrendMapView = lazy(() =>
-  import('@/components/rss/TrendMapView').then((m) => ({ default: m.TrendMapView }))
 )
 const SettingsModal = lazy(() =>
   import('@/components/settings/SettingsModal').then((m) => ({ default: m.SettingsModal }))
@@ -132,7 +129,7 @@ const BACK_TO_TOP_SCROLL_THRESHOLD = 700
 const BANNER_AUTO_DISMISS_MS = 30_000
 const EMPTY_RSS_ITEMS: RssItem[] = []
 
-/** Volets du panneau de droite ; « map » ouvre la cartographie en plein écran. */
+/** Vue principale : liste et lecture, tendances, ou briefing. */
 type RightPane = 'article' | 'trends' | 'briefing'
 
 async function openExternalUrl(url: string) {
@@ -247,14 +244,6 @@ export function RssFeeds() {
    */
   const [hasOpenedCatalog, setHasOpenedCatalog] = useState(false)
   const [hasOpenedSettings, setHasOpenedSettings] = useState(false)
-  /**
-   * Cartographie des tendances : montée/démontée différée pour animer
-   * l'entrée (fondu + léger zoom) et la sortie. `isTrendMapMounted` garde
-   * l'overlay dans le DOM pendant la transition de sortie.
-   */
-  const [isTrendMapMounted, setIsTrendMapMounted] = useState(false)
-  const [isTrendMapVisible, setIsTrendMapVisible] = useState(false)
-  const trendMapUnmountTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (showCatalog) setHasOpenedCatalog(true)
@@ -497,31 +486,7 @@ export function RssFeeds() {
 
   useEffect(() => () => trendRefinementAbortRef.current?.abort(), [])
   useEffect(() => () => briefingAbortRef.current?.abort(), [])
-  useEffect(
-    () => () => {
-      if (trendMapUnmountTimer.current) window.clearTimeout(trendMapUnmountTimer.current)
-    },
-    []
-  )
 
-  const openTrendMap = useCallback(() => {
-    if (trendMapUnmountTimer.current) {
-      window.clearTimeout(trendMapUnmountTimer.current)
-      trendMapUnmountTimer.current = null
-    }
-    setIsTrendMapMounted(true)
-    // Double rAF : laisse le navigateur peindre l'état initial (transparent,
-    // décalé) avant de basculer vers l'état visible, sinon aucune transition.
-    requestAnimationFrame(() => requestAnimationFrame(() => setIsTrendMapVisible(true)))
-  }, [])
-
-  const closeTrendMap = useCallback(() => {
-    setIsTrendMapVisible(false)
-    trendMapUnmountTimer.current = window.setTimeout(() => {
-      setIsTrendMapMounted(false)
-      trendMapUnmountTimer.current = null
-    }, 320)
-  }, [])
 
   // Un échec d’affinage porte sur un rapport précis : il n’a plus de sens dès
   // que les articles ou la fenêtre changent. La sélection, elle, reste.
@@ -1113,6 +1078,10 @@ export function RssFeeds() {
 
   const targetLanguage = (settings.translationTargetLanguage || 'fr') as LanguageCode
   const subscribedUrls = useMemo(() => new Set(feeds.map((feed) => feed.url)), [feeds])
+  const lastRefreshAt = useMemo(
+    () => feeds.reduce<number | null>((latest, feed) => (feed.lastSuccessAt && (!latest || feed.lastSuccessAt > latest) ? feed.lastSuccessAt : latest), null),
+    [feeds]
+  )
   const listTitle = activeFeed
     ? activeFeed.title
     : smartView === 'unread'
@@ -1134,18 +1103,14 @@ export function RssFeeds() {
 
   /** Navigation mobile : re-taper l'onglet actif ramène à la racine (liste). */
   const handleMobileTab = useCallback(
-    (value: RightPane | 'map') => {
-      if (value === 'map') {
-        openTrendMap()
-        return
-      }
+    (value: RightPane) => {
       if (value === rightPane) {
         if (value === 'article' && openItemId) setOpenItemId(null)
         return
       }
       setRightPane(value)
     },
-    [openItemId, openTrendMap, rightPane]
+    [openItemId, rightPane]
   )
 
   /** Rester sur les tendances permet de consulter immédiatement le détail du sujet. */
@@ -1235,12 +1200,6 @@ export function RssFeeds() {
     </div>
   )
 
-  const sourcesColumn = (
-    <aside className="flex min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-auto p-2">{feedRailElement}</div>
-      {railActionBar}
-    </aside>
-  )
 
   /**
    * Tirer pour rafraîchir : seul geste de rafraîchissement sur mobile, le
@@ -1283,7 +1242,8 @@ export function RssFeeds() {
   }, [prefersReducedMotion])
 
   /** La barre d'actions occupe le bas du volet : le bouton flottant la dégage. */
-  const showListActionBar = isDesktop || selectedCount > 0
+  // Barre contextuelle : elle n'apparaît qu'avec une sélection, partout.
+  const showListActionBar = selectedCount > 0
 
   const articleListSection = (
     <section className="relative flex h-full min-h-0 flex-col" aria-label="Articles">
@@ -1322,6 +1282,28 @@ export function RssFeeds() {
               className="w-[124px] shrink-0"
               triggerClassName="field-row-control"
             />
+            <Button
+              size="sm"
+              variant="ghost"
+              className="hidden h-9 w-9 shrink-0 p-0 lg:inline-flex"
+              onClick={handleSelectVisible}
+              disabled={visibleItems.length === 0}
+              title="Sélectionner les articles visibles"
+              aria-label="Sélectionner les articles visibles"
+            >
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-10 w-10 shrink-0 p-0 lg:h-9 lg:w-9"
+              onClick={() => void handleMarkAllRead()}
+              disabled={totals.unread === 0}
+              title="Marquer tout comme lu"
+              aria-label="Marquer tout comme lu"
+            >
+              <CheckCheck className="h-4 w-4" aria-hidden="true" />
+            </Button>
             <Button
               size="sm"
               variant="ghost"
@@ -1492,46 +1474,39 @@ export function RssFeeds() {
           )}
         </div>
 
-        {/* Sur mobile, cette barre est contextuelle : elle n'apparaît qu'après
-            la sélection d'au moins un article. Le bureau la garde toujours. */}
+        {/* Barre de sélection flottante : n'apparaît qu'avec au moins un
+            article coché, pour laisser la place aux contenus le reste du temps. */}
         {showListActionBar ? (
-          <div className="flex flex-shrink-0 items-center gap-1.5 border-t border-[var(--border)] px-3 py-1.5">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSelectVisible}
-              disabled={visibleItems.length === 0}
-              aria-label="Sélectionner les articles visibles"
-            >
-              <Check className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Sélection visible</span>
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => void handleMarkAllRead()}
-              disabled={totals.unread === 0}
-              title="Marquer tout comme lu"
-              aria-label="Marquer tout comme lu"
-            >
-              <CheckCheck className="h-4 w-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Tout lu</span>
-            </Button>
-            <Button
-              size="sm"
-              variant={selectedCount > 0 ? 'primary' : 'ghost'}
-              className="ml-auto"
-              onClick={() => void handleExportSelection()}
-              disabled={selectedCount === 0}
-            >
-              <FileDown className="h-4 w-4" aria-hidden="true" />
-              <span className="sm:hidden">
-                Exporter{selectedCount > 0 ? ` (${selectedCount})` : ''}
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center px-3">
+            <div className="cst-menu pointer-events-auto flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-elevated)] py-1 pr-1 pl-3 shadow-[0_14px_40px_rgba(0,0,0,0.28)]">
+              <span className="mr-1 text-xs font-medium whitespace-nowrap text-[var(--text-primary)] tabular-nums">
+                {selectedCount} sélectionné{selectedCount > 1 ? 's' : ''}
               </span>
-              <span className="hidden sm:inline">
-                Exporter la sélection{selectedCount > 0 ? ` (${selectedCount})` : ''}
-              </span>
-            </Button>
+              <button
+                type="button"
+                onClick={handleSelectVisible}
+                disabled={visibleItems.length === 0}
+                className="flex h-9 items-center gap-1.5 rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+              >
+                <Check className="h-3.5 w-3.5" aria-hidden="true" />
+                Tout le visible
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedItems([])}
+                className="flex h-9 items-center rounded-full px-3 text-xs text-[var(--text-secondary)] transition-colors pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+              >
+                Effacer
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleExportSelection()}
+                className="flex h-9 items-center gap-1.5 rounded-full bg-[var(--text-primary)] px-4 text-xs font-semibold text-[var(--bg-primary)] transition-opacity pointer-fine:hover:opacity-90"
+              >
+                <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+                Exporter
+              </button>
+            </div>
           </div>
         ) : null}
 
@@ -1557,6 +1532,24 @@ export function RssFeeds() {
       </section>
   )
 
+  const constellationProps = {
+    report: displayedTrendReport,
+    itemById,
+    feedById,
+    activeKey: activeTerm && activeTerm.kind !== 'keyword' ? activeTerm.key : null,
+    watchedTerms: watchedKeywords,
+    onSelectTerm: selectTerm,
+    onClearSelection: () => setActiveTerm(null),
+    onOpenItem: handleOpenItem,
+    onViewArticles: () => {
+      if (!isDesktop) setOpenItemId(null)
+      setRightPane('article')
+    },
+    onWatchTerm: watchKeyword,
+  }
+
+  const constellationCompactElement = <ConstellationView {...constellationProps} compact />
+
   const trendsPanelElement = (
     <TrendPanel
       report={displayedTrendReport}
@@ -1578,7 +1571,11 @@ export function RssFeeds() {
       }}
       activeTermKey={activeTerm?.kind === 'keyword' ? null : activeTerm?.key ?? null}
       onClearSelection={() => setActiveTerm(null)}
-      onViewArticles={!isDesktop ? () => { setOpenItemId(null); setRightPane('article') } : undefined}
+      onViewArticles={() => {
+        if (!isDesktop) setOpenItemId(null)
+        setRightPane('article')
+      }}
+      leading={isDesktop ? undefined : constellationCompactElement}
       aiRefinement={{
         available: trendProviderReady,
         loading: isRefiningTrends,
@@ -1591,6 +1588,26 @@ export function RssFeeds() {
         clearAiTrendSelection()
         setTrendRefinementError(null)
       }}
+    />
+  )
+
+  const desktopTrendsAsideElement = isDesktop ? cloneElement(trendsPanelElement, { showFocus: false }) : null
+
+  /** Vue « Tendances » du bureau : la constellation, avec le classement détaillé à droite. */
+  const constellationElement = (
+    <ConstellationView
+      {...constellationProps}
+      aside={desktopTrendsAsideElement}
+      focusPanel={
+        displayedTrendReport.focus ? (
+          <TrendFocusCard
+            focus={displayedTrendReport.focus}
+            report={displayedTrendReport}
+            onClear={() => setActiveTerm(null)}
+            onViewArticles={() => setRightPane('article')}
+          />
+        ) : undefined
+      }
     />
   )
 
@@ -1659,126 +1676,45 @@ export function RssFeeds() {
     />
   )
 
-  /** Volet droit bureau : lecture, tendances ou briefing selon l'onglet. */
-  const rightPaneContent =
-    rightPane === 'trends'
-      ? trendsPanelElement
-      : rightPane === 'briefing'
-        ? briefingPanelElement
-        : readingPaneElement
-
-  const rightColumn = (
-    <section className="flex min-h-0 flex-col" aria-label="Lecture et tendances">
-      <div className="flex flex-shrink-0 items-center border-b border-[var(--border)] px-3 py-2">
-        <SlidingTabBar<RightPane | 'map'>
-          size="xs"
-          value={rightPane}
-          onChange={(value) => {
-            if (value === 'map') {
-              openTrendMap()
-              return
-            }
-            setRightPane(value)
-          }}
-          tabs={[
-            { value: 'article', label: 'Article', icon: <Newspaper className="h-3.5 w-3.5" /> },
-            { value: 'trends', label: 'Tendances', icon: <Radar className="h-3.5 w-3.5" /> },
-            {
-              value: 'map',
-              label: 'Carte',
-              ariaLabel: 'Cartographie',
-              title: 'Cartographie des tendances',
-              icon: <Network className="h-3.5 w-3.5" />,
-            },
-            {
-              value: 'briefing',
-              label: 'Briefing',
-              ariaLabel: 'Briefing IA',
-              title: 'Briefing IA',
-              icon: <ScrollText className="h-3.5 w-3.5" />,
-            },
-          ]}
-        />
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-hidden">{rightPaneContent}</div>
-    </section>
-  )
+  const statusBanner =
+    !isOnline ? (
+        <div
+          className="flex flex-shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/8 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-300"
+          role="status"
+        >
+          <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate">
+            Hors connexion — vos articles restent consultables.
+          </span>
+        </div>
+      ) : error || notice ? (
+        <div
+          className={cn(
+            'flex flex-shrink-0 items-center gap-2 border-b px-4 py-1.5 text-xs',
+            error
+              ? 'border-red-500/20 bg-red-500/8 text-red-700 dark:text-red-300'
+              : 'border-emerald-500/20 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300'
+          )}
+          role="status"
+        >
+          <span className="min-w-0 flex-1 truncate">{error ?? notice}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null)
+              setNotice(null)
+            }}
+            aria-label="Masquer ce message"
+            className="rounded p-0.5 hover:bg-[var(--hover)]"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        </div>
+      ) : null
 
   return (
     <div className="relative flex h-full flex-col overflow-hidden bg-[var(--bg-primary)]">
-      {isDesktop ? (
-        /* En-tête flottant, transparent au repos comme les barres d'action des autres vues. */
-        <header className="relative z-20 flex flex-shrink-0 flex-wrap items-center gap-x-4 gap-y-3 border-b border-[var(--border)] bg-transparent px-8 pt-[calc(env(safe-area-inset-top)+1rem)] pb-3">
-          {/* Titre calibré sur la hauteur de la barre d'actions : chaque
-              pixel repris ici va aux volets d'articles. */}
-          <div className="flex min-w-0 items-center gap-2.5">
-            {/* 44 px : exactement la hauteur du titre et de sa légende empilés. */}
-            <img
-              src="/favicon-64.png"
-              alt=""
-              width={44}
-              height={44}
-              decoding="async"
-              className="h-11 w-11 shrink-0 rounded-[12px] shadow-[0_5px_14px_rgba(47,111,228,0.28)]"
-            />
-            <div className="min-w-0 leading-tight">
-              <h1 className="truncate text-xl font-bold text-[var(--text-primary)]">
-                Outil de veille RSS
-              </h1>
-              <p className="truncate text-xs text-[var(--text-secondary)]">
-                {feeds.length === 0
-                  ? 'Aucune source suivie'
-                  : `Veille de ${feeds.length} source${feeds.length > 1 ? 's' : ''} · ${totals.unread} article${totals.unread > 1 ? 's' : ''} non lu${totals.unread > 1 ? 's' : ''}`}
-              </p>
-            </div>
-          </div>
-
-          <div className="ml-auto flex flex-wrap items-center gap-1.5">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => void refreshAllFeeds()}
-              isLoading={isRefreshing}
-              disabled={feeds.length === 0 || !isOnline}
-              title="Rafraîchir toutes les sources"
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-              Rafraîchir
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => setShowCatalog(true)}>
-              <Library className="h-4 w-4" aria-hidden="true" />
-              Sources
-            </Button>
-            {/* Bascule de thème : l'icône annonce la destination, pas l'état. */}
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 p-0"
-              title={isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-label={isDarkTheme ? 'Passer en mode clair' : 'Passer en mode sombre'}
-              aria-pressed={isDarkTheme}
-              onClick={() => updateAiSettings({ theme: isDarkTheme ? 'light' : 'dark' })}
-            >
-              {isDarkTheme ? (
-                <Sun className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <Moon className="h-4 w-4" aria-hidden="true" />
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-9 w-9 p-0"
-              title="Paramètres"
-              aria-label="Paramètres"
-              onClick={() => setShowSettingsModal(true)}
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </div>
-        </header>
-      ) : (
+      {isDesktop ? null : (
         /* En-tête compact mobile : actions en icônes, cibles ≥ 40 px. */
         <header className="relative z-20 flex flex-shrink-0 items-center gap-1 bg-transparent px-2 pt-[calc(env(safe-area-inset-top)+0.625rem)] pb-2">
           <Button
@@ -1837,47 +1773,52 @@ export function RssFeeds() {
       )}
 
       {/* Messages en bandeau fin : ils ne doivent pas repousser les volets */}
-      {!isOnline ? (
-        <div
-          className="flex flex-shrink-0 items-center gap-2 border-b border-amber-500/20 bg-amber-500/8 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-300"
-          role="status"
-        >
-          <WifiOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1 truncate">
-            Hors connexion — vos articles restent consultables.
-          </span>
-        </div>
-      ) : error || notice ? (
-        <div
-          className={cn(
-            'flex flex-shrink-0 items-center gap-2 border-b px-4 py-1.5 text-xs',
-            error
-              ? 'border-red-500/20 bg-red-500/8 text-red-700 dark:text-red-300'
-              : 'border-emerald-500/20 bg-emerald-500/8 text-emerald-700 dark:text-emerald-300'
-          )}
-          role="status"
-        >
-          <span className="min-w-0 flex-1 truncate">{error ?? notice}</span>
-          <button
-            type="button"
-            onClick={() => {
-              setError(null)
-              setNotice(null)
-            }}
-            aria-label="Masquer ce message"
-            className="rounded p-0.5 hover:bg-[var(--hover)]"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-          </button>
-        </div>
-      ) : null}
+      {isDesktop ? null : statusBanner}
 
       {isDesktop ? (
-        /* Bureau : grille trois colonnes inchangée. */
-        <div className="grid min-h-0 flex-1 grid-cols-[200px_minmax(0,0.95fr)_minmax(0,1.05fr)] divide-x divide-[var(--border)]">
-          {sourcesColumn}
-          {articleListSection}
-          {rightColumn}
+        /* Bureau : rail de navigation, puis une vue plein écran. */
+        <div className="grid min-h-0 flex-1 grid-cols-[248px_minmax(0,1fr)]">
+          <AppNavRail
+            view={rightPane}
+            onNavigate={setRightPane}
+            unreadCount={totals.unread}
+            feedCount={feeds.length}
+            hasRisingTopics={displayedTrendReport.terms.some((term) => {
+              const tone = trendTone(term)
+              return tone === 'hot' || tone === 'new'
+            })}
+            isRefreshing={isRefreshing}
+            isOnline={isOnline}
+            lastRefreshAt={lastRefreshAt}
+            isDarkTheme={isDarkTheme}
+            onRefresh={() => void refreshAllFeeds()}
+            onOpenCatalog={() => setShowCatalog(true)}
+            onAddFeedUrl={() => {
+              setAddFeedError(null)
+              setShowAddFeedModal(true)
+            }}
+            onImportOpml={() => void handleImportOpml()}
+            onExportOpml={() => void handleExportOpml()}
+            onToggleTheme={() => updateAiSettings({ theme: isDarkTheme ? 'light' : 'dark' })}
+            onOpenSettings={() => setShowSettingsModal(true)}
+          >
+            {feedRailElement}
+          </AppNavRail>
+          <main className="flex min-h-0 flex-col border-l border-[var(--border)]">
+            {statusBanner}
+            <div className="min-h-0 flex-1 overflow-hidden">
+              {rightPane === 'trends' ? (
+                constellationElement
+              ) : rightPane === 'briefing' ? (
+                <div className="mx-auto h-full max-w-3xl border-x border-[var(--border)]">{briefingPanelElement}</div>
+              ) : (
+                <div className="grid h-full grid-cols-[minmax(360px,0.85fr)_minmax(0,1.15fr)] divide-x divide-[var(--border)]">
+                  {articleListSection}
+                  {readingPaneElement}
+                </div>
+              )}
+            </div>
+          </main>
         </div>
       ) : (
         <>
@@ -2034,48 +1975,6 @@ export function RssFeeds() {
         </Suspense>
       ) : null}
 
-      {/* Cartographie : recouvre la vue principale avec une transition douce. */}
-      {isTrendMapMounted ? (
-        <div
-          className={cn(
-            'fixed inset-0 z-50 flex flex-col overflow-hidden bg-[var(--bg-primary)] transition-[opacity,transform] duration-300',
-            isTrendMapVisible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-3 scale-[0.985] opacity-0'
-          )}
-          style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-        >
-          <Suspense fallback={lazyPanelFallback}>
-            <TrendMapView
-              report={displayedTrendReport}
-              feeds={feeds}
-              items={items}
-              activeFeedId={activeFeedId}
-              windowHours={trendWindowHours}
-              onWindowChange={(hours) => updateRssSettings({ trendWindowHours: hours })}
-              onOpenTerm={(term) => {
-                setActiveTerm({ key: term.key, label: term.label })
-                setQuery('')
-                setRightPane(isDesktop ? 'trends' : 'article')
-                closeTrendMap()
-              }}
-              onOpenItem={(item) => {
-                handleOpenItem(item)
-                closeTrendMap()
-              }}
-              onClose={() => closeTrendMap()}
-            />
-          </Suspense>
-          {!isDesktop ? (
-            <MobileTabBar
-              value="map"
-              onChange={(value) => {
-                if (value === 'map') return
-                closeTrendMap()
-                handleMobileTab(value)
-              }}
-            />
-          ) : null}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -2109,19 +2008,18 @@ const MOBILE_TABS = [
   { value: 'article', label: 'Articles', icon: Newspaper },
   { value: 'trends', label: 'Tendances', icon: Radar },
   { value: 'briefing', label: 'Briefing', icon: ScrollText },
-  { value: 'map', label: 'Carte', icon: Network },
 ] as const
 
 /**
- * Barre d'onglets basse, à hauteur de pouce. « Carte » ouvre l'overlay plein
- * écran ; re-taper « Articles » pendant la lecture ramène à la liste.
+ * Barre d'onglets basse, à hauteur de pouce ; re-taper « Articles » pendant
+ * la lecture ramène à la liste.
  */
 function MobileTabBar({
   value,
   onChange,
 }: {
-  value: RightPane | 'map'
-  onChange: (value: RightPane | 'map') => void
+  value: RightPane
+  onChange: (value: RightPane) => void
 }) {
   return (
     <nav

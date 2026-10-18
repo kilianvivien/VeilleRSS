@@ -107,8 +107,10 @@ const SW_TEMPLATE_PATH = path.resolve(import.meta.dirname, 'src/pwa/sw.template.
 const SW_OPTIONAL_PRECACHE = [
   '/manifest.webmanifest',
   '/favicon.ico',
-  '/favicon.svg',
   '/favicon-64.png',
+  '/favicon-dark-64.png',
+  '/app-icon-light.png',
+  '/app-icon-dark.png',
   '/apple-touch-icon.png',
   '/pwa-192.png',
   '/pwa-512.png',

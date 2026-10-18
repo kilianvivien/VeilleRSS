@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
   ArrowDownRight,
   ArrowRight,
@@ -58,6 +58,13 @@ interface TrendPanelProps {
   }
   onRefineWithAi: () => void
   onClearAiRefinement: () => void
+  /** Contenu placé en tête de la zone défilante (constellation sur mobile). */
+  leading?: ReactNode
+  /**
+   * Faux quand l'écran affiche déjà le détail du sujet ailleurs (vue
+   * Constellation du bureau) : le panneau n'en montre pas un second.
+   */
+  showFocus?: boolean
 }
 
 function formatDelta(term: Pick<TrendTerm, 'delta' | 'changeRatio' | 'isNew'>): string {
@@ -112,6 +119,8 @@ export function TrendPanel({
   aiRefinement,
   onRefineWithAi,
   onClearAiRefinement,
+  leading,
+  showFocus = true,
 }: TrendPanelProps) {
   const [newKeyword, setNewKeyword] = useState('')
   const watchedSet = new Set(watchedTerms.map((term) => term.toLowerCase()))
@@ -194,8 +203,11 @@ export function TrendPanel({
       ) : null}
 
       <div className="min-h-0 flex-1 space-y-4 overflow-auto p-3">
+        {leading}
         {report.focus ? (
-          <TrendFocusCard focus={report.focus} report={report} onClear={onClearSelection} onViewArticles={onViewArticles} />
+          showFocus ? (
+            <TrendFocusCard focus={report.focus} report={report} onClear={onClearSelection} onViewArticles={onViewArticles} />
+          ) : null
         ) : (
         <section aria-label="Volume de publication">
           <div className="rounded-card border border-[var(--border)] bg-[var(--surface-alt,var(--surface))] p-3">

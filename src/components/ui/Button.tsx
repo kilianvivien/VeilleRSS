@@ -32,15 +32,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         data-ui-button="true"
         className={cn(
-          'inline-flex items-center justify-center rounded-macos font-medium',
+          'inline-flex items-center justify-center rounded-xl font-medium',
           'transition-all duration-150 active:scale-[0.98]',
           'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1',
           {
             // Variants
-            'bg-[var(--accent-muted)] border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] text-[var(--text-primary)] hover:bg-[color-mix(in_srgb,var(--accent)_26%,transparent)] focus-visible:ring-[var(--focus-ring)]':
+            // Action principale « Constellation » : pastille pleine, contraste inversé.
+            'bg-[var(--text-primary)] text-[var(--bg-primary)] font-semibold hover:opacity-90 focus-visible:ring-[var(--focus-ring)]':
               variant === 'primary',
-            'bg-[var(--surface)] text-[var(--text-secondary)] border border-[var(--border)] hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus-visible:ring-[var(--focus-ring)]':
+            'bg-transparent text-[var(--text-primary)] border border-[var(--border-strong)] hover:bg-[var(--hover)] focus-visible:ring-[var(--focus-ring)]':
               variant === 'secondary',
             'bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 focus-visible:ring-red-500/40':
               variant === 'danger',

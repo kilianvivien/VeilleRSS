@@ -82,36 +82,15 @@ export function FeedRail({
   return (
     <nav aria-label="Sources RSS" className="space-y-4">
       <ul className={cn('space-y-1', isDrawer && 'space-y-1.5')}>
+        {/* Les vues « Non lus » et « Sauvegardés » vivent dans la liste
+            (contrôle en pilule) : le rail ne garde que le retour à toutes
+            les sources. */}
         <SmartViewRow
           icon={<Rss className="h-4 w-4" aria-hidden="true" />}
-          label="Tous les articles"
+          label="Toutes les sources"
           count={totals.all}
-          active={!activeFeedId && smartView === 'all'}
-          onClick={() => {
-            onSelectFeed(null)
-            onSelectSmartView('all')
-          }}
-        />
-        <SmartViewRow
-          icon={<Inbox className="h-4 w-4" aria-hidden="true" />}
-          label="Non lus"
-          count={totals.unread}
-          emphasizeCount
-          active={!activeFeedId && smartView === 'unread'}
-          onClick={() => {
-            onSelectFeed(null)
-            onSelectSmartView('unread')
-          }}
-        />
-        <SmartViewRow
-          icon={<Bookmark className="h-4 w-4" aria-hidden="true" />}
-          label="Sauvegardés"
-          count={totals.saved}
-          active={!activeFeedId && smartView === 'saved'}
-          onClick={() => {
-            onSelectFeed(null)
-            onSelectSmartView('saved')
-          }}
+          active={!activeFeedId}
+          onClick={() => onSelectFeed(null)}
         />
       </ul>
 

@@ -185,8 +185,11 @@ describe('selected trend summary wiring', () => {
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toHaveTextContent('Mot-clé suivi')
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
+    // Au bureau, la liste est une vue à part : on y passe par le rail.
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
     expect(screen.getAllByTestId('article-row')).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'Retirer le filtre de tendance' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Tendances/ }))
     expect(screen.getByRole('region', { name: 'Volume de publication' })).toBeInTheDocument()
   })
 })
@@ -213,6 +216,7 @@ describe('RssFeeds progressive article rendering', () => {
 
   it('mounts bounded batches while count and bulk selection use all filtered items', () => {
     render(<RssFeeds />)
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
 
     expect(screen.getAllByTestId('article-row')).toHaveLength(80)
     expect(screen.getByTestId('filtered-article-count')).toHaveTextContent('200')
@@ -257,9 +261,11 @@ describe('RssFeeds mobile composition', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
     expect(nav).toBeInTheDocument()
-    for (const label of ['Articles', 'Tendances', 'Briefing', 'Carte']) {
+    for (const label of ['Articles', 'Tendances', 'Briefing']) {
       expect(within(nav).getByText(label)).toBeInTheDocument()
     }
+    // La cartographie a été remplacée par la constellation des tendances.
+    expect(within(nav).queryByText('Carte')).not.toBeInTheDocument()
 
     expect(screen.getAllByTestId('article-row')).toHaveLength(10)
   })
@@ -430,8 +436,10 @@ describe('RssFeeds desktop composition', () => {
     try {
       render(<RssFeeds />)
 
+      // Au bureau, l'export OPML est rangé dans le menu des sources du rail.
+      fireEvent.click(screen.getByRole('button', { name: 'Autres actions sur les sources' }))
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Exporter en OPML' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Exporter en OPML' }))
       })
 
       expect(screen.getByText('1 flux exporté en OPML.')).toBeInTheDocument()
