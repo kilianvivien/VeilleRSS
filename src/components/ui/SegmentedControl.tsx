@@ -34,18 +34,18 @@ export function SegmentedControl<T extends string>({
   return (
     <div
       className={cn(
-        'relative inline-flex rounded-card border border-[var(--glass-border)] p-1 glass-surface',
+        'relative inline-flex rounded-full border border-[var(--glass-border)] p-[3px] glass-surface',
         className
       )}
     >
       {/* Sliding highlight pill */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-1 rounded-macos"
+        className="pointer-events-none absolute inset-[3px] rounded-full"
         style={{ width: segmentWidthPct }}
       >
         <div
-          className="h-full w-full rounded-macos bg-[var(--accent-muted)] shadow-sm transition-transform duration-200 ease-out"
+          className="h-full w-full rounded-full bg-[var(--text-primary)] shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none"
           style={{ transform: `translateX(${selectedIndex * 100}%)` }}
         />
       </div>
@@ -58,15 +58,16 @@ export function SegmentedControl<T extends string>({
             type="button"
             disabled={disabled}
             onClick={() => onChange(opt.value)}
+            aria-pressed={active}
             style={{ width: segmentWidthPct }}
             className={cn(
-              'relative z-10 flex-1 rounded-macos font-medium flex items-center justify-center gap-1.5 whitespace-nowrap',
+              'relative z-10 flex-1 rounded-full font-medium flex items-center justify-center gap-1.5 whitespace-nowrap',
               'transition-colors duration-200',
               size === 'sm' ? 'px-3 py-1 text-xs' : 'px-4 py-2 text-sm',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               active
-                ? 'text-[var(--text-primary)]'
-                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                ? 'text-[var(--bg-primary)]'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
             )}
           >
             {opt.icon}

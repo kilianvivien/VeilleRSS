@@ -51,11 +51,10 @@ vi.mock('@/components/rss', async () => ({
     ) : (
       <div />
     ),
-  TrendPanel: (await import('@/components/rss/TrendPanel')).TrendPanel,
   formatRefreshInterval: () => '',
-  RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: () => void }) => (
+  RssArticleRow: ({ item, onOpen }: { item: RssItem; onOpen: (item: RssItem) => void }) => (
     <li data-testid="article-row">
-      <button type="button" onClick={onOpen}>
+      <button type="button" onClick={() => onOpen(item)}>
         Ouvrir {item.title}
       </button>
     </li>
@@ -99,7 +98,10 @@ function makeItems(count: number): RssItem[] {
 }
 
 describe('selected trend summary wiring', () => {
+  // Bureau et mobile partagent la vue Constellation : on choisit un sujet en
+  // touchant son nœud dans le graphe.
   beforeEach(() => {
+    isDesktopViewport = false
     const samples = makeItems(6).map((item, index) => ({
       ...item,
       title: index < 3 ? 'Ankara' : 'London',
@@ -123,14 +125,12 @@ describe('selected trend summary wiring', () => {
   it('switches the top card to the clicked topic, updates the window, and restores the global view', () => {
     render(<RssFeeds />)
     expect(screen.getByRole('region', { name: 'Volume de publication' })).toHaveTextContent('5')
-    const terms = screen.getByRole('region', { name: 'Termes en hausse' })
-    fireEvent.click(within(terms).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('2')
     expect(within(card).getByText('Sources').nextElementSibling).toHaveTextContent('2')
     expect(card).toHaveTextContent('+100 %')
     expect(card).toHaveTextContent('40 % des articles')
-    expect(screen.queryByRole('region', { name: 'Volume de publication' })).not.toBeInTheDocument()
     expect(within(card).getByRole('group', { name: 'Évolution de Ankara' }).querySelectorAll('button')).toHaveLength(12)
     const intervals = within(within(card).getByRole('group', { name: 'Évolution de Ankara' })).getAllByRole('button')
     fireEvent.click(intervals[0])
@@ -151,7 +151,7 @@ describe('selected trend summary wiring', () => {
   it('keeps the topic detail on mobile and provides a separate route to its articles', () => {
     isDesktopViewport = false
     render(<RssFeeds />)
-    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toBeInTheDocument()
     fireEvent.click(within(card).getByRole('button', { name: 'Voir les articles' }))
@@ -163,7 +163,7 @@ describe('selected trend summary wiring', () => {
 
   it('refreshes the selected topic when a new article arrives', () => {
     render(<RssFeeds />)
-    fireEvent.click(within(screen.getByRole('region', { name: 'Termes en hausse' })).getByRole('button', { name: /^Ankara/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Ankara :/ }))
     act(() => {
       const fresh = { ...makeItems(1)[0], id: 'fresh', title: 'Ankara', publishedAt: Date.now() - 1000 }
       useRssStore.setState({ items: [...useRssStore.getState().items, fresh] })
@@ -185,8 +185,11 @@ describe('selected trend summary wiring', () => {
     const card = screen.getByRole('region', { name: 'Détail du sujet : Ankara' })
     expect(card).toHaveTextContent('Mot-clé suivi')
     expect(within(card).getByText('Articles').nextElementSibling).toHaveTextContent('3')
+    // La liste est une vue à part : on y passe par la navigation.
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
     expect(screen.getAllByTestId('article-row')).toHaveLength(4)
     fireEvent.click(screen.getByRole('button', { name: 'Retirer le filtre de tendance' }))
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Tendances/ }))
     expect(screen.getByRole('region', { name: 'Volume de publication' })).toBeInTheDocument()
   })
 })
@@ -213,6 +216,7 @@ describe('RssFeeds progressive article rendering', () => {
 
   it('mounts bounded batches while count and bulk selection use all filtered items', () => {
     render(<RssFeeds />)
+    fireEvent.click(within(screen.getByRole('navigation', { name: 'Navigation principale' })).getByRole('button', { name: /^Articles/ }))
 
     expect(screen.getAllByTestId('article-row')).toHaveLength(80)
     expect(screen.getByTestId('filtered-article-count')).toHaveTextContent('200')
@@ -257,19 +261,22 @@ describe('RssFeeds mobile composition', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
     expect(nav).toBeInTheDocument()
-    for (const label of ['Articles', 'Tendances', 'Briefing', 'Carte']) {
+    for (const label of ['Articles', 'Tendances', 'Briefing']) {
       expect(within(nav).getByText(label)).toBeInTheDocument()
     }
+    // La cartographie a été remplacée par la constellation des tendances.
+    expect(within(nav).queryByText('Carte')).not.toBeInTheDocument()
 
     expect(screen.getAllByTestId('article-row')).toHaveLength(10)
   })
 
-  it('opens the sources drawer from the header and closes it again', () => {
+  it('opens the sources drawer from the tab bar and closes it again', () => {
     render(<RssFeeds />)
 
     expect(screen.queryByRole('dialog', { name: 'Sources et vues' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ouvrir les sources et vues' }))
+    const nav = screen.getByRole('navigation', { name: 'Navigation principale' })
+    fireEvent.click(within(nav).getByRole('button', { name: 'Sources' }))
     const drawer = screen.getByRole('dialog', { name: 'Sources et vues' })
     expect(drawer).toBeInTheDocument()
 
@@ -430,8 +437,10 @@ describe('RssFeeds desktop composition', () => {
     try {
       render(<RssFeeds />)
 
+      // Au bureau, l'export OPML est rangé dans le menu des sources du rail.
+      fireEvent.click(screen.getByRole('button', { name: 'Autres actions sur les sources' }))
       await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Exporter en OPML' }))
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Exporter en OPML' }))
       })
 
       expect(screen.getByText('1 flux exporté en OPML.')).toBeInTheDocument()

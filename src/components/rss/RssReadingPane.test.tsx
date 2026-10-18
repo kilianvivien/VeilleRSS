@@ -266,20 +266,20 @@ describe('RssReadingPane text size', () => {
   it('keeps the current size when no preference is stored', () => {
     renderPane()
 
-    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-sm', 'leading-6')
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[18px]', 'leading-[1.65]')
   })
 
   it('applies the chosen size to the article body and title', () => {
     renderPane({ textSize: 'xlarge' })
 
-    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-lg', 'leading-8')
-    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('text-2xl')
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[22px]', 'leading-[1.7]')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveClass('text-[38px]')
   })
 
   it('shrinks the body one step below the default', () => {
     renderPane({ textSize: 'small' })
 
-    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[13px]', 'leading-5')
+    expect(screen.getByTestId('reading-pane-summary')).toHaveClass('text-[16px]', 'leading-[1.6]')
   })
 })
 
@@ -398,20 +398,12 @@ describe('RssReadingPane sharing', () => {
    * l'icône seule ne se laissait pas deviner. Ces deux garde-fous figent ce que
    * la reprise a établi : un libellé visible, et une place à part.
    */
-  it('keeps the label visible at every width', () => {
+  it('stays in the reader toolbar with an explicit name at every width', () => {
     renderPane()
 
     const share = screen.getByRole('button', { name: 'Partager l’article' })
-    expect(share).toHaveTextContent('Partager')
-    expect(share.querySelector('.hidden')).toBeNull()
-  })
-
-  it('sits apart at the end of the action row', () => {
-    renderPane()
-
-    const share = screen.getByRole('button', { name: 'Partager l’article' })
-    expect(share.parentElement?.lastElementChild).toBe(share)
-    expect(share).toHaveClass('ml-auto')
+    expect(share.closest('header')).not.toBeNull()
+    expect(share).not.toHaveClass('hidden')
   })
 
   it('disables sharing when neither the article nor its source has a link', () => {

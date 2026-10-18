@@ -1,3 +1,18 @@
+# Extension française et européenne du catalogue
+
+Contrôle effectué le **18 octobre 2026**, vers **17:00 UTC**, avec `npm run check:feeds` (même méthode que ci-dessous : proxy de production, parseur de l'application, au moins un article daté et lié).
+
+Le catalogue passe de **107 à 201 sources** et de **16 à 29 bouquets**. Les **94 nouvelles sources** ont toutes répondu avec des articles datés.
+
+- **France** : grands quotidiens, audiovisuel et information continue, politique et débats d'idées, regards sur le monde, économie, presse régionale, action publique et administration.
+- **Europe francophone** : Belgique et Suisse.
+- **Europe** : affaires européennes en français, presse allemande, Europe du Sud, Europe du Nord et îles britanniques, Europe centrale, orientale et balte.
+- **Institutions** : Parlement européen, Conseil de l'UE (français) et BCE.
+
+Langues ajoutées : italien, néerlandais, polonais, finnois et suédois.
+
+Candidats écartés : flux figés depuis plusieurs mois (Corriere della Sera, Ifri, Bruegel, numerique.gouv.fr) ; réponses 403 ou 404 depuis le proxy (Euractiv, Le Point, La Gazette des communes, Courrier des maires, info.gouv.fr, Sud Ouest, Le Télégramme, ECFR, Kathimerini) ; formats non lus (Vie publique, Les Echos « Une », Institut Delors). **Acteurs publics** publie un flux valide, mais vide : aucune de ses rubriques n'expose d'article en RSS à la date du contrôle.
+
 # Vérification de l’extension internationale du catalogue
 
 Contrôle effectué le **30 août 2026**, vers **08:00 UTC**, depuis l’environnement local de développement.

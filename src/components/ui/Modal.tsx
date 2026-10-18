@@ -91,10 +91,10 @@ export function Modal({
         >
           <div
             className={cn(
-              'relative pointer-events-auto w-full glass-surface-strong modal-glass-shell modal-content-shell',
-              'border border-[var(--glass-border)]',
+              'relative pointer-events-auto w-full modal-content-shell',
+              'border border-[var(--border)] bg-[var(--surface-elevated)]',
               'transform-gpu will-change-[transform,opacity]',
-              'rounded-t-overlay border-b-0 sm:border-b sm:rounded-b-overlay sm:rounded-overlay',
+              'rounded-t-[26px] border-b-0 sm:border-b sm:rounded-[24px]',
               'max-h-[92dvh] overflow-y-auto overscroll-contain sm:max-h-none sm:overflow-hidden',
               {
                 'sm:max-w-sm': size === 'sm',
@@ -105,11 +105,6 @@ export function Modal({
               className
             )}
           >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(120%_140%_at_0%_0%,rgba(255,255,255,0.16),transparent_56%)]"
-            />
-
             {/* Poignée : signale que la feuille se referme d'une tape au-dessus. */}
             <div
               aria-hidden="true"
@@ -130,14 +125,14 @@ export function Modal({
 
             {/* Header */}
             {(title || description) && (
-              <div className="relative z-10 px-6 pt-3 pr-14 pb-4 sm:pt-6">
+              <div className="relative z-10 px-6 pt-3 pr-14 pb-4 sm:px-7 sm:pt-7">
                 {title && (
-                  <Dialog.Title className="text-[17px] font-semibold text-[var(--text-primary)] leading-snug">
+                  <Dialog.Title className="text-xl font-semibold tracking-[-0.02em] text-[var(--text-primary)] leading-snug">
                     {title}
                   </Dialog.Title>
                 )}
                 {description && (
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--text-muted)]">
                     {description}
                   </p>
                 )}
@@ -148,8 +143,8 @@ export function Modal({
             {!hideCloseButton && (
               <Dialog.Close
                 className={cn(
-                  'absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full sm:right-4 sm:top-4 sm:h-7 sm:w-7',
-                  'bg-[var(--surface-alt)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
+                  'absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-full sm:right-5 sm:top-5 sm:h-8 sm:w-8',
+                  'border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text-primary)]',
                   'hover:bg-[var(--hover)] transition-all duration-150',
                   'focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring)]'
                 )}
@@ -163,7 +158,7 @@ export function Modal({
             {children && (
               <div
                 className={cn(
-                  'relative z-10 px-6 pb-4',
+                  'relative z-10 px-6 pb-4 sm:px-7',
                   !(title || description) && 'pt-6',
                   /* Sans pied de page, la marge basse qu'il portait — et qui
                      dégageait la barre de geste iOS — revient au corps. */
@@ -177,7 +172,7 @@ export function Modal({
 
             {/* Footer — marge basse étendue au-dessus de la barre de geste mobile. */}
             {footer && (
-              <div className="relative z-10 flex items-center justify-end gap-2 border-t border-[var(--glass-border)] px-6 pt-2 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
+              <div className="relative z-10 flex items-center justify-end gap-2 border-t border-[var(--border)] bg-[var(--bg-secondary)] px-6 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:rounded-b-[24px] sm:px-7 sm:pb-3">
                 {footer}
               </div>
             )}

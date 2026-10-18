@@ -7,6 +7,7 @@ import { usePointerSwipe } from '@/lib/hooks/usePointerSwipe'
 import {
   AiVisual,
   InstallVisual,
+  PersonalizeVisual,
   ReadingVisual,
   SourcesVisual,
   TrendsVisual,
@@ -16,7 +17,7 @@ import { ApiKeyInfo } from './ApiKeyInfo'
 import { InstallStepActions } from './InstallStepActions'
 
 /**
- * Tutoriel de démarrage — cinq écrans, une fonction clé par écran.
+ * Tutoriel de démarrage — sept écrans, une fonction clé par écran.
  *
  * Bureau : une carte modale. Mobile : plein écran, parce qu'une feuille
  * laisserait l'application derrière voler l'attention du premier contact.
@@ -40,8 +41,8 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'welcome',
     eyebrow: 'Bienvenue',
-    title: 'Votre veille de presse, au même endroit',
-    body: 'Suivez vos sources RSS, repérez les sujets qui montent et préparez un briefing — sans quitter le navigateur.',
+    title: 'Votre veille de presse, en constellation',
+    body: 'Suivez des centaines de médias, voyez les sujets qui montent et comment ils se relient, puis faites rédiger la synthèse — sans quitter le navigateur.',
     bullets: [
       'Tout reste sur cet appareil : aucun compte, aucun serveur.',
       'Fonctionne hors connexion une fois les articles chargés.',
@@ -51,34 +52,33 @@ const STEPS: OnboardingStep[] = [
   {
     id: 'sources',
     eyebrow: 'Étape 1',
-    title: 'Choisissez vos sources',
-    body: 'Partez d’un bouquet du catalogue — presse turque, agences, sources internationales — ou ajoutez n’importe quel flux RSS.',
+    title: 'Composez votre revue',
+    body: 'Plus de 200 médias vérifiés, en bouquets : presse française nationale et régionale, action publique, presse européenne, turque et internationale.',
     bullets: [
-      'Le bouton Sources ouvre le catalogue vérifié.',
-      'Collez une URL de flux, ou importez un fichier OPML.',
+      '« Ajouter des sources » : filtrez par région ou par langue, ajoutez un bouquet ou composez votre sélection.',
+      'Une source absente ? Collez son adresse RSS, ou importez un fichier OPML.',
     ],
     visual: <SourcesVisual />,
   },
   {
     id: 'reading',
     eyebrow: 'Étape 2',
-    title: 'Lisez et triez sans effort',
-    body: 'Les articles arrivent dans une liste unique. Ouvrez, marquez, mettez de côté ce qui mérite un second regard.',
+    title: 'Lisez l’essentiel, sans bruit',
+    body: 'Une liste unique, triée et filtrable. Chaque article porte son sujet ; le lecteur le replace dans la constellation et montre qui d’autre en parle.',
     bullets: [
-      'Sur mobile, balayez une ligne pour la marquer lue ou la sauvegarder.',
-      'Dans un article, balayez pour passer au suivant ou au précédent.',
-      'La recherche et les filtres réduisent la liste instantanément.',
-      'Partagez un article en un geste, dans sa version originale ou traduite.',
+      'Tous, non lus ou sauvegardés en un clic ; la recherche surligne ce qu’elle trouve.',
+      '« En ce moment » filtre la liste sur un sujet qui monte.',
+      'Sur mobile, balayez une ligne pour la marquer lue ou la garder.',
     ],
     visual: <ReadingVisual />,
   },
   {
     id: 'trends',
     eyebrow: 'Étape 3',
-    title: 'Voyez ce qui monte',
-    body: 'Le panneau Tendances compare la période choisie à la précédente et fait ressortir les termes en hausse.',
+    title: 'Voyez ce qui monte, et ce qui se relie',
+    body: 'La constellation dessine les sujets de la période : la taille dit le volume, la couleur l’élan, les liens les articles communs. Essayez : touchez un sujet.',
     bullets: [
-      'Fenêtre ajustable : 6 heures, 24 heures, 3 ou 7 jours.',
+      'Fenêtre de 6 heures à 7 jours, comparée à la période précédente.',
       'Suivez un mot-clé pour être alerté dès qu’il repart à la hausse.',
     ],
     visual: <TrendsVisual />,
@@ -89,8 +89,8 @@ const STEPS: OnboardingStep[] = [
     title: 'Faites rédiger la synthèse',
     body: (
       <>
-        Avec une clé API <ApiKeyInfo className="mx-0.5" />, l’application traduit les articles, trie
-        les tendances et rédige un briefing prêt à relire.
+        Avec une clé API <ApiKeyInfo className="mx-0.5" />, l’application traduit les articles, affine
+        les tendances et rédige un briefing éditorial, sur toute la période ou sur un sujet.
       </>
     ),
     bullets: [
@@ -98,6 +98,14 @@ const STEPS: OnboardingStep[] = [
       'Sans clé, la veille et les tendances fonctionnent quand même.',
     ],
     visual: <AiVisual />,
+  },
+  {
+    id: 'personalize',
+    eyebrow: 'Étape 5',
+    title: 'Faites-la vôtre',
+    body: 'Choisissez votre couleur d’accent et votre thème : l’application change sous vos yeux. Tout se retrouve ensuite dans Paramètres.',
+    bullets: ['Cinq accents, mode clair ou sombre.', 'Densité de liste et taille du texte de lecture réglables.'],
+    visual: <PersonalizeVisual />,
   },
   {
     id: 'install',
@@ -154,46 +162,42 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     onSwipeRight: goPrevious,
   })
 
-  const content = (
+  const visualPane = (
     <div
-      ref={swipeRef}
-      className="flex min-h-0 flex-1 touch-pan-y flex-col justify-center"
-      key={prefersReducedMotion ? undefined : step.id}
+      key={prefersReducedMotion ? undefined : `${step.id}-visual`}
+      className={cn(
+        'flex items-center justify-center',
+        isDesktop ? 'h-full p-8' : 'min-h-[11rem] max-h-[36vh] flex-1 px-2 py-4',
+        !prefersReducedMotion && 'cst-rise'
+      )}
     >
-      <div
-        className={cn(
-          // Plafonnée sur mobile : sans borne, l'illustration s'étire sur un
-          // grand écran et repousse le texte hors du champ de lecture.
-          'flex min-h-[9rem] max-h-[32vh] flex-1 items-center justify-center px-2 py-4',
-          'sm:max-h-none sm:min-h-[11rem]',
-          !prefersReducedMotion && 'animate-fade-in'
-        )}
-      >
-        {step.visual}
-      </div>
+      {step.visual}
+    </div>
+  )
 
-      <div className={cn('px-1', !prefersReducedMotion && 'animate-fade-in')}>
-        <p className="rss-section-label text-[var(--accent)]">{step.eyebrow}</p>
-        <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)] sm:text-[1.375rem]">
-          {step.title}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{step.body}</p>
-        <ul className="mt-3 space-y-1.5">
-          {step.bullets.map((bullet) => (
-            <li
-              key={bullet}
-              className="flex items-start gap-2 text-[13px] leading-5 text-[var(--text-secondary)]"
-            >
-              <Check
-                className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--accent)]"
-                aria-hidden="true"
-              />
-              <span>{bullet}</span>
-            </li>
-          ))}
-        </ul>
-        {step.extra ? <div className="mt-4">{step.extra}</div> : null}
-      </div>
+  const textPane = (
+    <div key={prefersReducedMotion ? undefined : `${step.id}-text`} className={cn('px-1', !prefersReducedMotion && 'cst-rise')}>
+      <p className="rss-section-label uppercase text-[var(--link)]">{step.eyebrow}</p>
+      <h2 className="mt-2 font-serif text-[26px] leading-tight font-medium text-[var(--text-primary)] sm:text-[30px]">
+        {step.title}
+      </h2>
+      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{step.body}</p>
+      <ul className="mt-4 space-y-2">
+        {step.bullets.map((bullet) => (
+          <li key={bullet} className="flex items-start gap-2.5 text-[13px] leading-5 text-[var(--text-secondary)]">
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--link)]" aria-hidden="true" />
+            <span>{bullet}</span>
+          </li>
+        ))}
+      </ul>
+      {step.extra ? <div className="mt-4">{step.extra}</div> : null}
+    </div>
+  )
+
+  const content = (
+    <div ref={swipeRef} className="flex min-h-0 flex-1 touch-pan-y flex-col justify-center">
+      {visualPane}
+      {textPane}
     </div>
   )
 
@@ -208,10 +212,12 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           aria-label={`Étape ${dotIndex + 1} sur ${STEPS.length} : ${item.title}`}
           onClick={() => goTo(dotIndex)}
           className={cn(
-            'h-1.5 rounded-full transition-all duration-200',
+            'h-1.5 rounded-full transition-all duration-300',
             dotIndex === index
-              ? 'w-6 bg-[var(--accent)]'
-              : 'w-1.5 bg-[var(--border)] hover:bg-[var(--text-muted)]'
+              ? 'w-7 bg-[var(--accent)]'
+              : dotIndex < index
+                ? 'w-1.5 bg-[color-mix(in_srgb,var(--accent)_45%,transparent)]'
+                : 'w-1.5 bg-[var(--border-strong)] hover:bg-[var(--text-muted)]'
           )}
         />
       ))}
@@ -222,7 +228,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     <button
       type="button"
       onClick={onFinish}
-      className="rounded-macos px-2.5 py-1.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      className="rounded-full px-3 py-1.5 text-sm font-medium text-[var(--text-muted)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
     >
       Passer
     </button>
@@ -232,7 +238,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
     <button
       type="button"
       onClick={goNext}
-      className="inline-flex h-11 items-center justify-center gap-2 rounded-macos border border-[color-mix(in_srgb,var(--accent)_35%,transparent)] bg-[var(--accent-muted)] px-4 text-sm font-semibold text-[var(--text-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_26%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--text-primary)] px-5 text-sm font-semibold text-[var(--bg-primary)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
     >
       {isLast ? 'Commencer' : 'Suivant'}
       {isLast ? null : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
@@ -245,7 +251,7 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
       onClick={goPrevious}
       disabled={index === 0}
       aria-label="Étape précédente"
-      className="inline-flex h-11 w-11 items-center justify-center rounded-macos text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-full text-[var(--text-secondary)] transition-colors hover:bg-[var(--hover)] hover:text-[var(--text-primary)] disabled:pointer-events-none disabled:opacity-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
     >
       <ArrowLeft className="h-4 w-4" aria-hidden="true" />
     </button>
@@ -260,12 +266,15 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           // le tutoriel ne doit pas revenir au prochain lancement.
           if (!next) onFinish()
         }}
-        size="lg"
-        className="sm:max-w-lg"
-        bodyClassName="pt-6"
+        size="xl"
+        className="overflow-hidden sm:max-w-[920px]"
+        bodyClassName="p-0! sm:p-0!"
         footer={
           <div className="flex w-full items-center gap-3">
             {dots}
+            <span className="ml-2 text-xs text-[var(--text-muted)] tabular-nums">
+              {index + 1} / {STEPS.length}
+            </span>
             <div className="ml-auto flex items-center gap-1">
               {skipButton}
               {previousButton}
@@ -274,7 +283,10 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
           </div>
         }
       >
-        {content}
+        <div ref={swipeRef} className="grid min-h-[440px] grid-cols-[1.05fr_1fr]">
+          <div className="border-r border-[var(--border)] bg-[var(--bg-secondary)]">{visualPane}</div>
+          <div className="flex flex-col justify-center p-9">{textPane}</div>
+        </div>
       </Modal>
     )
   }

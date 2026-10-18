@@ -17,10 +17,12 @@ export const READER_TEXT_SIZE_STYLES: Record<
   RssReaderTextSize,
   { title: string; body: string }
 > = {
-  small: { title: 'text-base leading-6', body: 'text-[13px] leading-5' },
-  normal: { title: 'text-lg leading-6', body: 'text-sm leading-6' },
-  large: { title: 'text-xl leading-7', body: 'text-base leading-7' },
-  xlarge: { title: 'text-2xl leading-8', body: 'text-lg leading-8' },
+  // Échelle éditoriale du thème « Constellation » : titre et corps en serif
+  // (Newsreader), interligne généreux pour un texte que l'on lit en entier.
+  small: { title: 'text-[24px] leading-[1.2]', body: 'text-[16px] leading-[1.6]' },
+  normal: { title: 'text-[30px] leading-[1.15]', body: 'text-[18px] leading-[1.65]' },
+  large: { title: 'text-[34px] leading-[1.12]', body: 'text-[20px] leading-[1.7]' },
+  xlarge: { title: 'text-[38px] leading-[1.1]', body: 'text-[22px] leading-[1.7]' },
 }
 
 export const DEFAULT_READER_TEXT_SIZE: RssReaderTextSize = 'normal'

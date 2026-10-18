@@ -1,5 +1,5 @@
 import type { RssFeed, RssItem, RssItemTranslation, RssSettings, RssWatchedKeyword } from '@/types/rss'
-import type { Settings } from '@/types/settings'
+import { ACCENT_COLORS, type AccentColor, type Settings } from '@/types/settings'
 import { defaultRssSettings, useRssStore } from '@/stores/rssStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { SECRET_SETTINGS_KEYS, SETTINGS_KEYS, defaultSettings } from '@/lib/constants/settingsDefaults'
@@ -223,6 +223,8 @@ function parsePreferences(value: unknown): Partial<Settings> {
       if (candidate === 'light' || candidate === 'dark' || candidate === 'system') {
         preferences[key] = candidate
       }
+    } else if (key === 'accentColor') {
+      if (ACCENT_COLORS.includes(candidate as AccentColor)) preferences[key] = candidate
     } else if (defaults[key] === undefined) {
       // Champs sans valeur par défaut : uniquement des identifiants de modèle.
       if (typeof candidate === 'string') preferences[key] = candidate

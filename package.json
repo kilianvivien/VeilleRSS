@@ -1,7 +1,7 @@
 {
   "name": "diplorevue-veille-web",
   "private": true,
-  "version": "0.5.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -16,6 +16,9 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@fontsource-variable/newsreader": "^5.3.0",
     "@google/genai": "^2.28.0",
     "@radix-ui/react-dialog": "^1.2.0",
     "@radix-ui/react-select": "^2.3.8",

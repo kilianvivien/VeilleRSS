@@ -5,6 +5,7 @@ import type { Settings } from '@/types/settings'
 
 export const defaultSettings = {
   theme: 'light' as const,
+  accentColor: 'violet' as const,
   onboardingCompleted: false, // Le tutoriel s'ouvre au premier lancement
   // AI Configuration defaults
   aiProvider: undefined,

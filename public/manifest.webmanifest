@@ -12,7 +12,7 @@
   "dir": "ltr",
   "categories": ["news", "productivity"],
   "background_color": "#ffffff",
-  "theme_color": "#4c8dff",
+  "theme_color": "#6a5ae0",
   "icons": [
     {
       "src": "/pwa-192.png",
@@ -42,24 +42,24 @@
   "screenshots": [
     {
       "src": "/screenshots/ordinateur@0.5x.png",
-      "sizes": "1549x995",
+      "sizes": "1536x996",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Tableau de veille, articles et tendances sur ordinateur"
+      "label": "Constellation des sujets et détail du sujet principal sur ordinateur"
     },
     {
       "src": "/screenshots/iphone@0.5x.png",
-      "sizes": "603x1311",
+      "sizes": "852x1760",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Lecture et recherche dans les flux RSS sur mobile"
+      "label": "Liste d’articles, sujets du moment et recherche sur mobile"
     },
     {
       "src": "/screenshots/android@0.5x.png",
-      "sizes": "540x1200",
+      "sizes": "792x1672",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Cartographie interactive des tendances sur mobile"
+      "label": "Constellation des tendances sur mobile"
     }
   ],
   "shortcuts": [

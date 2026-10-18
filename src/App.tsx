@@ -12,6 +12,7 @@ const OnboardingTour = lazy(() =>
 
 export default function App() {
   const theme = useSettingsStore((state) => state.theme)
+  const accentColor = useSettingsStore((state) => state.accentColor) ?? 'violet'
   const onboardingCompleted = useSettingsStore((state) => state.onboardingCompleted)
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   useRssRefreshScheduler()
@@ -29,17 +30,26 @@ export default function App() {
     }
   }, [theme])
 
+  // Accent choisi dans les réglages : même clé lue par le script anti-flash.
+  useEffect(() => {
+    document.documentElement.dataset.accent = accentColor
+    try {
+      window.localStorage.setItem('veille-web-accent', accentColor)
+    } catch {
+      /* localStorage indisponible : l'accent reste appliqué pour la session. */
+    }
+  }, [accentColor])
+
   /**
    * Préchauffage des vues paresseuses quand le navigateur est au repos.
    *
    * Le service worker ne précache que le graphe statique de l'entrée : sans
-   * cela, un utilisateur qui n'a jamais ouvert la cartographie se retrouverait
+   * cela, un utilisateur qui n'a jamais ouvert le briefing se retrouverait
    * avec un volet cassé une fois hors connexion. Les chunks passent par le
    * cache d'exécution du SW au vol, aucun protocole supplémentaire nécessaire.
    */
   useEffect(() => {
     const warmLazyViews = () => {
-      void import('@/components/rss/TrendMapView')
       void import('@/components/rss/TrendBriefingPanel')
       void import('@/components/rss/FeedCatalogModal')
       void import('@/components/settings/SettingsModal')

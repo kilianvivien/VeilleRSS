@@ -11,7 +11,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.5.0-2563eb?style=flat-square" alt="Version v0.5.0">
+  <img src="https://img.shields.io/badge/version-v1.0.0-6a5ae0?style=flat-square" alt="Version v1.0.0">
   <img src="https://img.shields.io/badge/React-19-149eca?style=flat-square&logo=react&logoColor=white" alt="React 19">
   <img src="https://img.shields.io/badge/PWA-installable-5a0fc8?style=flat-square" alt="PWA installable">
   <img src="https://img.shields.io/badge/Docker-prêt-2496ed?style=flat-square&logo=docker&logoColor=white" alt="Compatible Docker">
@@ -38,19 +38,19 @@
 
 ### Tableau de veille sur ordinateur
 
-![Tableau de veille RSS sur ordinateur, avec les sources, la liste d'articles et les tendances](public/screenshots/ordinateur@0.5x.png)
+![Vue Tendances de Veille RSS sur ordinateur : constellation animée des sujets, flux et sujet principal](public/screenshots/ordinateur@0.5x.png)
 
-<p align="center"><sub>Sources, articles et tendances réunis dans un tableau de veille à trois volets.</sub></p>
+<p align="center"><sub>La constellation des sujets : volume, élan et liens entre les sujets de la période.</sub></p>
 
 ### Une interface pensée pour le mobile
 
 <p align="center">
   <img src="public/screenshots/iphone@0.5x.png" width="300" alt="Liste d'articles de Veille RSS sur iPhone">
   &nbsp;&nbsp;
-  <img src="public/screenshots/android@0.5x.png" width="270" alt="Cartographie des tendances de Veille RSS sur Android">
+  <img src="public/screenshots/android@0.5x.png" width="270" alt="Constellation des tendances de Veille RSS sur Android">
 </p>
 
-<p align="center"><sub>Une navigation tactile dédiée sur iPhone et Android, jusqu'à la cartographie des sujets.</sub></p>
+<p align="center"><sub>Une navigation tactile dédiée sur iPhone et Android, jusqu'aux tendances.</sub></p>
 
 ---
 
@@ -64,7 +64,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
   <tr>
     <td width="25%"><strong>📰 Centraliser</strong><br><sub>RSS, Atom, catalogue de sources et OPML.</sub></td>
     <td width="25%"><strong>🔎 Trier</strong><br><sub>Recherche, non lus, sauvegardes et sélections.</sub></td>
-    <td width="25%"><strong>📈 Comprendre</strong><br><sub>Tendances, mots-clés et cartographie locale.</sub></td>
+    <td width="25%"><strong>📈 Comprendre</strong><br><sub>Constellation des sujets, flux et mots-clés.</sub></td>
     <td width="25%"><strong>✨ Synthétiser</strong><br><sub>Traduction et briefings IA facultatifs.</sub></td>
   </tr>
 </table>
@@ -75,7 +75,7 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 - ajout de n'importe quel flux RSS ou Atom à partir de son URL ;
 - détection automatique du flux lorsqu'une page web compatible est collée ;
-- catalogue de sources prêt à l'emploi : presse turque, médias internationaux, Europe, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique et Amériques ;
+- catalogue de plus de 200 sources prêtes à l'emploi : presse française (nationale, régionale, audiovisuelle, économique), action publique et administration, Belgique et Suisse francophones, presse européenne (Allemagne, Europe du Sud, du Nord, centrale et orientale), presse turque, médias internationaux, Moyen-Orient et Afrique du Nord, Afrique, Asie-Pacifique, Amériques et institutions européennes ;
 - classement des sources par catégories ;
 - import et export OPML pour migrer facilement depuis ou vers un autre lecteur RSS ;
 - sauvegarde complète dans un fichier (sources, articles, mots-clés suivis, réglages) et restauration sur n'importe quel appareil ;
@@ -84,11 +84,12 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 ### 📖 Lecture et organisation
 
-- vues **Tous les articles**, **Non lus** et **Sauvegardés** ;
-- recherche instantanée dans les titres, extraits, auteurs et noms de sources ;
+- vues **Tous**, **Non lus** et **Sauvegardés** en un clic, au-dessus de la liste ;
+- pastilles **En ce moment** pour filtrer la liste sur un sujet qui monte, et étiquette de sujet sur chaque article ;
+- recherche instantanée dans les titres, extraits, auteurs et noms de sources, avec surlignage ;
 - tri par date ou par source et choix de la densité d'affichage ;
-- marquage lu/non lu, sauvegarde et sélection multiple ;
-- lecteur intégré avec taille de texte réglable et lien vers l'article original ;
+- marquage lu/non lu, sauvegarde et sélection multiple, avec une barre flottante qui n'apparaît qu'avec une sélection ;
+- lecteur éditorial (typographie serif, taille réglable) qui replace l'article dans la constellation et indique les autres sources qui couvrent le sujet ;
 - partage d'un article en un geste, vers la carte de partage du système ou le presse-papiers, dans sa version originale ou traduite ;
 - navigation tactile : tirer pour actualiser, balayer un article pour le classer et passer au précédent ou au suivant dans le lecteur ;
 - export d'une sélection d'articles en Markdown.
@@ -97,16 +98,18 @@ L'intelligence artificielle est facultative. Sans clé API, la lecture, la reche
 
 - analyse locale sur une fenêtre de 6 heures, 24 heures, 3 jours ou 7 jours ;
 - comparaison avec la période précédente, volumes, évolutions et mini-graphiques ;
-- détection des termes en progression à partir des articles déjà collectés ;
+- **constellation des sujets** : graphe animé où la taille dit le volume, la couleur l'élan (forte hausse, nouveau, stable) et les liens les articles communs ;
+- **flux des sujets** : évolution des principaux sujets sur la période ;
+- détail du sujet sélectionné : évolution, comparaison, sujets liés et derniers articles ;
 - suivi de mots-clés et filtrage immédiat des articles correspondants ;
 - notifications locales pour les nouveaux résultats lorsque l'application tourne en arrière-plan ;
-- cartographie interactive des sujets et de leurs termes associés.
+- détection des termes en progression à partir des articles déjà collectés.
 
 ### ✨ Intelligence artificielle
 
 - traduction d'un article vers la langue choisie ;
 - affinage des tendances afin d'écarter les termes trop génériques ;
-- génération d'un briefing éditorial, avec conclusions, statistiques et graphiques ;
+- génération d'un briefing éditorial, sur toute la période ou sur un sujet proposé parmi les tendances, avec statistiques et graphiques calculés localement ;
 - fournisseur différent possible pour la traduction et pour la veille ;
 - prise en charge de Gemini, Mistral, OpenRouter, Albert, Apple Foundation Models sur Mac et d'un modèle local compatible (Ollama ou LM Studio).
 
@@ -157,7 +160,7 @@ Dans Safari, ouvrez la PWA Vercel, choisissez **Apple Foundation Models**, rempl
 
 - installation sur ordinateur, Android, iPhone et iPad depuis le navigateur ;
 - interface responsive adaptée aux écrans tactiles ;
-- thème clair ou sombre ;
+- thème clair ou sombre et cinq couleurs d'accent (violet, cyan, ambre, rose, bleu) ;
 - démarrage et consultation hors connexion des articles déjà chargés ;
 - détection des nouvelles versions avec proposition de mise à jour ;
 - raccourcis PWA et partage d'une URL vers l'application sur les plateformes compatibles ;
@@ -279,13 +282,13 @@ Veille RSS est une application web monopage en React 19 et TypeScript, construit
 | --- | --- | --- |
 | Interface | React 19, TypeScript, Tailwind CSS 4, Radix UI | Lecture, navigation responsive et accessibilité |
 | État local | Zustand, IndexedDB, localStorage | Sources, articles, statuts et préférences |
-| Analyse | Modules TypeScript locaux | Déduplication, tendances, mots-clés et cartographie |
+| Analyse | Modules TypeScript locaux | Déduplication, tendances, mots-clés et graphe des sujets |
 | IA | Connecteurs chargés à la demande | Traduction, affinage et briefing |
 | Livraison | Vite, Vercel Functions, PWA, Docker | Build, proxy RSS, cache et auto-hébergement |
 
 ```text
 src/
-├── components/       Interface, lecteur, tendances, carte, paramètres et PWA
+├── components/       Interface, lecteur, constellation, briefing, paramètres et PWA
 ├── lib/ai/           Connecteurs et routage des fournisseurs IA
 ├── lib/rss/          Collecte, parsing, OPML, déduplication et analyse locale
 ├── lib/pwa/          Installation, mises à jour et notifications

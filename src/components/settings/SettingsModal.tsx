@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, Download, Eye, EyeOff, GraduationCap, Moon, Sparkles, Upload } from 'lucide-react'
+import { ChevronDown, Database, Download, Eye, EyeOff, GraduationCap, Info, Moon, Palette, Rss, Sparkles, Upload } from 'lucide-react'
 import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
-import type { AiProvider, Settings } from '@/types/settings'
+import type { AccentColor, AiProvider, Settings } from '@/types/settings'
 import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
@@ -105,6 +105,24 @@ const LOCAL_TIMEOUT_OPTIONS = [
   { value: '600', label: '10 minutes' },
 ]
 
+const ACCENT_OPTIONS: { value: AccentColor; label: string; swatch: string }[] = [
+  { value: 'violet', label: 'Violet', swatch: 'linear-gradient(135deg, #9a8cff, #6a5ae0)' },
+  { value: 'cyan', label: 'Cyan', swatch: 'linear-gradient(135deg, #3dd6d0, #0e8c86)' },
+  { value: 'amber', label: 'Ambre', swatch: 'linear-gradient(135deg, #ffb547, #b86a00)' },
+  { value: 'rose', label: 'Rose', swatch: 'linear-gradient(135deg, #f472b6, #c2367a)' },
+  { value: 'blue', label: 'Bleu', swatch: 'linear-gradient(135deg, #6ba4ff, #2f6fe4)' },
+]
+
+type SettingsTab = 'general' | 'flux' | 'ia' | 'donnees' | 'apropos'
+
+const SETTINGS_TABS: { value: SettingsTab; label: string; shortLabel: string; icon: typeof Palette }[] = [
+  { value: 'general', label: 'Général', shortLabel: 'Général', icon: Palette },
+  { value: 'flux', label: 'Flux & tendances', shortLabel: 'Flux', icon: Rss },
+  { value: 'ia', label: 'Intelligence artificielle', shortLabel: 'IA', icon: Sparkles },
+  { value: 'donnees', label: 'Données', shortLabel: 'Données', icon: Database },
+  { value: 'apropos', label: 'À propos', shortLabel: 'À propos', icon: Info },
+]
+
 export function SettingsModal({
   open,
   onOpenChange,
@@ -112,6 +130,7 @@ export function SettingsModal({
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
+  const [tab, setTab] = useState<SettingsTab>('general')
   const rssSettings = useRssStore((state) => state.settings)
   const updateRssSettings = useRssStore((state) => state.updateSettings)
   const aiSettings = useSettingsStore()
@@ -283,35 +302,94 @@ export function SettingsModal({
       onOpenChange={onOpenChange}
       title="Paramètres"
       description="Réglages des flux RSS et des fournisseurs IA. Les données restent dans ce navigateur."
-      size="lg"
-      bodyClassName="sm:max-h-[calc(100dvh-12rem)] sm:overflow-y-auto sm:overscroll-contain"
+      size="xl"
+      bodyClassName="sm:pb-0!"
     >
-      <div className="space-y-6">
-        {/* ── Apparence ────────────────────────────────────────────────
-            Mobile uniquement : sur bureau, la bascule vit dans la barre
-            d'outils, à portée immédiate. */}
-        {!isDesktop ? (
-          <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
-            <div className="flex min-w-0 items-start gap-2.5">
-              <Moon
-                className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]"
-                aria-hidden="true"
-              />
+      <div className="flex min-h-0 flex-col gap-4 sm:h-[min(640px,calc(100dvh-12rem))] sm:flex-row sm:gap-6">
+        <nav
+          aria-label="Rubriques des paramètres"
+          className="sticky top-0 z-10 -mx-6 flex shrink-0 gap-1 overflow-x-auto bg-[var(--surface-elevated)] px-6 py-2 [scrollbar-width:none] sm:static sm:mx-0 sm:w-[190px] sm:flex-col sm:overflow-visible sm:bg-transparent sm:px-0 sm:py-0 sm:pb-6 [&::-webkit-scrollbar]:hidden"
+        >
+          {SETTINGS_TABS.map((entry) => (
+            <button
+              key={entry.value}
+              type="button"
+              onClick={() => setTab(entry.value)}
+              aria-current={tab === entry.value ? 'page' : undefined}
+              className={cn(
+                'flex h-9 shrink-0 items-center gap-2.5 rounded-xl px-3 text-left text-[13px] whitespace-nowrap transition-colors',
+                tab === entry.value
+                  ? 'bg-[var(--accent-muted)] font-medium text-[var(--text-primary)]'
+                  : 'text-[var(--text-secondary)] pointer-fine:hover:bg-[var(--hover)]'
+              )}
+            >
+              <entry.icon className={cn('h-4 w-4 shrink-0', tab === entry.value ? 'text-[var(--link)]' : 'text-[var(--text-muted)]')} aria-hidden="true" />
+              <span className="sm:hidden">{entry.shortLabel}</span>
+              <span className="hidden sm:inline">{entry.label}</span>
+            </button>
+          ))}
+        </nav>
+      <div key={tab} className="cst-rise min-h-0 min-w-0 flex-1 space-y-6 sm:overflow-y-auto sm:overscroll-contain sm:pr-1 sm:pb-6">
+        {tab === 'general' ? (
+          <>
+        {/* ── Apparence ──────────────────────────────────────────────── */}
+        <section className="space-y-3">
+          <h3 className="rss-section-label text-[var(--text-secondary)]">APPARENCE</h3>
+          <div className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-[var(--text-primary)]">Mode sombre</p>
+                <p className="text-sm font-medium text-[var(--text-primary)]">Couleur d’accent</p>
                 <p className="text-[11px] leading-4 text-[var(--text-muted)]">
-                  Appliqué immédiatement, mémorisé pour les prochaines visites.
+                  Navigation, sélection, liens. Les couleurs des tendances restent fixes.
                 </p>
               </div>
+              <div role="radiogroup" aria-label="Couleur d’accent" className="flex items-center gap-2">
+                {ACCENT_OPTIONS.map((option) => {
+                  const selected = (aiSettings.accentColor ?? 'violet') === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      aria-label={option.label}
+                      title={option.label}
+                      onClick={() => updateAiSettings({ accentColor: option.value })}
+                      className={cn(
+                        'h-8 w-8 rounded-full transition-transform duration-150 pointer-fine:hover:scale-110',
+                        selected && 'ring-2 ring-[var(--text-primary)] ring-offset-2 ring-offset-[var(--surface)]'
+                      )}
+                      style={{ background: option.swatch }}
+                    />
+                  )
+                })}
+              </div>
             </div>
-            <Switch
-              checked={aiSettings.theme === 'dark'}
-              onChange={(checked) => updateAiSettings({ theme: checked ? 'dark' : 'light' })}
-              label="Mode sombre"
-            />
-          </section>
+            {!isDesktop ? (
+              <div className="flex items-center justify-between gap-4 border-t border-[var(--border)] pt-3">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <Moon className="mt-0.5 h-4 w-4 shrink-0 text-[var(--text-secondary)]" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-[var(--text-primary)]">Mode sombre</p>
+                    <p className="text-[11px] leading-4 text-[var(--text-muted)]">
+                      Appliqué immédiatement, mémorisé pour les prochaines visites.
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={aiSettings.theme === 'dark'}
+                  onChange={(checked) => updateAiSettings({ theme: checked ? 'dark' : 'light' })}
+                  label="Mode sombre"
+                />
+              </div>
+            ) : null}
+          </div>
+        </section>
+          </>
         ) : null}
 
+        {tab === 'flux' ? (
+          <>
         {/* ── Flux RSS ─────────────────────────────────────────────── */}
         <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">FLUX RSS</h3>
@@ -440,11 +518,15 @@ export function SettingsModal({
             </div>
           </div>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'donnees' ? (
+          <>
         {/* ── Sauvegarde ───────────────────────────────────────────────
             Les données ne vivent que dans ce navigateur : c'est le seul
             moyen de les mettre à l'abri ou de les porter ailleurs. */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">SAUVEGARDE</h3>
           <p className="text-xs leading-5 text-[var(--text-secondary)]">
             Un fichier contenant vos flux, vos articles (lus, sauvegardés, traduits), vos
@@ -480,14 +562,22 @@ export function SettingsModal({
             </p>
           ) : null}
         </section>
+          </>
+        ) : null}
 
+        {tab === 'general' ? (
+          <>
         {/* ── Application (PWA) ─────────────────────────────────────── */}
         <div className="border-t border-[var(--border)] pt-5">
           <InstallAppSection />
         </div>
+          </>
+        ) : null}
 
+        {tab === 'ia' ? (
+          <>
         {/* ── Intelligence artificielle ────────────────────────────── */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">
             INTELLIGENCE ARTIFICIELLE
           </h3>
@@ -680,7 +770,11 @@ export function SettingsModal({
             </span>
           </p>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'general' ? (
+          <>
         {/* ── Tutoriel ─────────────────────────────────────────────── */}
         <section className="flex items-center justify-between gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface-elevated)] px-3 py-2.5">
           <div className="flex min-w-0 items-start gap-2.5">
@@ -708,14 +802,22 @@ export function SettingsModal({
             Revoir
           </Button>
         </section>
+          </>
+        ) : null}
 
+        {tab === 'apropos' ? (
+          <>
         {/* ── À propos ─────────────────────────────────────────────────
             Plus d'icône « i » dans les barres d'outils : les mentions
             atterrissent ici, sur mobile comme sur bureau. */}
-        <section className="space-y-3 border-t border-[var(--border)] pt-5">
+        <section className="space-y-3">
           <h3 className="rss-section-label text-[var(--text-secondary)]">À PROPOS</h3>
           <AboutContent />
         </section>
+          </>
+        ) : null}
+
+      </div>
       </div>
     </Modal>
   )
