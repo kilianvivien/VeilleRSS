@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Download, Link2, MoreHorizontal, Moon, Plus, RefreshCw, ScrollText, Settings, Sun, Upload, WifiOff } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { MenuButton } from '@/components/ui/MenuButton'
 import { AppIcon } from './AppIcon'
 
 export type AppNavView = 'article' | 'trends' | 'briefing'
@@ -237,72 +238,18 @@ function SourcesMenu({
   onImportOpml: () => void
   onExportOpml: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false)
-    }
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [open])
-
-  const run = (action: () => void) => () => {
-    setOpen(false)
-    action()
-  }
-
-  const entries = [
-    { label: 'Coller l’adresse d’un flux', icon: <Link2 className="h-4 w-4" aria-hidden="true" />, action: onAddFeedUrl, disabled: false },
-    { label: 'Importer un fichier OPML', icon: <Upload className="h-4 w-4" aria-hidden="true" />, action: onImportOpml, disabled: false },
-    { label: 'Exporter en OPML', icon: <Download className="h-4 w-4" aria-hidden="true" />, action: onExportOpml, disabled: !canExport },
-  ]
-
   return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label="Autres actions sur les sources"
-        title="Autres actions sur les sources"
-        className={cn(
-          'flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)] transition-colors pointer-fine:hover:bg-[var(--hover)]',
-          open && 'bg-[var(--hover)]'
-        )}
-      >
-        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="cst-menu absolute bottom-full right-0 z-30 mb-2 w-60 overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-1.5 shadow-[0_18px_48px_rgba(0,0,0,0.28)]"
-        >
-          {entries.map((entry) => (
-            <button
-              key={entry.label}
-              type="button"
-              role="menuitem"
-              disabled={entry.disabled}
-              onClick={run(entry.action)}
-              className="flex h-10 w-full items-center gap-2.5 rounded-xl px-3 text-left text-[13px] text-[var(--text-primary)] transition-colors disabled:opacity-40 pointer-fine:enabled:hover:bg-[var(--hover)]"
-            >
-              <span className="text-[var(--text-muted)]">{entry.icon}</span>
-              {entry.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
-    </div>
+    <MenuButton
+      label="Autres actions sur les sources"
+      placement="top"
+      className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)] transition-colors pointer-fine:hover:bg-[var(--hover)]"
+      entries={[
+        { label: 'Coller l’adresse d’un flux', icon: <Link2 className="h-4 w-4" aria-hidden="true" />, onSelect: onAddFeedUrl },
+        { label: 'Importer un fichier OPML', icon: <Upload className="h-4 w-4" aria-hidden="true" />, onSelect: onImportOpml },
+        { label: 'Exporter en OPML', icon: <Download className="h-4 w-4" aria-hidden="true" />, onSelect: onExportOpml, disabled: !canExport },
+      ]}
+    >
+      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+    </MenuButton>
   )
 }

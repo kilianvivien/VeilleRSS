@@ -19,7 +19,9 @@ import {
   ListChecks,
   Loader2,
   Library,
+  Link2,
   Menu,
+  MoreHorizontal,
   Newspaper,
   Plus,
   Radar,
@@ -35,6 +37,7 @@ import {
 } from 'lucide-react'
 import { Button, Input, LoadingSpinner, Modal, Select } from '@/components/ui'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { MenuButton } from '@/components/ui/MenuButton'
 import { Sparkline } from '@/components/rss/Sparkline'
 import { ConstellationView } from '@/components/rss/ConstellationView'
 import { TrendFocusCard } from '@/components/rss/TrendFocusCard'
@@ -1163,48 +1166,45 @@ export function RssFeeds() {
     />
   )
 
+  /** Pied du tiroir des sources (mobile) : mêmes actions que le rail du bureau. */
   const railActionBar = (
-    <div
-      className={cn(
-        'flex flex-shrink-0 items-center border-t border-[var(--border)]',
-        isDesktop ? 'gap-1 px-2 py-1.5' : 'justify-around gap-2 px-3 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]'
-      )}
-    >
-      <Button
-        size="sm"
-        variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
+    <div className="flex flex-shrink-0 gap-1.5 border-t border-[var(--border)] px-3 pt-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+      <button
+        type="button"
         onClick={() => {
-          setAddFeedError(null)
-          setShowAddFeedModal(true)
-          if (!isDesktop) setIsSourcesOpen(false)
+          setShowCatalog(true)
+          setIsSourcesOpen(false)
         }}
-        title="Ajouter un flux RSS"
-        aria-label="Ajouter un flux RSS"
+        className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-[var(--text-primary)] text-sm font-semibold text-[var(--bg-primary)]"
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
-        onClick={() => void handleImportOpml()}
-        title="Importer un OPML"
-        aria-label="Importer un OPML"
+        Ajouter des sources
+      </button>
+      <MenuButton
+        label="Autres actions sur les sources"
+        placement="top"
+        className="flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border)] text-[var(--text-primary)]"
+        entries={[
+          {
+            label: 'Coller l’adresse d’un flux',
+            icon: <Link2 className="h-4 w-4" aria-hidden="true" />,
+            onSelect: () => {
+              setAddFeedError(null)
+              setShowAddFeedModal(true)
+              setIsSourcesOpen(false)
+            },
+          },
+          { label: 'Importer un fichier OPML', icon: <Upload className="h-4 w-4" aria-hidden="true" />, onSelect: () => void handleImportOpml() },
+          {
+            label: 'Exporter en OPML',
+            icon: <Download className="h-4 w-4" aria-hidden="true" />,
+            onSelect: () => void handleExportOpml(),
+            disabled: feeds.length === 0,
+          },
+        ]}
       >
-        <Upload className="h-4 w-4" aria-hidden="true" />
-      </Button>
-      <Button
-        size="sm"
-        variant="ghost"
-        className={cn('shrink-0 p-0', isDesktop ? 'h-9 w-9' : 'h-11 w-11')}
-        onClick={() => void handleExportOpml()}
-        disabled={feeds.length === 0}
-        title="Exporter en OPML"
-        aria-label="Exporter en OPML"
-      >
-        <Download className="h-4 w-4" aria-hidden="true" />
-      </Button>
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      </MenuButton>
     </div>
   )
 
@@ -1992,6 +1992,11 @@ export function RssFeeds() {
             onOpenChange={setShowCatalog}
             subscribedUrls={subscribedUrls}
             onAddFeeds={handleAddCatalogFeeds}
+            onAddUrl={() => {
+              setShowCatalog(false)
+              setAddFeedError(null)
+              setShowAddFeedModal(true)
+            }}
           />
         </Suspense>
       ) : null}
