@@ -35,6 +35,9 @@ import {
 } from 'lucide-react'
 import { Button, Input, LoadingSpinner, Modal, Select } from '@/components/ui'
 import { SlidingTabBar } from '@/components/ui/SlidingTabBar'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { Sparkline } from '@/components/rss/Sparkline'
+import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from '@/components/rss/trendTone'
 import { SearchBar } from '@/components/search'
 import {
   FeedRail,
@@ -107,6 +110,15 @@ const SORT_OPTIONS = [
 
 const UNCATEGORIZED = 'Sources'
 const ARTICLE_BATCH_SIZE = 80
+/** Sujets proposés en pastilles au-dessus de la liste. */
+const TREND_CHIP_LIMIT = 4
+/** Sujets candidats pour l'étiquette affichée sur chaque article. */
+const TOPIC_TAG_TERM_LIMIT = 12
+const SMART_VIEW_OPTIONS: { value: SmartView; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'unread', label: 'Non lus' },
+  { value: 'saved', label: 'Sauvegardés' },
+]
 
 /** Échappe une valeur pour un sélecteur d'attribut entre guillemets. */
 function escapeAttributeValue(value: string): string {
@@ -462,6 +474,25 @@ export function RssFeeds() {
     () =>
       aiTrendSelection ? applyStoredTrendSelection(trendReport, aiTrendSelection) : trendReport,
     [aiTrendSelection, trendReport]
+  )
+
+  // Étiquette de sujet par article : le premier terme du classement qui le
+  // contient. Les objets sont créés une fois par rapport, pour que les lignes
+  // mémoïsées ne se repeignent pas à chaque rendu.
+  const topicByItemId = useMemo(() => {
+    const map = new Map<string, { label: string; color: string }>()
+    for (const term of displayedTrendReport.terms.slice(0, TOPIC_TAG_TERM_LIMIT)) {
+      const topic = { label: term.label, color: TREND_TONE_COLOR[trendTone(term)] }
+      for (const itemId of term.itemIds) {
+        if (!map.has(itemId)) map.set(itemId, topic)
+      }
+    }
+    return map
+  }, [displayedTrendReport])
+
+  const trendChips = useMemo(
+    () => displayedTrendReport.terms.slice(0, TREND_CHIP_LIMIT),
+    [displayedTrendReport]
   )
 
   useEffect(() => () => trendRefinementAbortRef.current?.abort(), [])
@@ -1308,6 +1339,47 @@ export function RssFeeds() {
               )}
             </Button>
           </div>
+
+          <SegmentedControl<SmartView>
+            size="sm"
+            value={smartView}
+            onChange={setSmartView}
+            options={SMART_VIEW_OPTIONS}
+            className="self-start"
+          />
+
+          {trendChips.length > 0 ? (
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <span className="rss-section-label uppercase text-[var(--text-muted)]">En ce moment</span>
+              <div className="-mx-3 flex gap-2 overflow-x-auto px-3 pb-0.5 [scrollbar-width:none]">
+                {trendChips.map((term) => {
+                  const color = TREND_TONE_COLOR[trendTone(term)]
+                  const isActive = activeTerm?.key === term.key
+                  return (
+                    <button
+                      key={term.key}
+                      type="button"
+                      aria-pressed={isActive}
+                      onClick={() => (isActive ? setActiveTerm(null) : selectTerm(term))}
+                      className={cn(
+                        'rss-trend-chip flex h-9 shrink-0 items-center gap-2 rounded-full border pl-2.5 pr-3 text-xs text-[var(--text-primary)] transition-[background-color,border-color,transform] duration-200 pointer-fine:hover:-translate-y-px',
+                        isActive
+                          ? 'bg-[var(--hover-strong)]'
+                          : 'border-[var(--border)] pointer-fine:hover:bg-[var(--hover)]'
+                      )}
+                      style={isActive ? { borderColor: color } : undefined}
+                    >
+                      <Sparkline values={term.buckets} width={30} height={12} color={color} lineOnly />
+                      <span className="max-w-[10rem] truncate font-medium">{term.label}</span>
+                      <span className="font-mono text-[11px] tabular-nums" style={{ color }}>
+                        {formatTrendDelta(term)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         {activeTerm ? (
@@ -1371,7 +1443,7 @@ export function RssFeeds() {
             <EmptyState hasFeeds={feeds.length > 0} onOpenCatalog={() => setShowCatalog(true)} />
           ) : (
             <>
-              <ul>
+              <ul className="flex flex-col gap-0.5 py-1.5">
                 {renderedItems.map((item) => {
                   const cached =
                     item.translation && item.translation.targetLanguage === targetLanguage
@@ -1392,6 +1464,8 @@ export function RssFeeds() {
                           ? cached.summary || item.contentSnippet || item.summary
                           : item.contentSnippet || item.summary
                       }
+                      topic={topicByItemId.get(item.id)}
+                      highlight={normalizedQuery || undefined}
                       onOpen={handleOpenItem}
                       onSelectedChange={handleSelectItem}
                       onToggleSaved={toggleSaved}

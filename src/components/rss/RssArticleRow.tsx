@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import { Bookmark, BookmarkCheck, Check, Languages, Undo2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
+import { splitHighlight } from '@/lib/rss/highlight'
 import { usePointerSwipe } from '@/lib/hooks/usePointerSwipe'
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery'
 import type { RssDensity, RssFeed, RssItem } from '@/types/rss'
@@ -15,6 +16,10 @@ interface RssArticleRowProps {
   /** Titre traduit affiché à la place de l’original quand une traduction est en cache. */
   displayTitle: string
   displaySummary: string
+  /** Sujet de tendance principal de l’article, affiché en étiquette colorée. */
+  topic?: { label: string; color: string }
+  /** Recherche en cours : son occurrence est surlignée dans le titre. */
+  highlight?: string
   /**
    * Les rappels reçoivent l’article : le parent peut ainsi passer des
    * fonctions stables, et `memo` évite de repeindre toute la liste quand un
@@ -49,6 +54,8 @@ export const RssArticleRow = memo(function RssArticleRow({
   density,
   displayTitle,
   displaySummary,
+  topic,
+  highlight,
   onOpen,
   onSelectedChange,
   onToggleSaved,
@@ -87,15 +94,14 @@ export const RssArticleRow = memo(function RssArticleRow({
       // d'un article à l'autre : la liste doit rouvrir sur le dernier lu.
       data-item-id={item.id}
       className={cn(
-        'group relative overflow-hidden border-b border-[var(--border)] transition-colors',
-        active ? 'bg-[var(--accent-muted)]' : 'pointer-fine:hover:bg-[var(--hover)]',
-        selected && !active && 'bg-[color-mix(in_srgb,var(--accent)_8%,transparent)]',
+        'rss-row group relative mx-2 overflow-hidden rounded-[14px] transition-colors duration-200',
+        active
+          ? 'bg-[color-mix(in_srgb,var(--accent)_11%,transparent)] shadow-[inset_3px_0_0_var(--accent)]'
+          : 'pointer-fine:hover:bg-[var(--hover)]',
+        selected && !active && 'bg-[color-mix(in_srgb,var(--accent)_7%,transparent)]',
         swipeEnabled && 'touch-pan-y'
       )}
     >
-      {isUnread ? (
-        <span className="absolute left-0 top-0 h-full w-0.5 bg-[var(--accent)]" aria-hidden="true" />
-      ) : null}
 
       {/* Intentions révélées derrière la ligne pendant le balayage. */}
       {swipeOffset !== 0 ? (
@@ -105,7 +111,7 @@ export const RssArticleRow = memo(function RssArticleRow({
         >
           <span
             className={cn(
-              'flex items-center gap-1.5 text-xs font-medium text-[var(--accent)]',
+              'flex items-center gap-1.5 text-xs font-medium text-[var(--link)]',
               swipeOffset <= 0 && 'invisible'
             )}
           >
@@ -114,7 +120,7 @@ export const RssArticleRow = memo(function RssArticleRow({
           </span>
           <span
             className={cn(
-              'flex items-center gap-1.5 text-xs font-medium text-[var(--accent)]',
+              'flex items-center gap-1.5 text-xs font-medium text-[var(--trend-hot)]',
               swipeOffset >= 0 && 'invisible'
             )}
           >
@@ -128,6 +134,7 @@ export const RssArticleRow = memo(function RssArticleRow({
         className={cn(
           'relative flex gap-2.5',
           isCompact ? 'px-3 py-2' : 'px-3 py-3',
+          'rounded-[14px]',
           // Un balayage lent ne doit pas démarrer une sélection de texte.
           swipeEnabled && 'select-none',
           // Opaque UNIQUEMENT pendant le balayage, le temps de masquer les
@@ -146,7 +153,11 @@ export const RssArticleRow = memo(function RssArticleRow({
           checked={selected}
           onChange={(event) => onSelectedChange(item.id, event.target.checked)}
           onClick={(event) => event.stopPropagation()}
-          className="mt-1 h-5 w-5 shrink-0 rounded border-[var(--border)] lg:h-4 lg:w-4"
+          className={cn(
+            'mt-1 h-5 w-5 shrink-0 rounded border-[var(--border)] accent-[var(--accent)] transition-opacity lg:h-4 lg:w-4',
+            // Au bureau, la case n'encombre la ligne qu'au survol ou une fois cochée.
+            !selected && 'lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100'
+          )}
           aria-label={`Sélectionner ${item.title}`}
         />
 
@@ -157,14 +168,22 @@ export const RssArticleRow = memo(function RssArticleRow({
           aria-label={`Ouvrir : ${displayTitle}`}
         >
           <span className="flex items-center gap-1.5 text-[11px] text-[var(--text-muted)]">
-            <span className="truncate font-medium text-[var(--accent)]">{feed?.title ?? 'Flux inconnu'}</span>
+            <span
+              aria-hidden="true"
+              className={cn(
+                'h-[7px] w-[7px] shrink-0 rounded-full transition-colors',
+                isUnread ? 'bg-[var(--accent)]' : 'bg-transparent'
+              )}
+            />
+            {isUnread ? <span className="sr-only">Non lu.</span> : null}
+            <span className="truncate font-medium text-[var(--link)]">{feed?.title ?? 'Flux inconnu'}</span>
             <span aria-hidden="true">·</span>
             <span className="shrink-0 whitespace-nowrap">{formatRelativeDate(item.publishedAt ?? item.fetchedAt)}</span>
             {item.translation ? (
               <Languages className="h-3 w-3 shrink-0" aria-label="Traduction disponible" />
             ) : null}
             {item.importedAt ? (
-              <span className="shrink-0 rounded-full bg-blue-500/10 px-1.5 text-blue-700 dark:text-blue-300">
+              <span className="shrink-0 rounded-full bg-[var(--accent-muted)] px-1.5 text-[var(--link)]">
                 Importé
               </span>
             ) : null}
@@ -172,22 +191,38 @@ export const RssArticleRow = memo(function RssArticleRow({
 
           <span
             className={cn(
-              'mt-0.5 block text-[var(--text-primary)]',
-              isCompact ? 'truncate text-sm' : 'line-clamp-2 text-[15px] leading-6',
+              'mt-1 block pl-[13px] text-[var(--text-primary)]',
+              isCompact ? 'truncate text-sm' : 'line-clamp-2 text-[15px] leading-[1.4]',
               isUnread ? 'font-semibold' : 'font-normal'
             )}
           >
-            {displayTitle}
+            {highlight
+              ? splitHighlight(displayTitle, highlight).map((segment, index) =>
+                  segment.match ? (
+                    <mark key={index} className="rss-highlight">
+                      {segment.text}
+                    </mark>
+                  ) : (
+                    <span key={index}>{segment.text}</span>
+                  )
+                )
+              : displayTitle}
           </span>
 
-          {displaySummary ? (
-            <span
-              className={cn(
-                'mt-0.5 block text-[13px] leading-5 text-[var(--text-secondary)]',
-                isCompact ? 'truncate' : 'line-clamp-2'
-              )}
-            >
+          {displaySummary && !isCompact ? (
+            <span className="mt-1 block truncate pl-[13px] text-[13px] leading-5 text-[var(--text-muted)]">
               {displaySummary}
+            </span>
+          ) : null}
+
+          {topic && !isCompact ? (
+            <span className="mt-1.5 flex items-center gap-1.5 pl-[13px] text-[11px] text-[var(--text-muted)]">
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: topic.color }}
+              />
+              <span className="truncate">{topic.label}</span>
             </span>
           ) : null}
         </button>
@@ -202,7 +237,7 @@ export const RssArticleRow = memo(function RssArticleRow({
             // `-webkit-tap-highlight-color: transparent`.
             '-mr-2 h-10 w-10 shrink-0 self-start rounded p-1 text-[var(--text-muted)] transition-colors active:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:bg-[var(--hover-strong,var(--hover))] pointer-fine:hover:text-[var(--text-primary)] lg:mr-0 lg:h-6 lg:w-auto',
             item.savedAt
-              ? 'text-[var(--accent)]'
+              ? 'text-[var(--trend-hot)]'
               : 'opacity-100 lg:opacity-0 lg:focus:opacity-100 lg:group-hover:opacity-100'
           )}
         >

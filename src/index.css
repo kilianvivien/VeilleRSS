@@ -7,6 +7,12 @@
 
 
 @theme {
+  /* Thème « Constellation » : Geist pour l'interface, Geist Mono pour les
+     chiffres et les codes. Polices embarquées (paquets @fontsource), jamais
+     chargées depuis un CDN : l'application reste locale et hors ligne. */
+  --font-sans: 'Geist Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+
   --radius-macos: 10px;
   --radius-card: 14px;
   --radius-overlay: 28px;
@@ -118,37 +124,46 @@
 
 :root {
   /* Light Mode - Backgrounds */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --bg-tertiary: #f3f4f6;
+  --bg-primary: #fbfbfd;
+  --bg-secondary: #f4f5f8;
+  --bg-tertiary: #eceef3;
 
   /* Light Mode - Text */
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
-  --text-muted: #9ca3af;
+  --text-primary: #14161c;
+  --text-secondary: #474c59;
+  --text-muted: #6a7080;
 
   /* Light Mode - Borders */
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
+  --border: #e4e6ec;
+  --border-strong: #d2d5de;
 
   /* Light Mode - UI Elements */
-  --surface: #f5f5f5;
+  --surface: #f4f5f8;
   --surface-elevated: #ffffff;
-  --hover: #f9fafb;
-  --hover-strong: #f3f4f6;
+  --hover: #f1f2f6;
+  --hover-strong: #e8eaf0;
 
   /* Light Mode - Semantic Colors */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #3b82f6;
+  --success: #13895f;
+  --warning: #b86a00;
+  --error: #d43d3d;
+  --info: #0e8c86;
+
+  /* Constellation — lien et tonalités de tendance.
+     hot = forte hausse, new = nouveau sujet, calm = stable, down = en baisse.
+     Les quatre diffèrent aussi en luminosité, pas seulement en teinte. */
+  --link: #5646cf;
+  --trend-hot: #b86a00;
+  --trend-new: #0e8c86;
+  --trend-calm: #6a5ae0;
+  --trend-down: #8a90a0;
 
   /* Light Mode - Tooltip */
   --tooltip-bg: #374151;
   --tooltip-text: #ffffff;
 
   /* Missing token aliases (referenced in code but previously undefined) */
-  --accent: #4c8dff;
+  --accent: #6a5ae0;
   --accent-foreground: #ffffff;
   --accent-muted: color-mix(in srgb, var(--accent) 18%, transparent);
   --focus-ring: color-mix(in srgb, var(--accent) 45%, transparent);
@@ -187,39 +202,49 @@
 
 .dark {
   /* Dark Mode - Backgrounds */
-  --bg-primary: #0f0f0f;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #262626;
+  --bg-primary: #0b0d12;
+  --bg-secondary: #10131a;
+  --bg-tertiary: #161a23;
 
   /* Dark Mode - Text */
-  --text-primary: #f5f5f5;
-  --text-secondary: #a3a3a3;
-  --text-muted: #737373;
+  --text-primary: #edeff5;
+  --text-secondary: #b3b8c5;
+  --text-muted: #8d93a3;
 
   /* Dark Mode - Borders */
-  --border: #404040;
-  --border-strong: #525252;
+  --border: #1f2430;
+  --border-strong: #2b3140;
 
   /* Dark Mode - UI Elements */
-  --surface: #1a1a1a;
-  --surface-elevated: #262626;
-  --hover: #262626;
-  --hover-strong: #333333;
+  --surface: #10131a;
+  --surface-elevated: #161a23;
+  --hover: #141822;
+  --hover-strong: #1b2030;
 
   /* Dark Mode - Semantic Colors */
-  --success: #10b981;
-  --warning: #f59e0b;
-  --error: #ef4444;
-  --info: #60a5fa;
+  --success: #3fb68b;
+  --warning: #ffb547;
+  --error: #ff6b6b;
+  --info: #3dd6d0;
+
+  /* Constellation — lien et tonalités de tendance */
+  --link: #c9c3ff;
+  --trend-hot: #ffb547;
+  --trend-new: #3dd6d0;
+  --trend-calm: #8b7cff;
+  --trend-down: #5b6172;
+
+  --accent: #8b7cff;
+  --accent-foreground: #0b0d12;
 
   /* Dark Mode - Tooltip */
   --tooltip-bg: #1f2937;
   --tooltip-text: #f3f4f6;
 
   /* Dark Mode - Glass tokens */
-  --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-bg-strong: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-bg-strong: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.09);
   --glass-highlight: rgba(255, 255, 255, 0.2);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
@@ -444,7 +469,7 @@ a,
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   transition: var(--transition-theme);
 }
 
@@ -464,6 +489,54 @@ body {
   h3 {
     font-size: 1.25rem;
     font-weight: 700;
+  }
+}
+
+/* ── Constellation : liste d'articles ─────────────────────────────────── */
+
+/* Occurrence de la recherche dans un titre. */
+.rss-highlight {
+  background: color-mix(in srgb, var(--trend-hot) 30%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* Une ligne qui apparaît (filtre, nouveau lot, rafraîchissement) monte en
+   fondu ; les lignes déjà affichées ne bougent pas, React les conserve. */
+@keyframes rss-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rss-row {
+  animation: rss-row-in 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Pastilles « En ce moment » : la courbe se dessine de gauche à droite. */
+@keyframes rss-spark-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+.rss-trend-chip svg {
+  animation: rss-spark-in 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rss-row,
+  .rss-trend-chip svg {
+    animation: none;
   }
 }
 

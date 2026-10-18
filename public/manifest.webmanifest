@@ -12,7 +12,7 @@
   "dir": "ltr",
   "categories": ["news", "productivity"],
   "background_color": "#ffffff",
-  "theme_color": "#4c8dff",
+  "theme_color": "#6a5ae0",
   "icons": [
     {
       "src": "/pwa-192.png",

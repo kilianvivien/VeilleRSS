@@ -8,6 +8,10 @@ interface SparklineProps {
   className?: string
   /** Description lue par les lecteurs d’écran ; sans elle le graphique est décoratif. */
   label?: string
+  /** Couleur du trait et de l’aire ; l’accent du thème par défaut. */
+  color?: string
+  /** Masque l’aire sous la courbe, pour les pastilles où seul le trait se lit. */
+  lineOnly?: boolean
 }
 
 /**
@@ -15,7 +19,15 @@ interface SparklineProps {
  * L’aire sous la courbe utilise la couleur d’accent du thème, donc elle suit
  * automatiquement le mode clair et le mode sombre.
  */
-export function Sparkline({ values, width = 72, height = 20, className, label }: SparklineProps) {
+export function Sparkline({
+  values,
+  width = 72,
+  height = 20,
+  className,
+  label,
+  color = 'var(--accent)',
+  lineOnly = false,
+}: SparklineProps) {
   if (values.length === 0) return null
 
   const max = Math.max(...values, 1)
@@ -41,12 +53,12 @@ export function Sparkline({ values, width = 72, height = 20, className, label }:
       aria-hidden={label ? undefined : true}
       focusable="false"
     >
-      <path d={areaPath} fill="var(--accent)" opacity={0.14} />
+      {lineOnly ? null : <path d={areaPath} fill={color} opacity={0.14} />}
       <path
         d={linePath}
         fill="none"
-        stroke="var(--accent)"
-        strokeWidth={1.5}
+        stroke={color}
+        strokeWidth={lineOnly ? 1.8 : 1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
