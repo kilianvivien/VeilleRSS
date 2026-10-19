@@ -1503,6 +1503,7 @@ export function RssFeeds() {
 
 
 
+  const trendRefinementLabel = aiTrendSelection?.providerLabel ?? trendProviderLabel
   const trendsToolbarElement = (
     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
       <SegmentedControl<string>
@@ -1512,51 +1513,80 @@ export function RssFeeds() {
         onChange={(value) => updateRssSettings({ trendWindowHours: Number(value) })}
         options={TREND_WINDOW_OPTIONS.map((hours) => ({ value: String(hours), label: TREND_WINDOW_LABELS[hours] ?? `${hours} h` }))}
       />
-      <Button
-        size="sm"
-        variant="secondary"
-        onClick={() => void handleRefineTrends()}
-        disabled={!trendProviderReady || isRefiningTrends}
-        title={trendProviderReady ? `Écarter les termes génériques avec ${trendProviderLabel}` : 'Configurez un fournisseur dans Paramètres → IA'}
-        aria-label="Affiner les tendances avec l’IA"
-        className="shrink-0"
-      >
-        {isRefiningTrends ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
-        <span className="hidden sm:inline">Affiner avec l’IA</span>
-        <span className="sm:hidden">IA</span>
-      </Button>
-    </div>
-  )
-
-  const trendsBannerElement =
-    aiTrendSelection || trendRefinementError ? (
-      <div
-        role="status"
-        className={cn(
-          'flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-2 text-xs',
-          trendRefinementError
-            ? 'border-[color-mix(in_srgb,var(--error)_35%,transparent)] text-[var(--error)]'
-            : 'border-[color-mix(in_srgb,var(--trend-new)_40%,transparent)] text-[var(--text-secondary)]'
-        )}
-      >
-        <Sparkles className="h-3.5 w-3.5 shrink-0" aria-hidden="true" style={{ color: trendRefinementError ? undefined : 'var(--trend-new)' }} />
-        <span className="min-w-0 flex-1">
-          {trendRefinementError ?? `Sélection affinée par ${aiTrendSelection?.providerLabel ?? trendProviderLabel}. Les volumes restent calculés localement.`}
-        </span>
-        {aiTrendSelection ? (
+      {aiTrendSelection ? (
+        // Affinage actif : l'état tient dans le bouton lui-même (relancer ou
+        // revenir au classement local) plutôt que dans un bandeau séparé.
+        <div
+          role="group"
+          aria-label="Affinage IA"
+          className="flex h-9 shrink-0 items-center rounded-xl border border-[color-mix(in_srgb,var(--trend-new)_45%,transparent)] bg-[color-mix(in_srgb,var(--trend-new)_10%,transparent)] text-xs"
+        >
+          <button
+            type="button"
+            onClick={() => void handleRefineTrends()}
+            disabled={!trendProviderReady || isRefiningTrends}
+            title={`Sélection affinée par ${trendRefinementLabel}. Les volumes restent calculés localement. Cliquer pour relancer.`}
+            aria-label={`Sélection affinée par ${trendRefinementLabel}. Relancer l’affinage`}
+            className="flex h-full items-center gap-1.5 rounded-l-xl pr-2 pl-2.5 font-medium text-[var(--text-primary)] disabled:cursor-not-allowed pointer-fine:enabled:hover:bg-[var(--hover)]"
+          >
+            {isRefiningTrends ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" aria-hidden="true" style={{ color: 'var(--trend-new)' }} />
+            )}
+            <span className="hidden sm:inline">Affiné · {trendRefinementLabel}</span>
+            <span className="sm:hidden">IA</span>
+          </button>
           <button
             type="button"
             onClick={() => {
               clearAiTrendSelection()
               setTrendRefinementError(null)
             }}
-            className="min-h-11 shrink-0 rounded-full px-2.5 py-1 font-medium text-[var(--link)] sm:min-h-8 pointer-fine:hover:bg-[var(--hover)]"
+            aria-label="Revenir au classement local"
+            title="Revenir au classement local"
+            className="flex h-full w-9 items-center justify-center rounded-r-xl border-l border-[color-mix(in_srgb,var(--trend-new)_35%,transparent)] text-[var(--text-muted)] sm:w-8 pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
           >
-            Revenir au classement local
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
-        ) : null}
-      </div>
-    ) : null
+        </div>
+      ) : (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void handleRefineTrends()}
+          disabled={!trendProviderReady || isRefiningTrends}
+          title={trendProviderReady ? `Écarter les termes génériques avec ${trendProviderLabel}` : 'Configurez un fournisseur dans Paramètres → IA'}
+          aria-label="Affiner les tendances avec l’IA"
+          className="shrink-0"
+        >
+          {isRefiningTrends ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+          <span className="hidden sm:inline">Affiner avec l’IA</span>
+          <span className="sm:hidden">IA</span>
+        </Button>
+      )}
+      <span role="status" className="sr-only">
+        {aiTrendSelection ? `Sélection affinée par ${trendRefinementLabel}. Les volumes restent calculés localement.` : ''}
+      </span>
+      {trendRefinementError ? (
+        <p
+          role="alert"
+          title={trendRefinementError}
+          className="flex min-w-0 basis-full items-center gap-1.5 text-[11px] text-[var(--error)] sm:max-w-[18rem] sm:basis-auto"
+        >
+          <span className="min-w-0 flex-1 truncate">{trendRefinementError}</span>
+          <button
+            type="button"
+            onClick={() => setTrendRefinementError(null)}
+            aria-label="Masquer l’erreur"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full sm:h-7 sm:w-7 pointer-fine:hover:bg-[var(--hover)]"
+          >
+            <X className="h-3 w-3" aria-hidden="true" />
+          </button>
+        </p>
+      ) : null}
+    </div>
+  )
 
   /** Vue « Tendances » du bureau : la constellation, avec le classement détaillé à droite. */
   const constellationElement = (
@@ -1564,7 +1594,6 @@ export function RssFeeds() {
       {...constellationProps}
       compact={!isDesktop}
       toolbar={trendsToolbarElement}
-      banner={trendsBannerElement}
       activeWatched={activeTerm?.kind === 'keyword' ? activeTerm.label : null}
       onSelectWatched={(term) => {
         if (activeTerm?.kind === 'keyword' && activeTerm.label === term) {

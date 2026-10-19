@@ -1,11 +1,14 @@
-import { useMemo, useRef, useState, type ReactNode } from 'react'
-import { ArrowDown, ArrowRight, ArrowUp, BellPlus, BellRing, Orbit, Plus, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowDown, ArrowRight, ArrowUp, BellPlus, BellRing, Maximize2, Minimize2, Orbit, Plus, X } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { TrendReport, TrendTerm } from '@/lib/rss/trendAnalysis'
 import { buildTopicGraph, neighbourKeys, type TopicGraph } from '@/lib/rss/topicGraph'
 import type { RssFeed, RssItem } from '@/types/rss'
+import type { ConstellationStyle } from '@/types/settings'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { formatRelativeDate } from './rssFormatting'
-import { TREND_TONE_COLOR, formatTrendDelta, trendTone } from './trendTone'
+import { TREND_TONE_COLOR, constellationNodeLook, formatTrendDelta, trendTone } from './trendTone'
 
 interface ConstellationViewProps {
   report: TrendReport
@@ -23,8 +26,6 @@ interface ConstellationViewProps {
   compact?: boolean
   /** Commandes de l'en-tête au bureau : fenêtre d'analyse, affinage IA. */
   toolbar?: ReactNode
-  /** Bandeau d'état sous l'en-tête (affinage IA actif, erreur). */
-  banner?: ReactNode
   /** Détail chiffré du sujet sélectionné (évolution, comparaison), au bureau. */
   focusPanel?: ReactNode
   /** Mot-clé suivi actuellement sélectionné, le cas échéant. */
@@ -34,7 +35,15 @@ interface ConstellationViewProps {
 }
 
 const STREAM_SERIES = 5
-const STREAM_COLORS = ['#8b7cff', '#3dd6d0', '#ffb547', '#f472b6', '#7dd3fc']
+/** Séries du flux : suivent la palette des tendances choisie dans les réglages. */
+const STREAM_COLORS = [
+  'var(--trend-calm)',
+  'var(--trend-new)',
+  'var(--trend-hot)',
+  'var(--trend-extra-1)',
+  'var(--trend-extra-2)',
+]
+
 
 /**
  * Vue « Constellation » : les sujets du moment en graphe animé, leur flux dans
@@ -54,7 +63,6 @@ export function ConstellationView({
   onWatchTerm,
   compact = false,
   toolbar,
-  banner,
   focusPanel,
   activeWatched = null,
   onSelectWatched,
@@ -83,6 +91,23 @@ export function ConstellationView({
       ),
     [compact, report.terms]
   )
+  const fullscreen = useConstellationFullscreen(graphRef)
+  const stageGraph = useMemo(() => {
+    const stage = fullscreen.stage
+    if (!fullscreen.active || !stage || stage.height < 120 || stage.width < 120) return null
+    // Tailles du graphe relatives à la hauteur : on les ramène à l'échelle de
+    // la carte habituelle (≈ 440 px) pour que la place gagnée serve à
+    // afficher davantage de sujets plutôt qu'à grossir les nœuds.
+    const sizeScale = Math.min(1, Math.max(0.5, 440 / stage.height))
+    return buildTopicGraph(report.terms, {
+      limit: compact ? 12 : 24,
+      aspect: stage.width / stage.height,
+      sizeScale,
+      labelCharWidth: 7.2 / stage.height,
+      maxLabelWidth: 160 / stage.height,
+    })
+  }, [compact, fullscreen.active, fullscreen.stage, report.terms])
+  const shownGraph = stageGraph ?? graph
   const watchedStat = activeWatched ? report.watched.find((stat) => stat.term === activeWatched) : undefined
   const focusTerm: TrendTerm | null = watchedStat ? {
     key: report.focus?.key ?? watchedStat.term,
@@ -102,11 +127,11 @@ export function ConstellationView({
   const neighbours = useMemo(
     () => {
       if (!focusTerm) return []
-      if (!activeWatched) return neighbourKeys(graph, focusTerm.key)
+      if (!activeWatched) return neighbourKeys(shownGraph, focusTerm.key)
       const ids = new Set(focusTerm.itemIds)
-      return graph.nodes.filter((node) => node.term.itemIds.some((id) => ids.has(id))).slice(0, 3).map((node) => node.term.key)
+      return shownGraph.nodes.filter((node) => node.term.itemIds.some((id) => ids.has(id))).slice(0, 3).map((node) => node.term.key)
     },
-    [focusTerm, graph, activeWatched]
+    [focusTerm, shownGraph, activeWatched]
   )
 
   const graphCard = (
@@ -114,11 +139,16 @@ export function ConstellationView({
       ref={graphRef}
       aria-label="Constellation des sujets"
       className={cn(
-        'flex min-w-0 flex-col gap-2 overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)]',
+        'relative flex min-w-0 flex-col gap-2 overflow-hidden rounded-[20px] border border-[var(--border)] bg-[var(--surface)]',
         compact ? 'p-3' : 'p-5'
       )}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      {/* Bouton plein écran ancré dans le coin de la carte ; l'en-tête lui
+          réserve sa place pour que la légende ne passe jamais dessous. */}
+      <div className={cn('absolute', compact ? 'top-1.5 right-1.5' : 'top-3 right-3')}>
+        <FullscreenToggle active={false} onToggle={fullscreen.enter} buttonRef={fullscreen.toggleRef} />
+      </div>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pr-10">
         <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">Constellation des sujets</h2>
         <ToneLegend compact={compact} />
       </div>
@@ -149,8 +179,12 @@ export function ConstellationView({
     </section>
   )
 
-  const detail = focusTerm ? (
+  // Au bureau, le panneau chiffré présente déjà le sujet ; en plein écran il
+  // est absent, le détail reprend donc son en-tête.
+  const renderDetail = (withHeader: boolean, roomy = false) => focusTerm ? (
     <TopicDetail
+      articleLimit={roomy ? 4 : 3}
+      showExcerpts={roomy}
       term={focusTerm}
       isSelected={Boolean(activeWatched) || focusTerm.key === activeKey}
       related={neighbours.map((key) => report.terms.find((term) => term.key === key)).filter((term): term is TrendTerm => Boolean(term))}
@@ -158,20 +192,72 @@ export function ConstellationView({
       feedById={feedById}
       watched={watchedTerms.some((watched) => watched.toLowerCase() === focusTerm.label.toLowerCase())}
       onSelectTerm={selectTerm}
-      onOpenItem={onOpenItem}
+      onOpenItem={(item) => {
+        // Le lecteur s'ouvre hors du plein écran : on en sort d'abord.
+        fullscreen.exit()
+        onOpenItem(item)
+      }}
       onViewArticles={() => {
+        fullscreen.exit()
         if (!activeWatched && focusTerm.key !== activeKey) onSelectTerm(focusTerm)
         onViewArticles()
       }}
       onWatch={() => onWatchTerm(focusTerm.label)}
-      withHeader={!focusPanel}
+      withHeader={withHeader}
     />
   ) : null
+  const detail = renderDetail(!focusPanel)
 
   const volumeChange = report.previousItemCount === 0 ? null : Math.round(((report.itemCount - report.previousItemCount) / report.previousItemCount) * 100)
 
+  const graphActiveKey = shownGraph.nodes.some((node) => node.term.key === activeKey) ? activeKey : null
+  const fullscreenLayer = fullscreen.active
+    ? createPortal(
+        <section
+          ref={fullscreen.layerRef}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Constellation des sujets, plein écran"
+          className={cn(
+            'fixed inset-0 z-50 flex flex-col gap-3 bg-[var(--bg-primary)] p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6',
+            fullscreen.closing && 'pointer-events-none'
+          )}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <div className="flex min-w-0 flex-col">
+              <h2 className="text-[17px] font-semibold text-[var(--text-primary)]">Constellation des sujets</h2>
+              <p className="text-xs text-[var(--text-muted)]">
+                {shownGraph.nodes.length} sujets · {report.itemCount} articles · {report.windowHours} h
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <ToneLegend compact={compact} />
+              <FullscreenToggle active onToggle={fullscreen.exit} buttonRef={fullscreen.exitRef} />
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 gap-4">
+            <div ref={fullscreen.stageRef} className="relative min-h-0 min-w-0 flex-1">
+              {stageGraph ? (
+                <ConstellationGraph
+                  graph={stageGraph}
+                  activeKey={graphActiveKey}
+                  neighbours={neighbours}
+                  onSelect={(term) => (term.key === activeKey ? onClearSelection() : onSelectTerm(term))}
+                />
+              ) : null}
+            </div>
+            {!compact && focusTerm ? (
+              <div className="hidden min-h-0 w-[340px] shrink-0 flex-col lg:flex xl:w-[400px]">{renderDetail(true, true)}</div>
+            ) : null}
+          </div>
+        </section>,
+        document.body
+      )
+    : null
+
   return (
     <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
+      {fullscreenLayer}
       <div className="mx-auto flex max-w-[1440px] flex-col gap-4 p-4 sm:p-6">
         <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
           <div className="flex flex-col gap-1">
@@ -196,7 +282,6 @@ export function ConstellationView({
           </div>
           {toolbar}
         </header>
-        {banner}
         <WatchedBar
           watched={report.watched}
           active={activeWatched}
@@ -238,6 +323,171 @@ export function ConstellationView({
       </div>
     </div>
   )
+}
+
+function FullscreenToggle({
+  active,
+  onToggle,
+  buttonRef,
+}: {
+  active: boolean
+  onToggle: () => void
+  buttonRef: RefObject<HTMLButtonElement | null>
+}) {
+  const label = active ? 'Quitter le plein écran' : 'Afficher la constellation en plein écran'
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      onClick={onToggle}
+      aria-label={label}
+      title={active ? 'Quitter le plein écran (Échap)' : 'Plein écran'}
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[var(--text-muted)] transition-colors sm:h-8 sm:w-8 pointer-fine:hover:bg-[var(--hover)] pointer-fine:hover:text-[var(--text-primary)]"
+    >
+      {active ? <Minimize2 className="h-4 w-4" aria-hidden="true" /> : <Maximize2 className="h-4 w-4" aria-hidden="true" />}
+    </button>
+  )
+}
+
+/** Durées de l'ouverture et de la fermeture du plein écran. */
+const FULLSCREEN_OPEN_MS = 460
+const FULLSCREEN_CLOSE_MS = 340
+const FULLSCREEN_EASING = 'cubic-bezier(0.22, 1, 0.36, 1)'
+
+/**
+ * Plein écran de la constellation : un calque fixe sur toute la fenêtre, qui
+ * fonctionne partout (iPhone compris). À l'ouverture, il se déploie depuis la
+ * carte d'origine (`clip-path` animé de son rectangle vers la fenêtre) pendant
+ * que son contenu apparaît ; à la fermeture, il s'y replie avant d'être
+ * démonté. Échap referme ; le focus revient au bouton d'origine. La zone du
+ * graphe est mesurée pour recalculer la carte au format de l'écran.
+ *
+ * Le plein écran natif du navigateur n'est volontairement pas utilisé : sa
+ * propre transition (changement d'espace sur macOS) casserait l'animation.
+ */
+function useConstellationFullscreen(sourceRef: RefObject<HTMLElement | null>) {
+  const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed')
+  const [stage, setStage] = useState<{ width: number; height: number } | null>(null)
+  const layerRef = useRef<HTMLElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const toggleRef = useRef<HTMLButtonElement>(null)
+  const exitRef = useRef<HTMLButtonElement>(null)
+  const active = phase !== 'closed'
+
+  // Miroir synchrone de la phase : `exit` peut être appelé plusieurs fois de
+  // suite (Échap puis clic) sans relancer l'animation.
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+
+  /** Rectangle de la carte d'origine, en `inset()` relatif à la fenêtre. */
+  const sourceInset = useCallback((): string | null => {
+    const rect = sourceRef.current?.getBoundingClientRect()
+    if (!rect || rect.width === 0 || rect.bottom < 0 || rect.top > window.innerHeight) return null
+    const right = Math.max(0, window.innerWidth - rect.right)
+    const bottom = Math.max(0, window.innerHeight - rect.bottom)
+    return `inset(${Math.max(0, rect.top)}px ${right}px ${bottom}px ${Math.max(0, rect.left)}px round 20px)`
+  }, [sourceRef])
+
+  const enter = useCallback(() => {
+    if (phaseRef.current !== 'closed') return
+    phaseRef.current = 'open'
+    setPhase('open')
+  }, [])
+
+  const exit = useCallback(() => {
+    if (phaseRef.current !== 'open') return
+    phaseRef.current = 'closing'
+    setPhase('closing')
+    const finish = () => {
+      phaseRef.current = 'closed'
+      setPhase('closed')
+      requestAnimationFrame(() => toggleRef.current?.focus({ preventScroll: true }))
+    }
+    const layer = layerRef.current
+    if (!layer || typeof layer.animate !== 'function') {
+      finish()
+      return
+    }
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const target = reduced ? null : sourceInset()
+    const content = Array.from(layer.children) as HTMLElement[]
+    content.forEach((child) =>
+      child.animate([{ opacity: 1 }, { opacity: 0 }], { duration: FULLSCREEN_CLOSE_MS * 0.5, easing: 'ease-out', fill: 'forwards' })
+    )
+    const animation = target
+      ? layer.animate(
+          [{ clipPath: 'inset(0px 0px 0px 0px round 0px)' }, { clipPath: target, opacity: 0.6 }],
+          { duration: FULLSCREEN_CLOSE_MS, easing: FULLSCREEN_EASING, fill: 'forwards' }
+        )
+      : layer.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, easing: 'ease-out', fill: 'forwards' })
+    animation.onfinish = finish
+    animation.oncancel = finish
+  }, [sourceInset])
+
+  // Ouverture : jouée avant le premier affichage du calque pour éviter tout
+  // flash plein cadre.
+  const isOpen = phase === 'open'
+  useLayoutEffect(() => {
+    if (!isOpen) return
+    const layer = layerRef.current
+    if (!layer || typeof layer.animate !== 'function') return
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const origin = reduced ? null : sourceInset()
+    if (origin) {
+      layer.animate(
+        [{ clipPath: origin, opacity: 0.6 }, { clipPath: 'inset(0px 0px 0px 0px round 0px)', opacity: 1 }],
+        { duration: FULLSCREEN_OPEN_MS, easing: FULLSCREEN_EASING }
+      )
+      ;(Array.from(layer.children) as HTMLElement[]).forEach((child, index) =>
+        child.animate(
+          [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
+          { duration: 320, delay: 140 + index * 60, easing: 'ease-out', fill: 'backwards' }
+        )
+      )
+    } else {
+      layer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' })
+    }
+  }, [isOpen, sourceInset])
+
+  useEffect(() => {
+    if (!active) {
+      setStage(null)
+      return
+    }
+    exitRef.current?.focus({ preventScroll: true })
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        exit()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+
+    const stageElement = stageRef.current
+    const observer = stageElement
+      ? new ResizeObserver(([entry]) => {
+          const { width, height } = entry.contentRect
+          // Arrondi : évite de recalculer la carte pour un demi-pixel.
+          setStage((current) =>
+            current && Math.abs(current.width - width) < 8 && Math.abs(current.height - height) < 8
+              ? current
+              : { width: Math.round(width), height: Math.round(height) }
+          )
+        })
+      : null
+    if (stageElement) observer?.observe(stageElement)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      observer?.disconnect()
+      document.body.style.overflow = previousOverflow
+    }
+  }, [active, exit])
+
+  return { active, closing: phase === 'closing', stage, enter, exit, layerRef, stageRef, toggleRef, exitRef }
 }
 
 /** Mots-clés suivis : pastilles cliquables, ajout et retrait en place. */
@@ -349,12 +599,17 @@ export function ConstellationGraph({
   activeKey,
   neighbours,
   onSelect,
+  variant,
 }: {
   graph: TopicGraph
   activeKey: string | null
   neighbours: string[]
   onSelect: (term: TrendTerm) => void
+  /** Style imposé ; à défaut, celui des réglages. */
+  variant?: ConstellationStyle
 }) {
+  const storedStyle = useSettingsStore((state) => state.constellationStyle)
+  const style = variant ?? storedStyle ?? 'orbs'
   const lit = useMemo(() => new Set(activeKey ? [activeKey, ...neighbours] : []), [activeKey, neighbours])
   const position = new Map(graph.nodes.map((node) => [node.term.key, node]))
 
@@ -390,7 +645,9 @@ export function ConstellationGraph({
                 style={{
                   backgroundImage: on
                     ? 'linear-gradient(90deg, var(--trend-calm), var(--trend-new), var(--trend-calm))'
-                    : `linear-gradient(90deg, color-mix(in srgb, var(--text-primary) ${Math.round(8 + edge.weight * 14)}%, transparent), color-mix(in srgb, var(--text-primary) ${Math.round(8 + edge.weight * 14)}%, transparent))`,
+                    : style === 'rings'
+                      ? `repeating-linear-gradient(90deg, color-mix(in srgb, var(--text-primary) ${Math.round(14 + edge.weight * 16)}%, transparent) 0 6px, transparent 6px 10px)`
+                      : `linear-gradient(90deg, color-mix(in srgb, var(--text-primary) ${Math.round(8 + edge.weight * 14)}%, transparent), color-mix(in srgb, var(--text-primary) ${Math.round(8 + edge.weight * 14)}%, transparent))`,
                   opacity: activeKey && !on ? 0.4 : 1,
                 }}
               />
@@ -403,6 +660,7 @@ export function ConstellationGraph({
         const tone = trendTone(node.term)
         const color = TREND_TONE_COLOR[tone]
         const selected = node.term.key === activeKey
+        const look = constellationNodeLook(style, color, selected)
         const dimmed = activeKey !== null && !lit.has(node.term.key)
         // Rayon exprimé en fraction de la hauteur : converti en largeur.
         const diameter = ((node.r * 2) / graph.aspect) * 100
@@ -432,15 +690,13 @@ export function ConstellationGraph({
               ) : null}
               <span
                 aria-hidden="true"
-                className="absolute inset-0 rounded-full transition-shadow duration-500"
-                style={{
-                  background: `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 72%, white), ${color} 72%)`,
-                  boxShadow: `0 0 0 ${selected ? 3 : 0}px var(--text-primary), 0 0 32px color-mix(in srgb, ${color} ${selected ? 55 : 22}%, transparent)`,
-                }}
+                className="absolute inset-0 rounded-full transition-[box-shadow,background] duration-500"
+                style={look.disc}
               />
               <span
                 aria-hidden="true"
-                className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-medium text-[#0b0d12] tabular-nums"
+                className="absolute inset-0 flex items-center justify-center font-mono text-[11px] font-medium tabular-nums"
+                style={{ color: look.textColor }}
               >
                 {node.term.count}
               </span>
@@ -472,6 +728,8 @@ function TopicDetail({
   onViewArticles,
   onWatch,
   withHeader = true,
+  articleLimit = 3,
+  showExcerpts = false,
 }: {
   term: TrendTerm
   isSelected: boolean
@@ -485,19 +743,27 @@ function TopicDetail({
   onWatch: () => void
   /** Sans en-tête quand un panneau voisin présente déjà le sujet. */
   withHeader?: boolean
+  articleLimit?: number
+  /** Chapeau de l'article sous son titre, quand la place le permet (plein écran). */
+  showExcerpts?: boolean
 }) {
   const color = TREND_TONE_COLOR[trendTone(term)]
   const articles = term.itemIds
     .map((id) => itemById.get(id))
     .filter((item): item is RssItem => Boolean(item))
     .sort((a, b) => (b.publishedAt ?? b.fetchedAt) - (a.publishedAt ?? a.fetchedAt))
-    .slice(0, 3)
+    .slice(0, articleLimit)
 
   return (
     <aside
       aria-label={withHeader ? 'Sujet sélectionné' : `Liens et articles : ${term.label}`}
       key={term.key}
-      className="cst-rise flex min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5"
+      className={cn(
+        'cst-rise flex min-w-0 flex-col gap-4 rounded-[20px] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5',
+        // Plein écran : le panneau tient dans la hauteur, seule la liste
+        // d'articles défile ; les actions restent toujours visibles.
+        showExcerpts && 'max-h-full min-h-0 [&>*:not(ul)]:shrink-0'
+      )}
     >
       {withHeader ? (
       <div className="flex flex-col gap-1.5">
@@ -536,9 +802,9 @@ function TopicDetail({
       ) : null}
 
       {articles.length === 0 ? <p className="text-xs leading-5 text-[var(--text-muted)]">Aucun article sur ce sujet dans la période sélectionnée.</p> : null}
-      <ul className="flex flex-col gap-1.5">
+      <ul className={cn('flex flex-col gap-1.5', showExcerpts && 'min-h-0 overflow-y-auto overscroll-contain')}>
         {articles.map((item, index) => (
-          <li key={item.id} className="cst-rise" style={{ animationDelay: `${index * 0.06}s` }}>
+          <li key={item.id} className="cst-rise" style={{ animationDelay: `${Math.min(index, 5) * 0.06}s` }}>
             <button
               type="button"
               onClick={() => onOpenItem(item)}
@@ -549,7 +815,12 @@ function TopicDetail({
                 {' · '}
                 {formatRelativeDate(item.publishedAt ?? item.fetchedAt)}
               </span>
-              <span className="line-clamp-2 text-[13px] leading-snug text-[var(--text-primary)]">{item.title}</span>
+              <span className={cn('text-[13px] leading-snug text-[var(--text-primary)]', showExcerpts ? 'line-clamp-3 font-medium' : 'line-clamp-2')}>{item.title}</span>
+              {showExcerpts && (item.contentSnippet || item.summary) ? (
+                <span className="mt-0.5 line-clamp-3 text-xs leading-[1.45] text-[var(--text-secondary)]">
+                  {item.contentSnippet || item.summary}
+                </span>
+              ) : null}
             </button>
           </li>
         ))}

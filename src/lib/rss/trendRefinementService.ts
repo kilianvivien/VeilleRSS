@@ -8,20 +8,29 @@ import type { TrendReport, TrendTerm } from './trendAnalysis'
 
 const logger = createLogger('rss:trend-refinement')
 const MAX_CANDIDATES = 24
-const MAX_HEADLINES_PER_TERM = 4
+const MAX_HEADLINES_PER_TERM = 5
+/** Part minimale d'articles communs pour signaler un doublon possible à l'IA. */
+const OVERLAP_HINT_THRESHOLD = 0.3
 const MAX_LABEL_LENGTH = 80
 
-const SYSTEM_PROMPT = `Tu es un filtre taxonomique éditorial pour une veille presse multilingue.
-Le calcul local a déjà mesuré la fréquence, la progression et la diversité des sources. Ton rôle est uniquement d'écarter les candidats sans valeur éditoriale et, si nécessaire, de rendre leur libellé plus clair.
+const SYSTEM_PROMPT = `Tu es éditeur·rice de veille presse internationale. Tu reçois des candidats-sujets extraits automatiquement des titres d'articles RSS, déjà mesurés localement (volume, progression, nombre de sources). Tu ne recalcules aucun chiffre : tu tries, tu dédoublonnes et tu nommes.
 
-Règles impératives :
-- conserve seulement des sujets concrets : personne nommée, organisation, lieu, politique publique, événement, conflit, accord, décision ou enjeu précis ;
-- rejette les mots grammaticaux, verbes auxiliaires, verbes de titraille, quantités vagues et noms humains génériques (par exemple « kişi », « people », « personnes », « olacak », « will be ») ;
-- rejette un terme dont les titres associés ne parlent pas d'un même sujet ;
-- n'invente aucun sujet et n'ajoute aucune clé ;
-- garde la langue d'origine du sujet ;
-- classe les termes retenus du plus important au moins important ;
-- réponds uniquement avec un objet JSON de la forme {"terms":[{"key":"clé exacte fournie","label":"libellé concis"}]}.
+Pour chaque candidat, lis ses titres d'exemple avant de juger le libellé : c'est le sujet réel des articles qui compte, pas le mot extrait.
+
+1. Écarte (en l'omettant de ta réponse) :
+   - les mots grammaticaux, verbes, adverbes, quantités, dates seules, mots de titraille (« live », « vidéo », « exclusif », « direct », « analyse », « olacak », « will be »…) ;
+   - les noms communs génériques sans objet précis (« personnes », « kişi », « people », « gouvernement », « président », « police ») sauf si les titres montrent qu'ils désignent un seul événement ;
+   - les noms de médias, de rubriques ou de sources ;
+   - un candidat dont les titres parlent de sujets sans rapport entre eux.
+2. Dédoublonne : quand plusieurs candidats désignent la même personne, la même organisation ou le même événement (variantes de nom, traductions, formes fléchies, angles d'une même affaire — voir \`overlapsWith\`, qui indique la part d'articles en commun), garde une seule clé, celle qui a le plus d'articles, et omets les autres.
+3. Nomme chaque sujet retenu avec un libellé concis (1 à 5 mots) :
+   - forme canonique avec majuscules et diacritiques corrects (« Emmanuel Macron », « Gözaltı », « Union européenne ») ;
+   - pour un événement, un libellé qui dit ce qui se passe (« Grève du 17 octobre », « Sommet de l'OTAN ») plutôt qu'un mot isolé ;
+   - langue d'origine du sujet ; pas de ponctuation finale, pas de guillemets, aucune information absente des titres.
+4. Classe les sujets retenus par importance éditoriale : nombre de sources indépendantes, progression, puis portée de l'enjeu. Un sujet couvert par une seule source passe après les sujets multisources.
+
+N'invente aucun sujet ni aucune clé : chaque \`key\` doit être recopiée exactement depuis l'entrée.
+Réponds uniquement avec un objet JSON, sans texte autour : {"terms":[{"key":"clé exacte fournie","label":"libellé concis"}]}
 `
 
 interface AiSelectionEntry {
@@ -105,6 +114,54 @@ export function applyAiTrendSelection(
   }
 }
 
+/**
+ * Candidats qui partagent une part notable d'articles avec `term` : indice de
+ * doublon (« Macron » / « Emmanuel Macron ») ou d'angles d'un même événement.
+ */
+function overlapHints(
+  term: TrendTerm,
+  candidates: TrendTerm[],
+  itemSets: Map<string, Set<string>>
+): { key: string; sharedRatio: number }[] {
+  const own = itemSets.get(term.key)
+  if (!own || own.size === 0) return []
+  return candidates
+    .flatMap((other) => {
+      if (other.key === term.key) return []
+      const otherSet = itemSets.get(other.key)
+      if (!otherSet) return []
+      let shared = 0
+      for (const id of own) if (otherSet.has(id)) shared += 1
+      const ratio = shared / Math.min(own.size, otherSet.size)
+      return ratio >= OVERLAP_HINT_THRESHOLD ? [{ key: other.key, sharedRatio: Math.round(ratio * 100) / 100 }] : []
+    })
+    .sort((a, b) => b.sharedRatio - a.sharedRatio)
+    .slice(0, 3)
+}
+
+/** Titres d'exemple : les plus récents, une source à la fois tant que possible. */
+function pickHeadlineIds(term: TrendTerm, itemById: Map<string, RssItem>): string[] {
+  const sorted = term.itemIds
+    .flatMap((id) => {
+      const item = itemById.get(id)
+      return item ? [item] : []
+    })
+    .sort((a, b) => (b.publishedAt ?? b.fetchedAt) - (a.publishedAt ?? a.fetchedAt))
+  const picked: RssItem[] = []
+  const feeds = new Set<string>()
+  for (const item of sorted) {
+    if (picked.length >= MAX_HEADLINES_PER_TERM) break
+    if (feeds.has(item.feedId)) continue
+    feeds.add(item.feedId)
+    picked.push(item)
+  }
+  for (const item of sorted) {
+    if (picked.length >= MAX_HEADLINES_PER_TERM) break
+    if (!picked.includes(item)) picked.push(item)
+  }
+  return picked.map((item) => item.id)
+}
+
 /** Convertit un affinage tout juste produit en sélection persistable. */
 export function toStoredTrendSelection(
   result: RefinedTrendResult,
@@ -138,6 +195,7 @@ export async function refineTrendReportWithAi({
   }
 
   const itemById = new Map(items.map((item) => [item.id, item]))
+  const itemSets = new Map(candidates.map((term) => [term.key, new Set(term.itemIds)]))
   const feedById = new Map(feeds.map((feed) => [feed.id, feed]))
   const payload = {
     windowHours: report.windowHours,
@@ -148,8 +206,11 @@ export async function refineTrendReportWithAi({
       label: term.label,
       articleCount: term.count,
       previousCount: term.previousCount,
+      isNew: term.isNew,
       sourceCount: term.sourceCount,
-      headlines: term.itemIds.slice(0, MAX_HEADLINES_PER_TERM).flatMap((itemId) => {
+      overlapsWith: overlapHints(term, candidates, itemSets),
+      // Titres les plus récents et, autant que possible, de sources différentes.
+      headlines: pickHeadlineIds(term, itemById).flatMap((itemId) => {
         const item = itemById.get(itemId)
         if (!item) return []
         return [

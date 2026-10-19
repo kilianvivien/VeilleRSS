@@ -158,6 +158,12 @@
   --trend-new: #0e8c86;
   --trend-calm: #6a5ae0;
   --trend-down: #8a90a0;
+  /* Chiffre posé sur un nœud plein (style « Aplats ») : les tonalités claires
+     sont foncées, les sombres sont vives. */
+  --trend-node-ink: #ffffff;
+  /* Teintes d'appoint (flux des sujets, 4e et 5e séries). */
+  --trend-extra-1: #c2367a;
+  --trend-extra-2: #2b8fc4;
 
   /* Light Mode - Tooltip */
   --tooltip-bg: #374151;
@@ -234,6 +240,9 @@
   --trend-new: #3dd6d0;
   --trend-calm: #8b7cff;
   --trend-down: #5b6172;
+  --trend-extra-1: #f472b6;
+  --trend-extra-2: #7dd3fc;
+  --trend-node-ink: #0b0d12;
 
   --accent: #8b7cff;
   --accent-foreground: #0b0d12;
@@ -252,7 +261,7 @@
 
 /* Accents au choix (Réglages → Apparence). Le violet reste la valeur par
    défaut définie plus haut ; seuls l'accent, le lien et le texte posé sur
-   l'accent changent, les tonalités de tendance restent stables. */
+   l'accent changent. Les tonalités de tendance ont leurs propres palettes. */
 html[data-accent='cyan'] {
   --accent: #0e8c86;
   --link: #0b6f6a;
@@ -299,6 +308,82 @@ html.dark[data-accent='blue'] {
   --accent: #6ba4ff;
   --link: #a9cbff;
   --accent-foreground: #0b0d12;
+}
+
+
+/* Palettes des tendances (Réglages → Apparence). « classic » reprend les
+   valeurs ci-dessus ; chaque palette garde quatre tonalités distinctes en
+   luminosité. « colorblind » suit la palette Okabe-Ito. */
+html[data-trend-palette='aurora'] {
+  --trend-hot: #c43c4f;
+  --trend-new: #13895f;
+  --trend-calm: #2b7fb8;
+  --trend-down: #8a90a0;
+  --trend-extra-1: #6a5ae0;
+  --trend-extra-2: #a07a00;
+}
+
+html.dark[data-trend-palette='aurora'] {
+  --trend-hot: #ff7a8a;
+  --trend-new: #6ee7a8;
+  --trend-calm: #7dd3fc;
+  --trend-down: #5b6172;
+  --trend-extra-1: #c4b5fd;
+  --trend-extra-2: #fde68a;
+}
+
+html[data-trend-palette='ember'] {
+  --trend-hot: #c4401f;
+  --trend-new: #a87800;
+  --trend-calm: #a8643a;
+  --trend-down: #9a8f8a;
+  --trend-extra-1: #c2367a;
+  --trend-extra-2: #c2570c;
+}
+
+html.dark[data-trend-palette='ember'] {
+  --trend-hot: #ff6b4a;
+  --trend-new: #ffd166;
+  --trend-calm: #e8a87c;
+  --trend-down: #6b5f5a;
+  --trend-extra-1: #f472b6;
+  --trend-extra-2: #fb923c;
+}
+
+html[data-trend-palette='ocean'] {
+  --trend-hot: #d1435b;
+  --trend-new: #0f8a7a;
+  --trend-calm: #2563eb;
+  --trend-down: #8a90a0;
+  --trend-extra-1: #7c3aed;
+  --trend-extra-2: #0369a1;
+}
+
+html.dark[data-trend-palette='ocean'] {
+  --trend-hot: #fb7185;
+  --trend-new: #5eead4;
+  --trend-calm: #93c5fd;
+  --trend-down: #4b5568;
+  --trend-extra-1: #c4b5fd;
+  --trend-extra-2: #38bdf8;
+}
+
+html[data-trend-palette='colorblind'] {
+  --trend-hot: #b87700;
+  --trend-new: #0072b2;
+  --trend-calm: #a8507f;
+  --trend-down: #8a90a0;
+  --trend-extra-1: #007a59;
+  --trend-extra-2: #8a8200;
+}
+
+html.dark[data-trend-palette='colorblind'] {
+  --trend-hot: #e69f00;
+  --trend-new: #56b4e9;
+  --trend-calm: #cc79a7;
+  --trend-down: #6b7280;
+  --trend-extra-1: #009e73;
+  --trend-extra-2: #f0e442;
 }
 
 /* Glass surface utilities */

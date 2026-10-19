@@ -13,6 +13,7 @@ const OnboardingTour = lazy(() =>
 export default function App() {
   const theme = useSettingsStore((state) => state.theme)
   const accentColor = useSettingsStore((state) => state.accentColor) ?? 'violet'
+  const trendPalette = useSettingsStore((state) => state.trendPalette) ?? 'classic'
   const onboardingCompleted = useSettingsStore((state) => state.onboardingCompleted)
   const updateSettings = useSettingsStore((state) => state.updateSettings)
   useRssRefreshScheduler()
@@ -39,6 +40,16 @@ export default function App() {
       /* localStorage indisponible : l'accent reste appliqué pour la session. */
     }
   }, [accentColor])
+
+  // Palette des tendances : même mécanique que l'accent, clé anti-flash dédiée.
+  useEffect(() => {
+    document.documentElement.dataset.trendPalette = trendPalette
+    try {
+      window.localStorage.setItem('veille-web-trend-palette', trendPalette)
+    } catch {
+      /* localStorage indisponible : la palette reste appliquée pour la session. */
+    }
+  }, [trendPalette])
 
   /**
    * Préchauffage des vues paresseuses quand le navigateur est au repos.

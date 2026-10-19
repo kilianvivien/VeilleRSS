@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { ChevronDown, Database, Download, Eye, EyeOff, GraduationCap, Info, Moon, Palette, Rss, Sparkles, Upload } from 'lucide-react'
 import { Button, Input, Modal, Select, Switch } from '@/components/ui'
 import { useRssStore } from '@/stores/rssStore'
 import type { RssReaderTextSize } from '@/types/rss'
 import { useSettingsStore } from '@/stores/settingsStore'
-import type { AccentColor, AiProvider, Settings } from '@/types/settings'
+import type { AccentColor, AiProvider, ConstellationStyle, Settings, TrendPalette } from '@/types/settings'
+import { constellationNodeLook } from '@/components/rss/trendTone'
 import { MOBILE_VISIBLE_PROVIDERS, PROVIDER_REGISTRY } from '@/lib/ai/providerRegistry'
 import { getEffectiveProvider } from '@/lib/utils/aiProvider'
 import { normalizeLocalAiTimeoutSeconds } from '@/lib/ai/localAiTimeout'
@@ -111,6 +112,24 @@ const ACCENT_OPTIONS: { value: AccentColor; label: string; swatch: string }[] = 
   { value: 'amber', label: 'Ambre', swatch: 'linear-gradient(135deg, #ffb547, #b86a00)' },
   { value: 'rose', label: 'Rose', swatch: 'linear-gradient(135deg, #f472b6, #c2367a)' },
   { value: 'blue', label: 'Bleu', swatch: 'linear-gradient(135deg, #6ba4ff, #2f6fe4)' },
+]
+
+/**
+ * Palettes des tendances. Les pastilles reprennent les teintes sombres de
+ * index.css (hausse, nouveau, stable, baisse) pour rester lisibles partout.
+ */
+const TREND_PALETTE_OPTIONS: { value: TrendPalette; label: string; hint: string; swatches: string[] }[] = [
+  { value: 'classic', label: 'Constellation', hint: 'Ambre, cyan, violet', swatches: ['#ffb547', '#3dd6d0', '#8b7cff', '#5b6172'] },
+  { value: 'aurora', label: 'Aurore', hint: 'Corail, menthe, ciel', swatches: ['#ff7a8a', '#6ee7a8', '#7dd3fc', '#5b6172'] },
+  { value: 'ember', label: 'Braise', hint: 'Tons chauds', swatches: ['#ff6b4a', '#ffd166', '#e8a87c', '#6b5f5a'] },
+  { value: 'ocean', label: 'Océan', hint: 'Tons froids', swatches: ['#fb7185', '#5eead4', '#93c5fd', '#4b5568'] },
+  { value: 'colorblind', label: 'Daltonisme', hint: 'Palette Okabe-Ito', swatches: ['#e69f00', '#56b4e9', '#cc79a7', '#6b7280'] },
+]
+
+const CONSTELLATION_STYLE_OPTIONS: { value: ConstellationStyle; label: string; hint: string }[] = [
+  { value: 'orbs', label: 'Orbes', hint: 'Dégradés lumineux' },
+  { value: 'rings', label: 'Anneaux', hint: 'Contours, liens pointillés' },
+  { value: 'flat', label: 'Aplats', hint: 'Couleurs pleines, sans lueur' },
 ]
 
 type SettingsTab = 'general' | 'flux' | 'ia' | 'donnees' | 'apropos'
@@ -340,7 +359,7 @@ export function SettingsModal({
               <div className="min-w-0">
                 <p className="text-sm font-medium text-[var(--text-primary)]">Couleur d’accent</p>
                 <p className="text-[11px] leading-4 text-[var(--text-muted)]">
-                  Navigation, sélection, liens. Les couleurs des tendances restent fixes.
+                  Navigation, sélection, liens. Les tendances ont leur propre palette.
                 </p>
               </div>
               <div role="radiogroup" aria-label="Couleur d’accent" className="flex items-center gap-2">
@@ -373,6 +392,55 @@ export function SettingsModal({
                   )
                 })}
               </div>
+            </div>
+            <div className="flex flex-col gap-2.5 border-t border-[var(--border)] pt-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Palette des tendances</p>
+                <p className="text-[11px] leading-4 text-[var(--text-muted)]">
+                  Forte hausse, nouveau, stable, en baisse : constellation, flux et pastilles.
+                </p>
+              </div>
+              <ChoiceGroup
+                label="Palette des tendances"
+                value={aiSettings.trendPalette ?? 'classic'}
+                options={TREND_PALETTE_OPTIONS}
+                onChange={(value) => updateAiSettings({ trendPalette: value })}
+                className="grid-cols-2 sm:grid-cols-3"
+                renderPreview={(option) => (
+                  <span className="flex -space-x-1" aria-hidden="true">
+                    {option.swatches.map((swatch) => (
+                      <span key={swatch} className="h-3.5 w-3.5 rounded-full ring-2 ring-[var(--surface)]" style={{ background: swatch }} />
+                    ))}
+                  </span>
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-2.5 border-t border-[var(--border)] pt-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Style de la constellation</p>
+                <p className="text-[11px] leading-4 text-[var(--text-muted)]">Rendu des sujets et de leurs liens dans la vue Tendances.</p>
+              </div>
+              <ChoiceGroup
+                label="Style de la constellation"
+                value={aiSettings.constellationStyle ?? 'orbs'}
+                options={CONSTELLATION_STYLE_OPTIONS}
+                onChange={(value) => updateAiSettings({ constellationStyle: value })}
+                className="grid-cols-3"
+                renderPreview={(option) => (
+                  <span className="flex items-end gap-1" aria-hidden="true">
+                    {(['var(--trend-hot)', 'var(--trend-new)', 'var(--trend-calm)'] as const).map((color, index) => {
+                      const size = [22, 16, 12][index]
+                      return (
+                        <span
+                          key={color}
+                          className="rounded-full"
+                          style={{ width: size, height: size, ...constellationNodeLook(option.value, color, false).disc }}
+                        />
+                      )
+                    })}
+                  </span>
+                )}
+              />
             </div>
             {!isDesktop ? (
               <div className="flex items-center justify-between gap-4 border-t border-[var(--border)] pt-3">
@@ -953,4 +1021,62 @@ function isConfigured(provider: AiProvider, settings: Settings): boolean {
   }
   if (provider === 'apple') return isValidAppleFmBridgeUrl(settings.appleFmBridgeUrl)
   return true
+}
+
+/**
+ * Choix exclusif en cartes : un aperçu, un libellé et une précision. Mêmes
+ * raccourcis clavier qu'un groupe radio natif (flèches).
+ */
+function ChoiceGroup<T extends string, O extends { value: T; label: string; hint: string }>({
+  label,
+  value,
+  options,
+  onChange,
+  renderPreview,
+  className,
+}: {
+  label: string
+  value: T
+  options: O[]
+  onChange: (value: T) => void
+  renderPreview: (option: O) => ReactNode
+  className?: string
+}) {
+  return (
+    <div role="radiogroup" aria-label={label} className={cn('grid gap-2', className)}>
+      {options.map((option, index) => {
+        const selected = option.value === value
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            tabIndex={selected ? 0 : -1}
+            onClick={() => onChange(option.value)}
+            onKeyDown={(event) => {
+              const direction = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0
+              if (!direction) return
+              event.preventDefault()
+              const next = (index + direction + options.length) % options.length
+              onChange(options[next].value)
+              event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button')[next]?.focus()
+            }}
+            className={cn(
+              'flex min-h-11 min-w-0 flex-col items-start gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors',
+              selected
+                ? 'border-[var(--accent)] bg-[var(--accent-muted)]'
+                : 'border-[var(--border)] pointer-fine:hover:bg-[var(--hover)]'
+            )}
+          >
+            <span className="flex h-6 items-center">{renderPreview(option)}</span>
+            <span className="min-w-0">
+              <span className="block text-xs font-medium text-[var(--text-primary)]">{option.label}</span>
+              <span className="block text-[10px] leading-4 text-[var(--text-muted)]">{option.hint}</span>
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
 }

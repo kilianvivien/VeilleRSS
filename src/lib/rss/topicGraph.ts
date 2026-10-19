@@ -49,6 +49,12 @@ interface BuildOptions {
   labelCharWidth?: number
   /** Largeur maximale d'une étiquette (au-delà, elle est tronquée à l'écran). */
   maxLabelWidth?: number
+  /**
+   * Facteur appliqué aux rayons et à la hauteur d'étiquette. Les tailles sont
+   * relatives à la hauteur : une zone haute (plein écran) les réduit pour
+   * garder des nœuds de taille comparable en pixels.
+   */
+  sizeScale?: number
 }
 
 /** Hauteur d'une étiquette et écart avec son nœud, en fraction de la hauteur. */
@@ -71,13 +77,15 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
     aspect = GRAPH_ASPECT,
     labelCharWidth = 0.016,
     maxLabelWidth = 0.34,
+    sizeScale = 1,
   } = options
+  const labelHeight = LABEL_HEIGHT * sizeScale
   const selected = terms.slice(0, limit)
   if (selected.length === 0) return { nodes: [], edges: [], aspect }
 
   const edges = computeEdges(selected, maxEdgesPerNode)
   const maxCount = Math.max(...selected.map((term) => term.count), 1)
-  const radii = selected.map((term) => 0.05 + 0.065 * Math.sqrt(term.count / maxCount))
+  const radii = selected.map((term) => (0.05 + 0.065 * Math.sqrt(term.count / maxCount)) * sizeScale)
 
   // Départ en spirale dorée, du sujet le plus fort (au centre) vers la
   // périphérie : la simulation converge vite et sans tirage aléatoire.
@@ -149,7 +157,7 @@ export function buildTopicGraph(terms: TrendTerm[], options: BuildOptions = {}):
   const boxes = selected.map((term, index) => {
     const labelWidth = Math.min(maxLabelWidth, term.label.length * labelCharWidth + 0.02)
     const r = radii[index]
-    return { halfWidth: Math.max(r, labelWidth / 2), above: r, below: r + LABEL_GAP + LABEL_HEIGHT }
+    return { halfWidth: Math.max(r, labelWidth / 2), above: r, below: r + LABEL_GAP * sizeScale + labelHeight }
   })
   const clampBox = (index: number) => {
     const box = boxes[index]

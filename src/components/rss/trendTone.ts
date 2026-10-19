@@ -1,4 +1,6 @@
+import type { CSSProperties } from 'react'
 import type { TrendTerm } from '@/lib/rss/trendAnalysis'
+import type { ConstellationStyle } from '@/types/settings'
 
 /**
  * Tonalité visuelle d’un sujet dans le thème « Constellation ». La même grille
@@ -31,4 +33,39 @@ export function formatTrendDelta(term: Pick<TrendTerm, 'isNew' | 'changeRatio' |
     return `${term.changeRatio >= 0 ? '+' : '−'}${percentage} %`
   }
   return `${term.delta >= 0 ? '+' : '−'}${Math.abs(term.delta)}`
+}
+
+/**
+ * Habillage d'un nœud selon le style choisi : disque, numéro posé dessus et
+ * intensité de la lueur. Partagé avec l'aperçu des réglages.
+ */
+export function constellationNodeLook(
+  style: ConstellationStyle,
+  color: string,
+  selected: boolean
+): { disc: CSSProperties; textColor: string } {
+  const ring = `0 0 0 ${selected ? 3 : 0}px var(--text-primary)`
+  if (style === 'rings') {
+    return {
+      disc: {
+        background: `color-mix(in srgb, ${color} ${selected ? 26 : 14}%, var(--surface))`,
+        border: `2px solid ${color}`,
+        boxShadow: `${ring}, 0 0 18px color-mix(in srgb, ${color} ${selected ? 40 : 0}%, transparent)`,
+      },
+      textColor: 'var(--text-primary)',
+    }
+  }
+  if (style === 'flat') {
+    return {
+      disc: { background: color, boxShadow: ring },
+      textColor: 'var(--trend-node-ink)',
+    }
+  }
+  return {
+    disc: {
+      background: `radial-gradient(circle at 35% 30%, color-mix(in srgb, ${color} 72%, white), ${color} 72%)`,
+      boxShadow: `${ring}, 0 0 32px color-mix(in srgb, ${color} ${selected ? 55 : 22}%, transparent)`,
+    },
+    textColor: '#0b0d12',
+  }
 }

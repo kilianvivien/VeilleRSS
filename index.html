@@ -66,6 +66,8 @@
           document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
           var storedAccent = window.localStorage.getItem('veille-web-accent')
           if (storedAccent) document.documentElement.dataset.accent = storedAccent
+          var storedPalette = window.localStorage.getItem('veille-web-trend-palette')
+          if (storedPalette) document.documentElement.dataset.trendPalette = storedPalette
           if (isDark) {
             document.documentElement.classList.add('dark')
           } else {

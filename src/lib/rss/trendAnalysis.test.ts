@@ -76,3 +76,30 @@ describe('selected trend statistics', () => {
     expect(refined.focus).toEqual({ ...report.focus, label: 'Diplomatie à Ankara' })
   })
 })
+
+describe('trend grouping', () => {
+  it('folds a first-name + surname phrase into the surname and keeps the full name as label', () => {
+    const items = [
+      article('m1', 1, { title: 'Emmanuel Macron reçoit le chancelier' }),
+      article('m2', 2, { feedId: 'b', title: 'Emmanuel Macron en visite à Berlin' }),
+      article('m3', 3, { feedId: 'c', title: 'Macron annonce un remaniement' }),
+    ]
+    const report = computeTrends({ now, windowHours: 24, items })
+    const keys = report.terms.map((term) => term.key)
+    expect(keys).toContain('macron')
+    expect(keys).not.toContain('emmanuel macron')
+    expect(report.terms.find((term) => term.key === 'macron')).toMatchObject({ label: 'Emmanuel Macron', count: 3 })
+  })
+
+  it('keeps a single phrase when two overlapping phrases cover mostly the same articles', () => {
+    const items = [
+      article('g1', 1, { title: 'Grève générale nationale : cortèges à Paris' }),
+      article('g2', 2, { feedId: 'b', title: 'Grève générale nationale, les syndicats satisfaits' }),
+      article('g3', 3, { feedId: 'c', title: 'Grève générale nationale suivie à Lyon' }),
+      article('g4', 4, { feedId: 'd', title: 'Grève générale reconduite jeudi' }),
+    ]
+    const report = computeTrends({ now, windowHours: 24, items })
+    const phrases = report.terms.filter((term) => term.key.startsWith('greve generale'))
+    expect(phrases.map((term) => term.key)).toEqual(['greve generale'])
+  })
+})

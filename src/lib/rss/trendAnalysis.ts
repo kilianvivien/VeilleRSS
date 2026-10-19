@@ -325,7 +325,7 @@ export function computeTrends({
     previousItemCount: previousItems.length,
     sourceCount: sources.size,
     volumeBuckets,
-    terms: dropRedundantTerms(sortTrendTerms(terms), termLimit),
+    terms: dropRedundantTerms(foldNameVariants(sortTrendTerms(terms)), termLimit),
     watched: computeWatchedStats({
       watchedKeywords,
       currentItems,
@@ -493,7 +493,54 @@ function trendScore(term: TrendTerm): number {
   // gagnent légèrement sur les bigrammes quand leur couverture est identique.
   const wordCount = term.key.split(' ').length
   const specificity = wordCount === 3 ? 2.5 : wordCount === 2 ? 1.5 : 0
-  return momentum + breadth + specificity + term.count * 0.5
+  // Un sujet qui se concentre sur le dernier quart de la fenêtre est en train
+  // d'émerger ; une répartition uniforme ne rapporte presque rien.
+  const recent = term.buckets.slice(-RECENT_BUCKETS).reduce((sum, value) => sum + value, 0)
+  const acceleration = term.count >= 3 ? (recent / term.count) * 2 : 0
+  // Le volume d'une seule source ne compte pas : c'est sa ligne éditoriale,
+  // pas une tendance de l'actualité.
+  const volume = term.sourceCount > 1 ? term.count * 0.5 : 0
+  return momentum + breadth + specificity + acceleration + volume
+}
+
+/** Tranches finales de la courbe (sur 12) qui définissent l'actualité « récente ». */
+const RECENT_BUCKETS = 3
+
+/**
+ * Regroupe les variantes d'un même nom propre : « Emmanuel Macron » et
+ * « Macron » désignent la même personne et ne doivent pas occuper deux places
+ * du classement. L'expression est absorbée par le mot seul, qui couvre déjà
+ * tous ses articles ; quand elle représente au moins la moitié des mentions,
+ * sa forme complète devient le libellé, plus lisible.
+ *
+ * Seules les expressions de deux mots à majuscules initiales, dont le second
+ * mot est lui-même un sujet du classement, sont concernées (prénom + nom) :
+ * « équipe de France » reste distincte de « France ».
+ */
+function foldNameVariants(terms: TrendTerm[]): TrendTerm[] {
+  const wordTerms = new Map(terms.filter((term) => !term.isPhrase).map((term) => [term.key, term]))
+  const absorbed = new Set<string>()
+  const labels = new Map<string, string>()
+
+  for (const term of terms) {
+    if (!term.isPhrase) continue
+    const words = term.key.split(' ')
+    const displayWords = term.label.split(/\s+/)
+    if (words.length !== 2 || displayWords.length !== 2) continue
+    if (!displayWords.every((word) => /^\p{Lu}/u.test(word))) continue
+    const surname = wordTerms.get(words[1])
+    if (!surname || surname.count < term.count) continue
+
+    absorbed.add(term.key)
+    if (!labels.has(surname.key) && term.count * 2 >= surname.count) {
+      labels.set(surname.key, term.label)
+    }
+  }
+
+  if (absorbed.size === 0) return terms
+  return terms
+    .filter((term) => !absorbed.has(term.key))
+    .map((term) => (labels.has(term.key) ? { ...term, label: labels.get(term.key)! } : term))
 }
 
 /**
@@ -561,36 +608,47 @@ function dropRedundantTerms(terms: TrendTerm[], limit = Number.POSITIVE_INFINITY
     return term.itemIds.some((itemId) => !covered.has(itemId))
   }
 
-  // Deux expressions qui apparaissent dans exactement les mêmes articles et
-  // partagent plusieurs mots sont presque toujours deux fenêtres sur le même
-  // syntagme (« göçmen kaçakçılarına jandarma » / « kaçakçılarına jandarma
-  // darbesi »). Le classement a déjà placé la meilleure en premier.
+  // Deux expressions qui partagent des mots et l'essentiel de leurs articles
+  // sont deux fenêtres sur le même sujet (« göçmen kaçakçılarına jandarma » /
+  // « kaçakçılarına jandarma darbesi », « violences 17 octobre » /
+  // « mobilisation 17 octobre »). Le classement a déjà placé la meilleure en
+  // premier ; la suivante n'ajouterait qu'un doublon au tableau.
   const kept: TrendTerm[] = []
-  const keptPhrasesBySignature = new Map<string, TrendTerm[]>()
+  const keptPhrases: TrendTerm[] = []
   for (const term of terms) {
     if (kept.length >= limit) break
     if (!isKeptCandidate(term)) continue
 
     if (term.isPhrase) {
-      const signature = term.itemIds.join('\u0000')
-      const sameItems = keptPhrasesBySignature.get(signature)
-      if (sameItems) {
-        const termWords = new Set(term.key.split(' '))
-        const redundantPhrase = sameItems.some(
-          (candidate) =>
-            candidate.key.split(' ').filter((word) => termWords.has(word)).length >= 2
-        )
-        if (redundantPhrase) continue
-        sameItems.push(term)
-      } else {
-        keptPhrasesBySignature.set(signature, [term])
-      }
+      const termWords = new Set(term.key.split(' '))
+      const termItems = itemSetOf(term)
+      const duplicate = keptPhrases.some((candidate) => {
+        const shared = candidate.key.split(' ').filter((word) => termWords.has(word)).length
+        if (shared === 0) return false
+        const overlap = jaccard(itemSetOf(candidate), termItems)
+        return shared >= 2 ? overlap >= PHRASE_OVERLAP : overlap >= PHRASE_OVERLAP_SINGLE_WORD
+      })
+      if (duplicate) continue
+      keptPhrases.push(term)
     }
 
     kept.push(term)
   }
 
   return kept
+}
+
+/** Recouvrement d'articles au-delà duquel deux expressions voisines sont un même sujet. */
+const PHRASE_OVERLAP = 0.5
+/** Avec un seul mot en commun, l'indice lexical est plus faible : on exige davantage. */
+const PHRASE_OVERLAP_SINGLE_WORD = 0.75
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  const [small, large] = a.size <= b.size ? [a, b] : [b, a]
+  let shared = 0
+  for (const value of small) if (large.has(value)) shared += 1
+  const union = a.size + b.size - shared
+  return union === 0 ? 0 : shared / union
 }
 
 function computeWatchedStats({

@@ -13,9 +13,21 @@ export type AccentColor = 'violet' | 'cyan' | 'amber' | 'rose' | 'blue'
 
 export const ACCENT_COLORS: AccentColor[] = ['violet', 'cyan', 'amber', 'rose', 'blue']
 
+/** Palette des tonalités de tendance (forte hausse, nouveau, stable, en baisse). */
+export type TrendPalette = 'classic' | 'aurora' | 'ember' | 'ocean' | 'colorblind'
+
+export const TREND_PALETTES: TrendPalette[] = ['classic', 'aurora', 'ember', 'ocean', 'colorblind']
+
+/** Rendu des nœuds de la constellation. */
+export type ConstellationStyle = 'orbs' | 'rings' | 'flat'
+
+export const CONSTELLATION_STYLES: ConstellationStyle[] = ['orbs', 'rings', 'flat']
+
 export interface Settings {
   theme: 'light' | 'dark' | 'system'
   accentColor?: AccentColor
+  trendPalette?: TrendPalette
+  constellationStyle?: ConstellationStyle
   /** Le tutoriel de démarrage a été vu (terminé ou passé). Rejouable depuis les paramètres. */
   onboardingCompleted?: boolean
   // AI Configuration
